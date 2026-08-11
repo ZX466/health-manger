@@ -4,13 +4,13 @@ from tongue.diagnosis import (
     analyze_tongue_image,
     get_tongue_color_info,
     get_coating_color_info,
-)
-from tongue.feature_mapping import (
     TONGUE_COLORS,
     COATING_COLORS,
     COATING_THICKNESS,
     TONGUE_SHAPES,
     MOISTURE_LEVELS,
+)
+from tongue.feature_mapping import (
     TCM_SYNDROMES,
 )
 

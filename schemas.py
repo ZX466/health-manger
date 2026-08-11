@@ -190,7 +190,7 @@ class HealthArticleResponse(HealthArticleBase):
 
 
 class HealthWarningBase(BaseModel):
-    warning_type: Literal["bmi", "blood_pressure", "heart_rate", "temperature", "sleep", "general"]
+    warning_type: str = Field(..., max_length=50)
     warning_level: Literal["info", "warning", "danger", "critical"]
     warning_content: str = Field(..., min_length=1, max_length=1000)
 
