@@ -1,7 +1,7 @@
 # Orca 多 Agent 协作 · 通用工作流
 
 > 用途：**跨项目复用**。把本项目（`.orca/generic-orchestration-workflow.md`）拷到任意新项目根目录（连同 `.orca/` 目录），在 main 分支打开 Claude Code，粘贴第 4 节的「启动语」即可驱动 claude/codex/grok（及未来更多 agent）按能力域协作、互审、合并 main。
-> 版本：v1.3（2026-08-11；v1.3 运维手册补充：GitHub 代理推送、修复通道降级策略、setup 失败不阻塞、task-create 抖动重试）
+> 版本：v1.3（2026-08-11；v1.3 运维手册补充：GitHub 代理推送、修复通道降级策略、setup 失败不阻塞、task-create 抖动重试；启动语预检核实修正 task-list 说明）
 
 ---
 
@@ -91,7 +91,7 @@
 
 ## 启动前（每次）
 - 运行 `orca status --json` 确认 Orca 在线；运行 `orca skills get orchestration` 读取本版本指南（不要凭记忆猜命令）。
-- 运行 `orca orchestration run-list --json` 与 `task-list --json` 检查遗留运行空间；有遗留先问我是否 `reset --all`。
+- 运行 `orca orchestration run-list --json` 检查遗留运行空间（`task-list` 需先有绑定 Run，全新环境会报 `run_required`，属正常，先 run-create 即可）；有遗留先问我是否 `reset --all`。
 - 若我是换新项目复用：先读 `.orca/generic-orchestration-workflow.md` 的**角色注册表**与协议（按能力域匹配 agent；新 agent 加一行即可接入），并用 AskUserQuestion 让我确认：①目标 ②任务拆分（哪个能力域接哪个任务）③只读还是修复模式。
 
 ## 标准流程（阶段 A→D）
