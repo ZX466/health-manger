@@ -1,7 +1,7 @@
 # Orca 多 Agent 协作 · 通用工作流
 
 > 用途：**跨项目复用**。把本项目（`.orca/generic-orchestration-workflow.md`）拷到任意新项目根目录（连同 `.orca/` 目录），在 main 分支打开 Claude Code，粘贴第 4 节的「启动语」即可驱动 claude/codex/grok（及未来更多 agent）按能力域协作、互审、合并 main。
-> 版本：v1.2（2026-08-11；v1.1 加入可扩展 Agent 注册表，v1.2 修正全文档措辞统一为「能力域匹配」体系并去范例）
+> 版本：v1.3（2026-08-11；v1.3 运维手册补充：GitHub 代理推送、修复通道降级策略、setup 失败不阻塞、task-create 抖动重试）
 
 ---
 
@@ -152,6 +152,10 @@
 | 后台 `check --wait` 意外 exit 1 | Orca 运行时重启 | 重新发起滚动等待；`worker-show` 确认存活 |
 | exact 工作树 `worker-start` 报 `Creation and setup options apply only to new-child...` | exact 工作树不允许 --setup/--name | 去掉这两个选项重试 |
 | Codex 启动即崩 `cc_switch_upstream_error / upstream_status:400` | 本机 codex config.toml 的供应商/model 配置错误 | 环境问题，先修配置；不是 Orca 问题，勿盲目重启 |
+| GitHub 推送失败 `Failed to connect to github.com:443`（Gitee 正常） | 大陆网络对 github.com 直连被阻断 | 检查本地代理端口（Clash/Mihomo 常见 7897/7890/10809）：`(echo > /dev/tcp/127.0.0.1/7897)`；一次性推送不污染全局配置：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push <remote> <branch>` |
+| 修复类 worker 停滞/死亡（codex 停在 TUI 空闲提示符、claude 静默退出或停在空壳提示符 `P>`） | 本机 Orca 运行时多次重启后，新 worker 的注入任务未激活（input_accepted 但 agent 无动作） | 降级：协调者在主工作树 TDD 修复 + 严格自查替代互审（附完整测试证据）；Orca 互审等运行时稳定后再补。勿反复重启烧时间 |
+| setup 钩子失败（`setupState: failed`） | 新工作树 setup 命令失败（如依赖安装失败） | start-immediately 策略下不阻塞 agent：`worker-show` 确认 worker 存活即可继续 |
+| 长 spec 的 `task-create` 偶发静默无输出（无 JSON、无报错） | Orca 运行时抖动 | 幂等重试；可用最小 spec 冒烟验证 task-create 可用（先清掉冒烟任务） |
 
 ## 7. 协调者检查清单（每轮必查）
 
