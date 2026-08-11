@@ -79,3 +79,8 @@ accuracy_report.html
 # Local AI tooling configs
 .codex/
 .kiro/
+.agents/
+.codegraph/
+
+# Local Claude Code settings (machine-specific, not shared)
+.claude/settings.local.json
