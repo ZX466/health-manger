@@ -164,25 +164,3 @@ class CloudTongueAnalyzer:
 
 
 cloud_analyzer = CloudTongueAnalyzer()
-
-
-def test_cloud_connection():
-    """测试云端连接是否正常"""
-    analyzer = CloudTongueAnalyzer()
-    if not analyzer.is_configured:
-        print("未配置 ARK_API_KEY 或 ARK_MODEL_ID")
-        print("请在 .env 文件中添加：")
-        print("  ARK_API_KEY=your-api-key-here")
-        print("  ARK_MODEL_ID=your-model-id-here")
-        return False
-
-    print("配置检测通过")
-    key_len = len(analyzer.api_key)
-    print(f"   API Key: {'已配置' if key_len > 0 else '未配置'} (长度: {key_len})")
-    print(f"   Model ID: {analyzer.model_id}")
-    print(f"   Endpoint: {analyzer.BASE_URL}")
-    return True
-
-
-if __name__ == "__main__":
-    test_cloud_connection()
