@@ -1,7 +1,7 @@
 # Orca 多 Agent 协作 · 通用工作流
 
 > 用途：**跨项目复用**。把本项目（`.orca/generic-orchestration-workflow.md`）拷到任意新项目根目录（连同 `.orca/` 目录），在 main 分支打开 Claude Code，粘贴第 4 节的「启动语」即可驱动 claude/codex/grok（及未来更多 agent）按能力域协作、互审、合并 main。
-> 版本：v1.3（2026-08-11；v1.3 运维手册补充：GitHub 代理推送、修复通道降级策略、setup 失败不阻塞、task-create 抖动重试；启动语预检核实修正 task-list 说明）
+> 版本：v1.4（2026-08-11；v1.4 新增第 8 节 mermaid 流程图；v1.3 运维手册补充 GitHub 代理推送/修复通道降级/setup 失败不阻塞/task-create 抖动重试，启动语预检核实修正 task-list 说明）
 
 ---
 
@@ -164,4 +164,38 @@
 - [ ] 只读任务加了 `--setup skip` 且说明理由
 - [ ] `check --wait` 滚动；每条 worker_done 后处理→release（或复用）→ack
 - [ ] 报告按角色汇总、去重、标注确认源、按 P0-P3 排序
-- [ ] 修复类：TDD 已验证、互审 verdict 收集、合并 main 前用户确认
+## 8. 流程图（mermaid，GitHub 原生渲染）
+
+````mermaid
+flowchart TD
+    S(["用户 · 主分支打开 Claude Code"]) --> ST["粘贴第 4 节「启动语」"]
+    ST --> PRE{"预检<br/>orca status · skills get<br/>run-list 有遗留?"}
+    PRE -- "是" --> RESET["询问：是否 reset --all"]
+    RESET --> CONF
+    PRE -- "否" --> CONF["AskUserQuestion 确认<br/>① 目标 ② 任务拆分 ③ 只读/修复"]
+    CONF --> FA["阶段 A · 分派<br/>run-create → 按能力域 task-create<br/>→ worker-start（独立工作树+分支）"]
+    FA --> FB["阶段 B · 执行<br/>agent 按能力域产出<br/>只读 = 报告 / 修复 = TDD"]
+    FB --> FC{"阶段 C · 互审<br/>能力域不同的 agent<br/>审分支 diff / 报告"}
+    FC -- "FAIL" --> REW["打回原 agent 修改"]
+    REW --> FB
+    FC -- "PASS" --> FD{"阶段 D · 合并闸门<br/>用户验收"}
+    FD -- "否" --> HOLD["保留分支 / 再议"]
+    FD -- "是" --> MG["合并进 main"]
+    MG --> PU["推送双远程<br/>Gitee 直连 · GitHub 走代理"]
+    PU --> CL["清理临时工作树 / 分支<br/>仅留 main"]
+    CL --> DOC["流程与运维手册沉淀 · 入库共享"]
+    DOC --> E(["跨项目复用 · 换新项目重跑"])
+
+    classDef pass fill:#2a3a2f,stroke:#5aa06e,color:#9fd4b0;
+    classDef fail fill:#3a2b28,stroke:#c05a4f,color:#e3a39b;
+    classDef gate fill:#3a3222,stroke:#d9a441,color:#ecd29a;
+    classDef act fill:#232a34,stroke:#3a414d,color:#e9e6de;
+    class MG,PU,CL,DOC pass;
+    class REW fail;
+    class PRE,FC,FD gate;
+    class S,E gate;
+    class ST,RESET,CONF,FA,FB,HOLD act;
+````
+
+> 纯文本终端无法渲染 mermaid 时，参考第 1 节的 ASCII 总览图；语义色：绿=PASS/合并/推送，红=FAIL/打回，黄=决策闸门。
+
