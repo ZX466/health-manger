@@ -48,7 +48,13 @@ def check_health_warnings(user_id: int, db) -> List[Dict]:
         systolic = latest_record.blood_pressure_systolic
         diastolic = latest_record.blood_pressure_diastolic
 
-        if systolic >= BP_SYSTOLIC_ELEVATED or diastolic >= BP_DIASTOLIC_ELEVATED:
+        if systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
+            warnings.append({
+                "type": "低血压",
+                "level": "warning",
+                "content": f"您的血压为{systolic}/{diastolic}mmHg，低于正常范围。建议适当增加营养，避免过度劳累。"
+            })
+        elif systolic >= BP_SYSTOLIC_ELEVATED or diastolic >= BP_DIASTOLIC_ELEVATED:
             warnings.append({
                 "type": "高血压",
                 "level": "danger",
@@ -59,12 +65,6 @@ def check_health_warnings(user_id: int, db) -> List[Dict]:
                 "type": "血压偏高",
                 "level": "warning",
                 "content": f"您的血压为{systolic}/{diastolic}mmHg，处于正常高值。建议减少盐分摄入，保持规律运动。"
-            })
-        elif systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
-            warnings.append({
-                "type": "低血压",
-                "level": "warning",
-                "content": f"您的血压为{systolic}/{diastolic}mmHg，低于正常范围。建议适当增加营养，避免过度劳累。"
             })
 
     if latest_record.heart_rate:

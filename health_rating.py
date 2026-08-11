@@ -94,6 +94,9 @@ def _calculate_blood_pressure_score(record) -> tuple[int, str]:
     if not systolic or not diastolic:
         return 0, "未检测(0分)"
     
+    # 低血压（任一臂低于下限）必须前置，否则被“正常/偏高”分支遮蔽
+    if systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
+        return 15, f"{systolic}/{diastolic}偏低(15分)"
     # 正常：收缩压 < 120 且 舒张压 < 80
     if systolic < BP_SYSTOLIC_NORMAL and diastolic < BP_DIASTOLIC_NORMAL:
         return 25, f"{systolic}/{diastolic}正常(25分)"
@@ -108,9 +111,6 @@ def _calculate_blood_pressure_score(record) -> tuple[int, str]:
     # 高血压2级：收缩压 >= 160 或 舒张压 >= 100
     elif systolic >= BP_SYSTOLIC_HIGH or diastolic >= BP_DIASTOLIC_HIGH:
         return 5, f"{systolic}/{diastolic}高血压2级(5分)"
-    # 低血压：收缩压 < 90 或 舒张压 < 60
-    elif systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
-        return 15, f"{systolic}/{diastolic}偏低(15分)"
     else:
         return 20, f"{systolic}/{diastolic}(20分)"
 

@@ -35,7 +35,12 @@ class ChatSession(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", backref="chat_sessions")
-    messages = relationship("ChatMessage", back_populates="session", order_by="ChatMessage.created_at")
+    messages = relationship(
+        "ChatMessage",
+        back_populates="session",
+        order_by="ChatMessage.created_at",
+        cascade="all, delete-orphan",
+    )
 
 
 class ChatMessage(Base):
@@ -64,7 +69,7 @@ def create_session(
         context_type=context_type,
     )
     db.add(session)
-    db.flush()
+    db.commit()
     return session
 
 
@@ -106,7 +111,7 @@ def add_message(
         tokens_used=tokens_used,
     )
     db.add(message)
-    db.flush()
+    db.commit()
     return message
 
 
@@ -169,7 +174,7 @@ def delete_session(
         return False
 
     db.delete(session)
-    db.flush()
+    db.commit()
     return True
 
 
