@@ -1,0 +1,30 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: pure logic tests, no I/O",
+    "integration: tests requiring database or HTTP client",
+    "slow: tests involving image processing or external APIs",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "venv/*",
+    "migrations/*",
+    "frontend/*",
+    "generate_ppt.py",
+    "init_data.py",
+    "create_test_user.py",
+]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
