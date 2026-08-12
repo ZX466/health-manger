@@ -94,25 +94,22 @@ def _calculate_blood_pressure_score(record) -> tuple[int, str]:
     if not systolic or not diastolic:
         return 0, "未检测(0分)"
     
-    # 低血压（任一臂低于下限）必须前置，否则被“正常/偏高”分支遮蔽
+    # 高血压必须优先于低血压判定：混合读数（如 170/55 严重高血压+低舒张压，
+    # 或 85/90 低收缩压+高血压1级舒张压）应按更危险的高血压分级，而非遮蔽为偏低
+    # 高血压2级：收缩压 >= 160 或 舒张压 >= 100
+    if systolic >= BP_SYSTOLIC_HIGH or diastolic >= BP_DIASTOLIC_HIGH:
+        return 5, f"{systolic}/{diastolic}高血压2级(5分)"
+    # 高血压1级：收缩压 >= 140 或 舒张压 >= 90
+    if systolic >= BP_SYSTOLIC_ELEVATED or diastolic >= BP_DIASTOLIC_ELEVATED:
+        return 12, f"{systolic}/{diastolic}高血压1级(12分)"
+    # 低血压：任一臂低于下限
     if systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
         return 15, f"{systolic}/{diastolic}偏低(15分)"
-    # 正常：收缩压 < 120 且 舒张压 < 80
-    if systolic < BP_SYSTOLIC_NORMAL and diastolic < BP_DIASTOLIC_NORMAL:
-        return 25, f"{systolic}/{diastolic}正常(25分)"
-    # 正常高值：收缩压 120-139 或 舒张压 80-89
-    elif (BP_SYSTOLIC_NORMAL <= systolic < BP_SYSTOLIC_ELEVATED
-          or BP_DIASTOLIC_NORMAL <= diastolic < BP_DIASTOLIC_ELEVATED):
+    # 正常高值：收缩压 >= 120 或 舒张压 >= 80
+    if systolic >= BP_SYSTOLIC_NORMAL or diastolic >= BP_DIASTOLIC_NORMAL:
         return 20, f"{systolic}/{diastolic}偏高(20分)"
-    # 高血压1级：收缩压 140-159 或 舒张压 90-99
-    elif (BP_SYSTOLIC_ELEVATED <= systolic < BP_SYSTOLIC_HIGH
-          or BP_DIASTOLIC_ELEVATED <= diastolic < BP_DIASTOLIC_HIGH):
-        return 12, f"{systolic}/{diastolic}高血压1级(12分)"
-    # 高血压2级：收缩压 >= 160 或 舒张压 >= 100
-    elif systolic >= BP_SYSTOLIC_HIGH or diastolic >= BP_DIASTOLIC_HIGH:
-        return 5, f"{systolic}/{diastolic}高血压2级(5分)"
-    else:
-        return 20, f"{systolic}/{diastolic}(20分)"
+    # 正常：收缩压 < 120 且 舒张压 < 80
+    return 25, f"{systolic}/{diastolic}正常(25分)"
 
 
 def _calculate_heart_rate_score(record) -> tuple[int, str]:
