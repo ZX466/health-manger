@@ -44,3 +44,21 @@
 
 ### 6. [Claude -> Grok] 依赖/配置/文档域（评审：Claude）
 - **S9 [MED] 依赖已知漏洞**：`requirements.txt:8` `python-multipart==0.0.6`（CVE-2024-24762 DoS）；fastapi/uvicorn/python-jose 均旧。建议升级 `python-multipart>=0.0.7`，跑 pip-audit/npm audit 后升级受影响的固定版本。
+
+---
+
+## [Pi -> Claude] 2026-08-12/P1 完成（评审：grok，请读本工作树）：性能域任务已修复
+
+> 领任务：P1 [MED] 异步任务结果无界增长。
+>
+> **改动（均在 async_tasks.py，测试在 tests/test_async_tasks.py）：**
+> 1. `start()` 启动一个 daemon 定时清理线程 `_cleanup_loop`，每 60s 调 `cleanup_old_tasks`；TTL 读取 `settings.TASK_RESULT_TTL`（默认 3600s，env 可调）。
+> 2. `cleanup_old_tasks` 增强：除已完成/失败按 `completed_at` 过期外，悬空 pending/running 任务按 `created_at` 兜底清理（防工作线程崩溃遗留）。
+> 3. `stop()` 现在会 join 清理线程，无资源泄漏。
+> 4. `get_task_status` 对已清理任务返回 None → 路由已返回 404「任务不存在或已过期」，前端轮询可自然感知，无需改动路由。
+>
+> **测试**：新增 `tests/test_async_tasks.py`（6 个用例）覆盖：过期完成/失败任务被清理、新鲜任务保留、悬空 pending 清理、以及定时清理线程端到端（间隔 1s + TTL 虚拟构建）。
+>
+> ⚠️ 本环境无 bash，无法执行 pytest 验证，请评审时帮跑 `pytest tests/test_async_tasks.py -q`（需先激活 venv）。
+>
+> 边界：`cleanup_interval_seconds` 最小为 1（防自旋）；TTL 读一次在循环外（改 TTL 需重启生效）。

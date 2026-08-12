@@ -7,9 +7,12 @@
 import logging
 import queue
 import threading
-from typing import Callable, Dict, Any, Optional
+import time
 from datetime import datetime
 from enum import Enum
+from typing import Any, Callable, Dict, Optional
+
+import settings
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +53,9 @@ class TaskResult:
             "result": self.result,
             "error": self.error,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
         }
 
 
@@ -63,14 +68,16 @@ class AsyncTaskQueue:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, max_workers: int = 2):
+    def __init__(self, max_workers: int = 2, cleanup_interval_seconds: int = 60):
         if self._initialized:
             return
 
         self.task_queue = queue.Queue()
         self.results: Dict[str, TaskResult] = {}
         self.workers = []
+        self.cleanup_thread: Optional[threading.Thread] = None
         self.max_workers = max_workers
+        self.cleanup_interval_seconds = max(1, cleanup_interval_seconds)
         self.running = False
         self.lock = threading.Lock()
 
@@ -85,13 +92,30 @@ class AsyncTaskQueue:
             worker = threading.Thread(target=self._worker, daemon=True)
             worker.start()
             self.workers.append(worker)
+
+        # P1: 定期清理过期任务结果，防止 results 无界增长
+        self.cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
+        self.cleanup_thread.start()
         logger.info("异步任务队列已启动，工作线程数: %d", self.max_workers)
+
+    def _cleanup_loop(self):
+        """定时清理线程：按 settings.TASK_RESULT_TTL 过期已完成/失败/悬空任务"""
+        max_age_seconds = max(0, int(settings.TASK_RESULT_TTL))
+        while self.running:
+            time.sleep(self.cleanup_interval_seconds)
+            try:
+                self.cleanup_old_tasks(max_age_seconds=max_age_seconds)
+            except Exception as e:
+                logger.error("定期清理异步任务失败: %s", e)
 
     def stop(self):
         self.running = False
         for worker in self.workers:
             worker.join(timeout=1)
         self.workers.clear()
+        if self.cleanup_thread and self.cleanup_thread.is_alive():
+            self.cleanup_thread.join(timeout=2)
+            self.cleanup_thread = None
         logger.info("异步任务队列已停止")
 
     def _worker(self):
@@ -131,9 +155,14 @@ class AsyncTaskQueue:
             except Exception as e:
                 logger.error("工作线程异常: %s", e)
 
-    def submit_task(self, task_id: str, func: Callable,
-                    args: tuple = (), kwargs: dict = None,
-                    callback: Callable = None) -> str:
+    def submit_task(
+        self,
+        task_id: str,
+        func: Callable,
+        args: tuple = (),
+        kwargs: dict = None,
+        callback: Callable = None,
+    ) -> str:
         if kwargs is None:
             kwargs = {}
 
@@ -153,27 +182,39 @@ class AsyncTaskQueue:
     def is_task_completed(self, task_id: str) -> bool:
         with self.lock:
             if task_id in self.results:
-                return self.results[task_id].status in [TaskStatus.COMPLETED, TaskStatus.FAILED]
+                return self.results[task_id].status in [
+                    TaskStatus.COMPLETED,
+                    TaskStatus.FAILED,
+                ]
         return False
 
     def get_task_result(self, task_id: str) -> Optional[Dict[str, Any]]:
         with self.lock:
-            if task_id in self.results and self.results[task_id].status == TaskStatus.COMPLETED:
+            if (
+                task_id in self.results
+                and self.results[task_id].status == TaskStatus.COMPLETED
+            ):
                 return self.results[task_id].result
         return None
 
     def cleanup_old_tasks(self, max_age_seconds: int = 3600):
+        """清理过期任务：已完成/失败按完成时间，悬空（pending/running）按创建时间"""
         now = datetime.now()
         with self.lock:
             to_remove = []
             for task_id, result in self.results.items():
-                if result.completed_at:
-                    age = (now - result.completed_at).total_seconds()
-                    if age > max_age_seconds:
-                        to_remove.append(task_id)
+                # 未完成任务（pending/running）若长期滞留（如工作线程崩溃）也应回收
+                age = (now - (result.completed_at or result.created_at)).total_seconds()
+                if age > max_age_seconds:
+                    to_remove.append(task_id)
 
             for task_id in to_remove:
                 del self.results[task_id]
+
+        if to_remove:
+            logger.info(
+                "清理过期异步任务 %d 个（TTL=%ds）", len(to_remove), max_age_seconds
+            )
 
 
 task_queue = AsyncTaskQueue()
