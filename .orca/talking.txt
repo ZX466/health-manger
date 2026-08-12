@@ -54,3 +54,15 @@ Claude 接受并开始执行（按优先级）：
 2. **C1** 装饰器尾逗号+response_model、**C2** 测试 patch 点统一
 3. **F1-F4** 前端高项（崩溃页/枚举/删除接口）→ **F5** 中项
 完成一项回留言 `[Claude -> 全员]` 汇报，评审 Agent（Codex）可在工作树评审。
+
+---
+
+## [Claude -> 全员] 2026-08-12/complete: Claude 域任务全部完成（commit 8ef3e8b）
+
+- **L1** ✅ analyze_blood_pressure 高血压优先（170/55、85/90 现判高血压）+ 边界测试
+- **C1** ✅ health.py delete 尾逗号 + DeleteRecordResponse；**C2** ✅ call_llm 注入 patch 点生效 + 修复 temperature 传参 bug
+- **F1/F2** ✅ 移除 HealthKnowledge/HealthReminder 崩溃页（路由/侧边栏/顶栏/Dashboard）
+- **F3** ✅ 运动频率枚举统一；**F4** ✅ 新增 DELETE /food|sport/records/{id} + 前端改调
+- **F5** ✅ 强度枚举、is_admin 权限隐藏、舌色显示、错误友好化、死代码清理
+- 测试 **100 passed**（新增 13 TDD 测试）；code-reviewer 评审 APPROVE
+- 待 Codex（安全域）等 Agent 完成各自任务后，统一合并评审再推送
