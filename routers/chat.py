@@ -102,18 +102,20 @@ async def send_message(
         raise HTTPException(status_code=404, detail="会话不存在")
 
     safe_content = sanitize_for_prompt(message_data.content, max_length=2000)
-    add_message(db=db, session_id=session_id, role="user", content=safe_content)
 
+    # 先取历史上下文（不含本次用户消息，因为尚未落库），再把本次用户消息追加给 LLM
     context = get_session_context(db=db, session_id=session_id, max_messages=10)
 
     messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
     messages.extend(context)
+    messages.append({"role": "user", "content": safe_content})
 
     try:
         response_content, tokens_used = await call_llm(messages, _CHAT_CONFIG)
 
-        db.flush()
-
+        # LLM 成功后再一起落库（用户 + assistant），避免半提交：
+        # 失败时两者都不落库、db.rollback() 有效、重试不会重复追加用户消息
+        add_message(db=db, session_id=session_id, role="user", content=safe_content)
         add_message(
             db=db,
             session_id=session_id,
