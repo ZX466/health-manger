@@ -1,0 +1,38 @@
+# Orca 多 Agent 协作工作流
+
+核心要点: 每个能力域都会有一个agent负责，一个agent有一个工作树，每个能力域只指定一个推荐 Agent，不重复分配。
+评审agent可以读取访问需要评审的工作树
+注意!!!(各agent之间尽量不要直接相互交流，有必要的话可以通过项目文件夹里的.orca/talking.txt间接留言)
+让每个agent行动前都读取这个文档.orca/workflow,找到他自己负责的内容，不要越界
+
+## 1. Agent 注册表
+
+注册表位于 `.orca/agent-registry.md`。每个能力域只指定一个推荐 Agent，不重复分配；未覆盖能力保持空白，后续按需补充(不要随意更改由我决定)：
+
+| 能力域 | 推荐 Agent | 评审 Agent |
+|---|---|---|
+| 架构 / 代码质量 / 逻辑 / 测试 | Claude | Codex |
+| 依赖 / 配置 / 文档 | Grok | Claude |
+| 安全 / 合规 / 风险 | Codex | Grok |
+| 性能 | Pi | grok |
+| 数据 / 数据库 | opencode | Codex |
+| 接口 / 兼容性 | kilo | Claude |
+| 前端 / 体验 / 发布 / 运维 | Claude | codex |
+
+## 2. git 提交配置
+
+用户的 Git 身份：
+- Gitee 账号: ZX666X
+- GitHub 账号: ZX466
+- 统一邮箱: zx19836980213@outlook.com（已绑定 Gitee 与 GitHub 两账号，故一条提交可同时归属两个平台）
+- 提交姓名: ZX666X
+
+机器全局 git 身份已配置：`git config --global user.name=ZX666X / user.email=zx19836980213@outlook.com`；新 clone 仓库无需再单独配置。
+
+## 3. 状态检查
+
+每次完成一个工作都要检查工作树和 `orca\` 里文档的内容,汇报当前状态。
+
+## 4. 合并与推送
+
+最后合并成一个 main 分支推送到两个远程仓库——一一照应（origin=Gitee ZX666X，github=GitHub ZX466）。
