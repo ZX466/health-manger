@@ -42,3 +42,15 @@ def test_normal_pressure_still_scores_normal():
 def test_hypertension_still_scores_high():
     score, detail = _calculate_blood_pressure_score(_bp(150, 95))
     assert score == 12, f"150/95 应判高血压1级(12)，实际 {score} {detail}"
+
+
+def test_severe_hypertension_with_low_diastolic_scores_hypertension():
+    # 170/55 -> 收缩压达高血压2级(>=160)，不应被低舒张压遮蔽为偏低
+    score, detail = _calculate_blood_pressure_score(_bp(170, 55))
+    assert score == 5, f"170/55 应判高血压2级(5)，实际 {score} {detail}"
+
+
+def test_hypertension1_diastolic_with_low_systolic_scores_hypertension():
+    # 85/90 -> 舒张压达高血压1级(>=90)，不应被低收缩压遮蔽为偏低
+    score, detail = _calculate_blood_pressure_score(_bp(85, 90))
+    assert score == 12, f"85/90 应判高血压1级(12)，实际 {score} {detail}"

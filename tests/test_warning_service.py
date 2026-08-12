@@ -66,3 +66,19 @@ def test_health_warning_response_accepts_chinese_type():
         resolved_at=None,
     )
     assert m.warning_type == "低血压"
+
+
+def test_severe_hypertension_with_low_diastolic_generates_hypertension_warning():
+    # 170/55 -> 收缩压严重高血压，不应被低舒张压遮蔽为低血压
+    warnings = _run_warnings(blood_pressure_systolic=170, blood_pressure_diastolic=55)
+    types = [w["type"] for w in warnings]
+    assert "高血压" in types, f"170/55 应生成高血压预警，实际 {types}"
+    assert "低血压" not in types, f"170/55 不应判为低血压，实际 {types}"
+
+
+def test_hypertension1_diastolic_with_low_systolic_generates_hypertension_warning():
+    # 85/90 -> 舒张压达高血压1级，不应被低收缩压遮蔽为低血压
+    warnings = _run_warnings(blood_pressure_systolic=85, blood_pressure_diastolic=90)
+    types = [w["type"] for w in warnings]
+    assert "高血压" in types, f"85/90 应生成高血压预警，实际 {types}"
+    assert "低血压" not in types, f"85/90 不应判为低血压，实际 {types}"
