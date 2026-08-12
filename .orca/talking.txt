@@ -2,3 +2,45 @@
 
 > 各 agent 之间尽量不要直接相互交流，有必要的话通过本文件间接留言。
 > 格式：`[发信人 -> 收信人] 时间/任务: 内容`，追加即可，不要删除他人留言。
+
+---
+
+## [Claude -> 全员] 2026-08-12/audit-20260812: 全项目审计完成，任务分派如下
+
+> 背景：对 health-manger 全代码库做了能力域审计（逻辑/安全/接口/性能/前端/数据/依赖）。
+> 行动前请先读 `.orca/workflow` 确认自己负责的域，只领自己的任务，不要越界。
+> 完成后把结果留言回 `[收信人 -> Claude]`，评审 Agent 会读你所在的工作树做评审。
+
+### 1. [Claude -> Codex] 安全/合规/风险域（评审：Grok）— 优先级最高
+- **S1 [CRITICAL] SPA 兜底路由路径穿越/任意文件读取**：`main.py:97-107` `serve_spa` 用 `os.path.join(static_dir, full_path)` 未校验 `..`，已实测 `/..%2Fmain.py` 可读源码、`/..%5Cmain.py` 同效。生产可读 `.env`（密钥）与 `health_system.db`（全库）。建议：pathlib `resolve()` + `is_relative_to(static_dir)` 校验，或用 `StaticFiles(html=True)`。
+- **S2 [HIGH] 登录端点无限流/无锁定**：`routers/auth.py:35` login 未调 `check_rate_limit`。建议按 IP+用户名限流、失败退避。
+- **S3 [HIGH] 异步任务结果越权(IDOR)+永不清理**：`routers/ai_analysis.py:277` get_task_status 未绑定 user_id；`async_tasks.py:165` cleanup_old_tasks 从未调用。建议 TaskResult 存 user_id 校验归属，定期清理。
+- **S4 [MED] 多端点回显内部异常**：`ai_analysis.py:77,155,209`、`chat.py:134`、`tongue_service.py:92` 把 `str(e)` 拼进 detail。建议统一固定文案+logger。
+- **S5 [MED] 上传校验不严 + /uploads 公开挂载**：`tongue_service.py:26` 仅校验 content_type 头与扩展名，无魔数校验；`main.py:62` /uploads 无认证。建议 PIL 校验真实图像、图片访问改认证接口。
+- **S6 [MED] 默认邀请码硬编码**：`auth_service.py:4` `INVITE_CODES_DEFAULT=["health2026"]`。建议未配置则禁止注册。
+- **S7 [MED] 缺安全响应头/CSP + localStorage JWT**：`main.py:37-51` 无安全头中间件。建议加 CSP/安全头，v-html 处净化。
+- **S8 [MED] prompt 注入黑名单可绕过 + 输出无校验**：`security_service.py:7-25`。建议分隔符包裹+输出侧校验。
+- **S10-S14 [LOW]**：用户名枚举（auth.py:17）、JWT 无 iat/iss/aud（auth.py:49）、`get_current_user` sub=None 会 500（auth.py:68，先判空）、用户名无唯一约束（models.py:14 加 unique + 捕获 IntegrityError）、httpx.AsyncClient 线程不安全共享（ai_analysis.py:233 `_run_llm_sync`）。
+
+### 2. [Claude -> Claude] 逻辑 / 代码质量 / 前端体验域（评审：Codex）
+- **L1 [MED] 混合血压读数误判低血压**：`services/health_service.py:28` `analyze_blood_pressure` 无高血压优先判定（实测 170/55→"低血压"），与已修复的 `health_rating.py`/`warning_service.py` 不一致；影响 `_generate_analysis` 生成的 HealthAnalysis。TDD：先写 170/55 应判高血压的失败测试。
+- **C1 [LOW] 装饰器尾逗号+缺 response_model**：`routers/health.py:47`。
+- **C2 [LOW] 测试 patch 点无效**：`ai_module_service.py` re-export `call_llm` 供测试 patch，但 `inference_backends.py:7` 直接 `from services.llm_service import call_llm`，patch 实际不生效（health_analysis 因无 messages 偶然通过）。建议统一 patch 点或改用依赖注入。
+- **F1 [HIGH] 健康知识页整页崩溃**：`frontend/src/views/HealthKnowledge.vue` 调 9 个 `api` 中不存在的方法（getKnowledgeList 等），后端无对应路由，`health_articles` 是孤儿表。方案二选一：补齐后端+api，或从路由/侧边栏移除该页。
+- **F2 [HIGH] 健康提醒页整页崩溃+预警字段错配**：`HealthReminder.vue` 调不存在的方法；warning 用 `level/title/message` 与后端 `warning_type/warning_level/warning_content` 不匹配。建议重接 `/api/warning/*` 并按后端结构渲染，删除或补齐 reminder/goal。
+- **F3 [HIGH] 运动频率枚举不匹配**：`HealthRecord.vue:155` 中文 value vs `schemas.py:40` `Literal[none,rare,occasional,regular,daily]` → 422；且 422 detail 数组显示 `[object Object]`。建议前后端统一枚举+错误信息提取。
+- **F4 [HIGH] 饮食/运动删除调错接口**：`DietManagement.vue:263`/`SportManagement.vue:266` 删记录调 deleteFood/deleteSport（管理员删库条目）→ 普通用户 403、管理员误删。后端需补 `DELETE /api/food/records/{id}`、`/api/sport/records/{id}`，api 补 deleteFoodRecord/deleteSportRecord。
+- **F5-M [MED] 前端中等问题**：`latestRating.detail` 不存在（改用 overall_advice）；评级样式枚举不符（优秀/良好/中等/较差/危险）；舌色/苔色对象 vs 字符串错配（TongueDiagnosis.vue:316 改用 getLatestTongueResult）；添加食物/运动无权限区分；错误反馈缺失（统一 useToast）；401 整页跳转。
+
+### 3. [Claude -> kilo] 接口/兼容性域（评审：Claude）
+- **I1 [MED] food/sport 日期参数 500**：`services/food_service.py:100`、`services/sport_service.py:100` `datetime.fromisoformat(date_obj)` → TypeError（router 传 `date` 对象）。含 `get_food_stats`/`get_sport_stats`。建议服务层接收 `date` 直接比较，或转 str。
+
+### 4. [Claude -> Pi] 性能域（评审：grok）
+- **P1 [MED] 异步任务结果无界增长**：`async_tasks.py:71` `results` 字典无限增长（含大段 LLM 文本），`cleanup_old_tasks()`(165) 从未被调用。建议启动时周期清理或 TTL 过期。
+
+### 5. [Claude -> opencode] 数据/数据库域（评审：Codex）
+- **D1 [LOW] 舌诊失败图片孤儿文件**：`tongue_service.py:44-92` 分析失败的 diagnosis 保留 image_path，文件不清理、failed 记录累积。建议失败清理文件或定期清理。
+- **D2 [LOW] bmi 缺数据存 0.0**：`health_record_service.py:20-28` 无身高/体重时 `bmi=0.0` 入库（应存 NULL）。
+
+### 6. [Claude -> Grok] 依赖/配置/文档域（评审：Claude）
+- **S9 [MED] 依赖已知漏洞**：`requirements.txt:8` `python-multipart==0.0.6`（CVE-2024-24762 DoS）；fastapi/uvicorn/python-jose 均旧。建议升级 `python-multipart>=0.0.7`，跑 pip-audit/npm audit 后升级受影响的固定版本。
