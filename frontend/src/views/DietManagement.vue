@@ -53,7 +53,7 @@
 
       <div v-if="activeTab === 'foods'" class="tab-content">
         <div class="action-bar">
-          <button @click="showAddFood = true" class="btn-primary">
+          <button v-if="isAdmin" @click="showAddFood = true" class="btn-primary">
             ➕ 添加食物
           </button>
           <input 
@@ -197,16 +197,35 @@ export default {
       foodSearch: '',
       showAddRecord: false,
       showAddFood: false,
+      isAdmin: false,
       newRecord: { food_id: '', quantity_grams: '', meal_type: 'lunch' },
       newFood: { name: '', category: '', calories_per_100g: 0, protein_per_100g: 0, carbs_per_100g: 0 }
     }
   },
   async mounted() {
+    await this.loadCurrentUser()
     await this.loadFoodRecords()
     await this.loadFoods()
     await this.loadFoodStats()
   },
   methods: {
+    async loadCurrentUser() {
+      try {
+        const response = await api.getCurrentUser()
+        this.isAdmin = !!response.data?.is_admin
+      } catch (err) {
+        this.isAdmin = false
+      }
+    },
+    errMsg(err) {
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') return detail
+      if (Array.isArray(detail) && detail.length) {
+        // FastAPI 422 校验错误为数组 [{ loc, msg, type }, ...]
+        return detail.map(d => d.msg || String(d)).join('；')
+      }
+      return err.message || '未知错误'
+    },
     async loadFoodRecords() {
       try {
         const response = await api.getFoodRecords({ start_date: this.filterDate, end_date: this.filterDate })
@@ -243,7 +262,7 @@ export default {
         await this.loadFoodStats()
         alert('添加成功')
       } catch (err) {
-        alert('添加失败：' + (err.response?.data?.detail || err.message))
+        alert('添加失败：' + this.errMsg(err))
       }
     },
     async submitFood() {
@@ -254,13 +273,13 @@ export default {
         await this.loadFoods()
         alert('添加成功')
       } catch (err) {
-        alert('添加失败：' + (err.response?.data?.detail || err.message))
+        alert('添加失败：' + this.errMsg(err))
       }
     },
     async deleteRecord(id) {
       if (confirm('确定要删除这条记录吗？')) {
         try {
-          await api.deleteFood(id)
+          await api.deleteFoodRecord(id)
           await this.loadFoodRecords()
           await this.loadFoodStats()
           alert('删除成功')

@@ -26,11 +26,13 @@ def analyze_bmi(bmi: float) -> Tuple[str, str]:
 
 
 def analyze_blood_pressure(systolic: int, diastolic: int) -> Tuple[str, str]:
-    if systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
+    # 高血压必须优先于低血压判定：混合读数（如 170/55 严重高血压+低舒张压，
+    # 或 85/90 低收缩压+高血压1级舒张压）应按更危险的高血压分级，而非遮蔽为偏低
+    if systolic >= BP_SYSTOLIC_ELEVATED or diastolic >= BP_DIASTOLIC_ELEVATED:
+        return "高血压", "您的血压过高，建议及时就医检查，遵循医生指导进行调理。"
+    elif systolic < BP_SYSTOLIC_LOW or diastolic < BP_DIASTOLIC_LOW:
         return "低血压", "您的血压偏低，建议适当增加盐分摄入，多喝水，避免过度劳累。如有头晕等症状请及时就医。"
-    elif BP_SYSTOLIC_LOW <= systolic < BP_SYSTOLIC_NORMAL and BP_DIASTOLIC_LOW <= diastolic < BP_DIASTOLIC_NORMAL:
-        return "正常", "您的血压在正常范围内，请继续保持健康的生活方式。"
-    elif BP_SYSTOLIC_NORMAL <= systolic < BP_SYSTOLIC_ELEVATED or BP_DIASTOLIC_NORMAL <= diastolic < BP_DIASTOLIC_ELEVATED:
+    elif systolic >= BP_SYSTOLIC_NORMAL or diastolic >= BP_DIASTOLIC_NORMAL:
         return "偏高", "您的血压偏高，建议减少盐分摄入，避免高脂肪食物，保持规律运动。"
     else:
-        return "高血压", "您的血压过高，建议及时就医检查，遵循医生指导进行调理。"
+        return "正常", "您的血压在正常范围内，请继续保持健康的生活方式。"

@@ -65,10 +65,18 @@ export default {
         localStorage.setItem('userName', this.name)
         this.$router.push('/dashboard')
       } catch (err) {
-        this.error = err.response?.data?.detail || '登录失败，请检查用户名和密码'
+        this.error = this.errorMessage(err, '登录失败，请检查用户名和密码')
       } finally {
         this.loading = false
       }
+    },
+    errorMessage(err, fallback) {
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') return detail
+      if (Array.isArray(detail) && detail.length) {
+        return detail.map(d => d.msg || String(d)).join('；')
+      }
+      return fallback
     }
   }
 }

@@ -44,7 +44,7 @@ def get_health_record(
     return get_record(record_id, current_user.id, db)
 
 
-@router.delete("/records/{record_id}", )
+@router.delete("/records/{record_id}", response_model=schemas.DeleteRecordResponse)
 def delete_health_record(
     record_id: int,
     current_user: models.User = Depends(get_current_user),

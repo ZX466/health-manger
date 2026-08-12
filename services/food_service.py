@@ -121,6 +121,20 @@ def get_food_records(
     ]
 
 
+def delete_food_record(record_id: int, user_id: int, db: Session) -> dict:
+    record = db.execute(
+        select(models.UserFoodRecord).where(
+            models.UserFoodRecord.id == record_id,
+            models.UserFoodRecord.user_id == user_id,
+        )
+    ).scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="饮食记录不存在")
+    db.delete(record)
+    db.commit()
+    return {"message": "删除成功"}
+
+
 def get_food_stats(
     user_id: int,
     db: Session,

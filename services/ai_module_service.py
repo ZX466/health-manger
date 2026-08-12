@@ -5,11 +5,10 @@ from typing import Any, Dict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+import models
 from ai_module.factory import AIPipelineFactory
 from ai_module.pipeline import AIPipelineInput
 from services.llm_service import call_llm  # noqa: F401 - re-exported for test patching
-
-import models
 
 _factory = AIPipelineFactory()
 
@@ -26,7 +25,8 @@ class AIModuleService:
         request_content: str,
         analysis_type: str = "健康咨询",
     ) -> Dict[str, Any]:
-        pipeline = _factory.create_pipeline("health_analysis")
+        # 传入模块全局 call_llm（调用时解析，可被 patch("services.ai_module_service.call_llm") 拦截）
+        pipeline = _factory.create_pipeline("health_analysis", llm_call=call_llm)
         input_data = AIPipelineInput(
             input_type="health_data",
             data={"request": request_content},

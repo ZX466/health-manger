@@ -6,8 +6,6 @@ import HealthRecord from '../views/HealthRecord.vue'
 import HealthAnalysis from '../views/HealthAnalysis.vue'
 import DietManagement from '../views/DietManagement.vue'
 import SportManagement from '../views/SportManagement.vue'
-import HealthKnowledge from '../views/HealthKnowledge.vue'
-import HealthReminder from '../views/HealthReminder.vue'
 import TongueDiagnosis from '../views/TongueDiagnosis.vue'
 
 const routes = [
@@ -56,18 +54,6 @@ const routes = [
     name: 'SportManagement',
     component: SportManagement,
     meta: { requiresAuth: true, title: '运动管理' }
-  },
-  {
-    path: '/health-knowledge',
-    name: 'HealthKnowledge',
-    component: HealthKnowledge,
-    meta: { requiresAuth: true, title: '健康知识' }
-  },
-  {
-    path: '/health-reminder',
-    name: 'HealthReminder',
-    component: HealthReminder,
-    meta: { requiresAuth: true, title: '健康提醒' }
   },
   {
     path: '/tongue-diagnosis',

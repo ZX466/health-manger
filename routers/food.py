@@ -1,20 +1,23 @@
-from typing import List, Optional
 from datetime import date
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
 import schemas
-from auth import get_current_user, get_admin_user
+from auth import get_admin_user, get_current_user
+from database import get_db
 from services.food_service import (
     create_food,
-    get_foods,
-    get_food,
-    update_food,
-    delete_food,
     create_food_record,
+    delete_food,
+    delete_food_record,
+    get_food,
     get_food_records,
     get_food_stats,
+    get_foods,
+    update_food,
 )
 
 router = APIRouter(prefix="/api/food", tags=["食物管理"])
@@ -94,3 +97,12 @@ def get_food_stats_endpoint(
     db: Session = Depends(get_db),
 ):
     return get_food_stats(current_user.id, db, start_date, end_date)
+
+
+@router.delete("/records/{record_id}", response_model=schemas.MessageResponse)
+def delete_food_record_endpoint(
+    record_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return delete_food_record(record_id, current_user.id, db)

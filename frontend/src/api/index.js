@@ -23,6 +23,7 @@ api.interceptors.response.use(
   error => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
+      localStorage.removeItem('userName')
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
@@ -78,10 +79,7 @@ export default {
   updateFood(id, data) {
     return api.put(`/food/foods/${id}`, data)
   },
-  deleteFood(id) {
-    return api.delete(`/food/foods/${id}`)
-  },
-  
+
   // 饮食记录
   createFoodRecord(data) {
     return api.post('/food/records', data)
@@ -91,6 +89,9 @@ export default {
   },
   getFoodStats(params) {
     return api.get('/food/records/stats', { params })
+  },
+  deleteFoodRecord(id) {
+    return api.delete(`/food/records/${id}`)
   },
   
   // 运动管理
@@ -106,10 +107,7 @@ export default {
   updateSport(id, data) {
     return api.put(`/sport/sports/${id}`, data)
   },
-  deleteSport(id) {
-    return api.delete(`/sport/sports/${id}`)
-  },
-  
+
   // 运动记录
   createSportRecord(data) {
     return api.post('/sport/records', data)
@@ -119,6 +117,9 @@ export default {
   },
   getSportStats(params) {
     return api.get('/sport/records/stats', { params })
+  },
+  deleteSportRecord(id) {
+    return api.delete(`/sport/records/${id}`)
   },
   
   // AI 健康分析
@@ -153,9 +154,6 @@ export default {
   },
   deleteWarning(id) {
     return api.delete(`/warning/${id}`)
-  },
-  getWarningStats() {
-    return api.get('/warning/stats')
   },
 
   // 健康评级

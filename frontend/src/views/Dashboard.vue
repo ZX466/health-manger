@@ -49,20 +49,6 @@
             <p>AI智能分析报告</p>
           </div>
         </div>
-        <div class="feature-card" @click="$router.push('/health-knowledge')">
-          <div class="feature-icon">📚</div>
-          <div class="feature-info">
-            <h3>健康知识</h3>
-            <p>食谱与健康资讯</p>
-          </div>
-        </div>
-        <div class="feature-card" @click="$router.push('/health-reminder')">
-          <div class="feature-icon">🔔</div>
-          <div class="feature-info">
-            <h3>健康提醒</h3>
-            <p>目标与提醒设置</p>
-          </div>
-        </div>
         <div class="feature-card" @click="$router.push('/tongue-diagnosis')">
           <div class="feature-icon">👅</div>
           <div class="feature-info">
@@ -164,20 +150,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 推荐内容 -->
-      <div class="recommendations-section">
-        <h2>✨ 为你推荐</h2>
-        <div class="rec-cards">
-          <div class="rec-card" v-for="rec in recommendations" :key="rec.id" @click="$router.push(rec.link)">
-            <span class="rec-emoji">{{ rec.emoji }}</span>
-            <div class="rec-text">
-              <h4>{{ rec.title }}</h4>
-              <p>{{ rec.desc }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -206,14 +178,8 @@ export default {
       latestAnalysis: null,
       latestRating: null,
       todaySuggestions: [
-        { icon: '💧', title: '记得喝水', desc: '今日已饮水 2/8 杯', link: '/health-reminder' },
         { icon: '🏃', title: '运动目标', desc: '今日还需运动 30 分钟', link: '/sport-management' },
         { icon: '🍎', title: '饮食记录', desc: '还未记录午餐', link: '/diet-management' }
-      ],
-      recommendations: [
-        { id: 1, emoji: '🥗', title: '低卡减脂餐谱', desc: '7天健康饮食计划', link: '/health-knowledge' },
-        { id: 2, emoji: '🧘', title: '办公室拉伸指南', desc: '缓解久坐疲劳', link: '/health-knowledge' },
-        { id: 3, emoji: '😴', title: '改善睡眠质量', desc: '10个助眠小技巧', link: '/health-knowledge' }
       ]
     }
   },
@@ -560,51 +526,6 @@ export default {
 .view-detail-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
-}
-
-/* 推荐内容 */
-.recommendations-section {
-  margin-top: 36px;
-}
-.recommendations-section h2 {
-  color: var(--fg);
-  margin-bottom: 16px;
-  font-size: 18px;
-}
-.rec-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-.rec-card {
-  background: var(--surface);
-  padding: 18px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  transition: var(--transition);
-  box-shadow: var(--shadow-xs);
-  border: 2px solid transparent;
-}
-.rec-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--accent);
-  animation: hold-belly-laugh 0.6s ease-in-out;
-}
-.rec-emoji {
-  font-size: 36px;
-}
-.rec-text h4 {
-  color: var(--fg);
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-.rec-text p {
-  color: var(--muted);
-  font-size: 13px;
 }
 
   .welcome-mascots {

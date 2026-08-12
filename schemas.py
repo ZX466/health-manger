@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
     name: str
     created_at: datetime
     is_active: bool
+    is_admin: bool = False
 
     class Config:
         from_attributes = True
@@ -331,6 +332,11 @@ class AsyncTaskStatus(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class DeleteRecordResponse(BaseModel):
+    message: str
+    deleted_id: int
 
 
 class HealthRatingResponse(BaseModel):

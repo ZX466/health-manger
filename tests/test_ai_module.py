@@ -443,3 +443,31 @@ class TestAIExceptions:
     def test_errors_store_details(self):
         err = InferenceError("推理失败", details={"backend": "llm"})
         assert err.details == {"backend": "llm"}
+
+
+# ── C2 回归：call_llm 注入（patch 点必须生效） ────────────────
+
+class TestLLMCallInjection:
+    """C2 回归：ai_module_service 注入的 call_llm 必须真正到达后端，
+    使 patch("services.ai_module_service.call_llm") 生效，而非只改了个没用上的符号。"""
+
+    @pytest.mark.asyncio
+    async def test_injected_llm_call_is_patchable(self):
+        import services.ai_module_service as aim_module
+        from ai_module.factory import AIPipelineFactory
+        from ai_module.pipeline import AIPipelineInput
+
+        factory = AIPipelineFactory()
+        with patch.object(aim_module, "call_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = ("文本分析结果", 150)
+            # 复刻 analyze_health_data 的注入方式：call_llm 在调用时从模块全局解析（可被 patch）
+            pipeline = factory.create_pipeline("text_analysis", llm_call=aim_module.call_llm)
+            output = await pipeline.run(
+                AIPipelineInput(
+                    input_type="text",
+                    data={"text": "测试", "messages": [{"role": "user", "content": "hi"}]},
+                )
+            )
+        mock_llm.assert_awaited_once()
+        assert output.metrics["total_requests"] == 1
+        assert output.metrics["successful_requests"] == 1

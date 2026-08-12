@@ -71,10 +71,18 @@ export default {
           this.$router.push('/login')
         }, 1500)
       } catch (err) {
-        this.error = err.response?.data?.detail || '注册失败，请检查信息'
+        this.error = this.errorMessage(err, '注册失败，请检查信息')
       } finally {
         this.loading = false
       }
+    },
+    errorMessage(err, fallback) {
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') return detail
+      if (Array.isArray(detail) && detail.length) {
+        return detail.map(d => d.msg || String(d)).join('；')
+      }
+      return fallback
     }
   }
 }

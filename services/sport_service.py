@@ -121,6 +121,20 @@ def get_sport_records(
     ]
 
 
+def delete_sport_record(record_id: int, user_id: int, db: Session) -> dict:
+    record = db.execute(
+        select(models.UserSportRecord).where(
+            models.UserSportRecord.id == record_id,
+            models.UserSportRecord.user_id == user_id,
+        )
+    ).scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="运动记录不存在")
+    db.delete(record)
+    db.commit()
+    return {"message": "删除成功"}
+
+
 def get_sport_stats(
     user_id: int,
     db: Session,

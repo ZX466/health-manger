@@ -43,7 +43,7 @@
           <span class="rating-score-unit">分</span>
         </div>
       </div>
-      <p class="rating-desc">{{ latestRating.detail || '' }}</p>
+      <p class="rating-desc">{{ latestRating.overall_advice || '' }}</p>
     </div>
 
     <!-- 提交后的评级结果 -->
@@ -53,7 +53,7 @@
         <div class="result-emoji">{{ latestRating?.emoji || '🏅' }}</div>
         <div class="result-level" :class="ratingClass">{{ latestRating?.rating || '-' }}</div>
         <div class="result-score">{{ latestRating?.score || 0 }} <span>分</span></div>
-        <p class="result-desc">{{ latestRating?.detail || '' }}</p>
+        <p class="result-desc">{{ latestRating?.overall_advice || '' }}</p>
         <div class="result-mascot">
           <CharacterAvatar type="nailong" :animated="true" style="width:60px;height:60px" />
         </div>
@@ -154,11 +154,11 @@
                 <label for="hr-exercise">运动习惯怎么样？</label>
                 <select id="hr-exercise" v-model="form.exercise_frequency">
                   <option value="">选一个最接近的</option>
-                  <option value="每天">每天都会动一动</option>
-                  <option value="每周3-5次">每周几次</option>
-                  <option value="每周1-2次">偶尔运动</option>
-                  <option value="偶尔">不怎么动</option>
-                  <option value="几乎不">基本不动</option>
+                  <option value="daily">每天都会动一动</option>
+                  <option value="regular">每周几次</option>
+                  <option value="occasional">偶尔运动</option>
+                  <option value="rare">不怎么动</option>
+                  <option value="none">基本不动</option>
                 </select>
               </div>
               <div class="form-group">
@@ -459,10 +459,10 @@ export default {
     ratingClass() {
       if (!this.latestRating) return ''
       const rating = this.latestRating.rating
-      if (rating === '夯') return 'rating-top'
-      if (rating === '顶级') return 'rating-great'
-      if (rating === '人上人') return 'rating-ok'
-      if (rating === 'NPC') return 'rating-meh'
+      if (rating === '优秀') return 'rating-top'
+      if (rating === '良好') return 'rating-great'
+      if (rating === '中等') return 'rating-ok'
+      if (rating === '较差') return 'rating-meh'
       return 'rating-low'
     }
   },
@@ -510,12 +510,22 @@ export default {
         this.addLog('success', '添加', '新记录已保存并评级')
         setTimeout(() => { this.message = '' }, 3000)
       } catch (err) {
-        this.message = err.response?.data?.detail || '保存失败'
+        this.message = this.extractErrorMessage(err) || '保存失败'
         this.messageType = 'error'
         this.addLog('error', '添加', '保存记录失败')
       } finally {
         this.loading = false
       }
+    },
+
+    extractErrorMessage(err) {
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') return detail
+      if (Array.isArray(detail) && detail.length) {
+        // FastAPI 422 校验错误为数组 [{ loc, msg, type }, ...]
+        return detail.map(d => d.msg || String(d)).join('；')
+      }
+      return ''
     },
 
     resetForm() {

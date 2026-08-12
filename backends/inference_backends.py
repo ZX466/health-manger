@@ -1,20 +1,29 @@
 """Concrete inference backends."""
 
-from typing import Any, Dict
 from types import SimpleNamespace
+from typing import Any, Dict, Optional
 
-from interfaces.ai_interfaces import InferenceEngine
-from services.llm_service import call_llm
 from health_rating import calculate_health_rating
+from interfaces.ai_interfaces import InferenceEngine
+from services.llm_service import LLMConfig, call_llm
 
 
 class LLMInferenceBackend(InferenceEngine):
-    """Inference via external LLM API."""
+    """Inference via external LLM API.
+
+    llm_call 为可选的注入点（默认 None 表示在调用时从模块解析 call_llm），
+    既支持上层注入（services.ai_module_service），也兼容对
+    backends.inference_backends.call_llm 的测试 patch。
+    """
+
+    def __init__(self, llm_call: Optional[Any] = None) -> None:
+        self._llm_call = llm_call
 
     async def infer(self, preprocessed: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
         messages = preprocessed.get("messages", [])
         temperature = config.get("temperature", 0.7)
-        content, tokens = await call_llm(messages, temperature=temperature)
+        llm = self._llm_call or call_llm
+        content, tokens = await llm(messages, LLMConfig(temperature=temperature))
         return {
             "content": content,
             "tokens_used": tokens,
@@ -50,6 +59,9 @@ class RuleBasedInferenceBackend(InferenceEngine):
 class HybridInferenceBackend(InferenceEngine):
     """Combine rule-based scoring with LLM advice."""
 
+    def __init__(self, llm_call: Optional[Any] = None) -> None:
+        self._llm_call = llm_call
+
     async def infer(self, preprocessed: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
         rule_engine = RuleBasedInferenceBackend()
         rule_result = rule_engine.infer(preprocessed, config)
@@ -58,7 +70,8 @@ class HybridInferenceBackend(InferenceEngine):
         llm_content = ""
         tokens = 0
         if llm_messages:
-            llm_content, tokens = await call_llm(llm_messages)
+            llm = self._llm_call or call_llm
+            llm_content, tokens = await llm(llm_messages)
 
         return {
             "content": {

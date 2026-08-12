@@ -1,20 +1,23 @@
-from typing import List, Optional
 from datetime import date
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
 import schemas
-from auth import get_current_user, get_admin_user
+from auth import get_admin_user, get_current_user
+from database import get_db
 from services.sport_service import (
     create_sport,
-    get_sports,
-    get_sport,
-    update_sport,
-    delete_sport,
     create_sport_record,
+    delete_sport,
+    delete_sport_record,
+    get_sport,
     get_sport_records,
     get_sport_stats,
+    get_sports,
+    update_sport,
 )
 
 router = APIRouter(prefix="/api/sport", tags=["运动管理"])
@@ -94,3 +97,12 @@ def get_sport_stats_endpoint(
     db: Session = Depends(get_db),
 ):
     return get_sport_stats(current_user.id, db, start_date, end_date)
+
+
+@router.delete("/records/{record_id}", response_model=schemas.MessageResponse)
+def delete_sport_record_endpoint(
+    record_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return delete_sport_record(record_id, current_user.id, db)

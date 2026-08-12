@@ -25,16 +25,18 @@ export const useTongueStore = defineStore('tongue', () => {
         const formData = new FormData()
         formData.append('file', file)
 
-        const response = await api.uploadTongueImage(formData)
-        const detailResponse = await api.getTongueDetail(response.data.id)
+        await api.uploadTongueImage(formData)
+        // 用 /tongue/latest/result（返回 {name,color,desc} 对象结构）而非 getTongueDetail（字符串字段），
+        // 修复 M3：舌色/苔色恒显示 "-"
+        const detailResponse = await api.getLatestTongueResult()
         result.value = detailResponse.data
       } else if (captureFn) {
         const blob = await captureFn()
         const formData = new FormData()
         formData.append('file', blob, 'frame.jpg')
 
-        const response = await api.uploadTongueImage(formData)
-        const detailResponse = await api.getTongueDetail(response.data.id)
+        await api.uploadTongueImage(formData)
+        const detailResponse = await api.getLatestTongueResult()
         realtimeResult.value = detailResponse.data
 
         const now = new Date()

@@ -53,7 +53,7 @@
 
       <div v-if="activeTab === 'sports'" class="tab-content">
         <div class="action-bar">
-          <button @click="showAddSport = true" class="btn-primary">
+          <button v-if="isAdmin" @click="showAddSport = true" class="btn-primary">
             ➕ 添加运动
           </button>
           <input 
@@ -166,9 +166,10 @@
           <div class="form-group">
             <label>强度等级</label>
             <select v-model="newSport.intensity_level">
-              <option value="低强度">低强度</option>
-              <option value="中等强度">中等强度</option>
-              <option value="高强度">高强度</option>
+              <option value="low">低强度</option>
+              <option value="moderate">中等强度</option>
+              <option value="high">高强度</option>
+              <option value="extreme">极高强度</option>
             </select>
           </div>
           <div class="modal-actions">
@@ -200,16 +201,35 @@ export default {
       sportSearch: '',
       showAddRecord: false,
       showAddSport: false,
+      isAdmin: false,
       newRecord: { sport_id: '', duration_minutes: '', notes: '' },
-      newSport: { name: '', category: '', calories_per_hour: 0, intensity_level: '中等强度' }
+      newSport: { name: '', category: '', calories_per_hour: 0, intensity_level: 'moderate' }
     }
   },
   async mounted() {
+    await this.loadCurrentUser()
     await this.loadSportRecords()
     await this.loadSports()
     await this.loadSportStats()
   },
   methods: {
+    async loadCurrentUser() {
+      try {
+        const response = await api.getCurrentUser()
+        this.isAdmin = !!response.data?.is_admin
+      } catch (err) {
+        this.isAdmin = false
+      }
+    },
+    errMsg(err) {
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') return detail
+      if (Array.isArray(detail) && detail.length) {
+        // FastAPI 422 校验错误为数组 [{ loc, msg, type }, ...]
+        return detail.map(d => d.msg || String(d)).join('；')
+      }
+      return err.message || '未知错误'
+    },
     async loadSportRecords() {
       try {
         const response = await api.getSportRecords({ start_date: this.filterDate, end_date: this.filterDate })
@@ -246,24 +266,24 @@ export default {
         await this.loadSportStats()
         alert('添加成功')
       } catch (err) {
-        alert('添加失败：' + (err.response?.data?.detail || err.message))
+        alert('添加失败：' + this.errMsg(err))
       }
     },
     async submitSport() {
       try {
         await api.createSport(this.newSport)
         this.showAddSport = false
-        this.newSport = { name: '', category: '', calories_per_hour: 0, intensity_level: '中等强度' }
+        this.newSport = { name: '', category: '', calories_per_hour: 0, intensity_level: 'moderate' }
         await this.loadSports()
         alert('添加成功')
       } catch (err) {
-        alert('添加失败：' + (err.response?.data?.detail || err.message))
+        alert('添加失败：' + this.errMsg(err))
       }
     },
     async deleteRecord(id) {
       if (confirm('确定要删除这条记录吗？')) {
         try {
-          await api.deleteSport(id)
+          await api.deleteSportRecord(id)
           await this.loadSportRecords()
           await this.loadSportStats()
           alert('删除成功')
