@@ -15,9 +15,9 @@ async def test_404_returns_chinese_message(client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_unauthenticated_returns_chinese_message(client):
+async def test_unauthenticated_returns_chinese_message(anon_client):
     """GET /api/auth/me without token returns 401 with Chinese message."""
-    resp = await client.get("/api/auth/me")
+    resp = await anon_client.get("/api/auth/me")
     assert resp.status_code == 401
     data = resp.json()
     assert "detail" in data
@@ -35,8 +35,8 @@ async def test_health_endpoint_200(client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_api_error_response_has_detail_field(auth_client):
+async def test_api_error_response_has_detail_field(client):
     """GET /api/health/records/9999 returns 404 with detail field."""
-    resp = await auth_client.get("/api/health/records/9999")
+    resp = await client.get("/api/health/records/9999")
     assert resp.status_code == 404
     assert "detail" in resp.json()

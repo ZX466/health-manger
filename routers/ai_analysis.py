@@ -1,19 +1,22 @@
-from typing import Any, Dict, List
 import uuid
-from pydantic import BaseModel, Field
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
 import schemas
-from auth import get_current_user
-from services.llm_service import call_llm, LLMConfig, build_health_analysis_prompt, build_quick_analysis_prompt, build_health_rating_llm_prompt
-from services.security_service import check_rate_limit
-from services.cache_service import llm_response_cache, make_cache_key
-from services.ai_module_service import AIModuleService
-from ai_module.factory import AIPipelineFactory
-from ai_module.pipeline import AIPipelineInput
 import settings
+from auth import get_current_user
+from database import get_db
+from services.cache_service import llm_response_cache, make_cache_key
+from services.llm_service import (
+    LLMConfig,
+    build_health_analysis_prompt,
+    build_health_rating_llm_prompt,
+    build_quick_analysis_prompt,
+    call_llm,
+)
+from services.security_service import check_rate_limit
 
 router = APIRouter(prefix="/api/ai", tags=["AI 健康分析"])
 
@@ -74,7 +77,7 @@ async def create_ai_analysis(
         raise HTTPException(status_code=500, detail=f"AI 分析失败：{str(e)}")
 
 
-@router.get("/analysis/history", response_model=List[schemas.AIAnalysisResponse])
+@router.get("/analysis/history", response_model=list[schemas.AIAnalysisResponse])
 def get_analysis_history(
     limit: int = Query(10, ge=1, le=100),
     current_user: models.User = Depends(get_current_user),
@@ -282,45 +285,3 @@ async def get_task_status(
     if not status:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
     return schemas.AsyncTaskStatus(**status)
-
-
-# ── Pipeline endpoints (merged from ai_module router) ──
-
-_factory = AIPipelineFactory()
-_VALID_PIPELINE_TYPES = {"health_analysis", "text_analysis"}
-
-
-class PipelineRequest(BaseModel):
-    input_type: str = Field(..., min_length=1, max_length=50)
-    data: Dict[str, Any] = Field(default_factory=dict)
-    pipeline_type: str = Field(..., min_length=1, max_length=50)
-
-
-@router.post("/pipeline")
-async def run_pipeline(
-    req: PipelineRequest,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    if req.pipeline_type not in _VALID_PIPELINE_TYPES:
-        raise HTTPException(status_code=400, detail=f"未知的流水线类型: {req.pipeline_type}")
-
-    pipeline = _factory.create_pipeline(req.pipeline_type)
-    input_data = AIPipelineInput(
-        input_type=req.input_type,
-        data=req.data,
-    )
-    output = await pipeline.run(input_data)
-    return {
-        "result": output.structured,
-        "metrics": output.metrics,
-    }
-
-
-@router.get("/metrics")
-async def get_metrics(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    service = AIModuleService(db)
-    return service.get_metrics_report()

@@ -95,9 +95,9 @@ async def test_login_wrong_password(client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_me_endpoint_authenticated(auth_client):
+async def test_me_endpoint_authenticated(client):
     """GET /api/auth/me with valid token returns user data."""
-    resp = await auth_client.get("/api/auth/me")
+    resp = await client.get("/api/auth/me")
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "testuser"
@@ -105,7 +105,7 @@ async def test_me_endpoint_authenticated(auth_client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_me_endpoint_unauthenticated(client):
+async def test_me_endpoint_unauthenticated(anon_client):
     """GET /api/auth/me without token returns 401."""
-    resp = await client.get("/api/auth/me")
+    resp = await anon_client.get("/api/auth/me")
     assert resp.status_code == 401

@@ -61,36 +61,45 @@ def app(engine):
     return real_app
 
 
+@pytest.fixture()
+def test_user(db):
+    """Create a test user for authenticated requests (no API round-trip)."""
+    import models
+    from auth import get_password_hash
+
+    user = models.User(
+        name="testuser",
+        password_hash=get_password_hash("testpass123"),
+        invite_code="health2026",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def auth_token(test_user):
+    """Mint a JWT for the test user. Test token is configured here in conftest."""
+    from auth import create_access_token
+
+    return create_access_token(data={"sub": str(test_user.id)})
+
+
 @pytest_asyncio.fixture()
-async def client(app, db):
-    """Provide an async HTTP test client."""
+async def client(app, db, auth_token):
+    """Provide an authenticated async HTTP test client (token attached here)."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
+        ac.headers["Authorization"] = f"Bearer {auth_token}"
         yield ac
 
 
 @pytest_asyncio.fixture()
-async def auth_client(app, db):
-    """Provide an authenticated async HTTP test client."""
+async def anon_client(app, db):
+    """Provide an unauthenticated async HTTP test client."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        register_resp = await ac.post(
-            "/api/auth/register",
-            json={
-                "name": "testuser",
-                "password": "testpass123",
-                "invite_code": "health2026",
-            },
-        )
-        assert register_resp.status_code == 200, register_resp.text
-
-        login_resp = await ac.post(
-            "/api/auth/login",
-            data={"username": "testuser", "password": "testpass123"},
-        )
-        assert login_resp.status_code == 200, login_resp.text
-        token = login_resp.json()["access_token"]
-        ac.headers["Authorization"] = f"Bearer {token}"
         yield ac

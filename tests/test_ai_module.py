@@ -371,7 +371,7 @@ from services.ai_module_service import AIModuleService
 
 class TestAIModuleService:
     @pytest.mark.asyncio
-    async def test_analyze_health_data(self, auth_client, db):
+    async def test_analyze_health_data(self, client, db):
         # 先创建健康记录
         record_data = {
             "height": 175.0,
@@ -381,7 +381,7 @@ class TestAIModuleService:
             "heart_rate": 75,
             "temperature": 36.5,
         }
-        response = await auth_client.post("/api/health/records", json=record_data)
+        response = await client.post("/api/health/records", json=record_data)
         assert response.status_code == 200
 
         service = AIModuleService(db)
@@ -416,65 +416,6 @@ class TestAIModuleService:
         service = AIModuleService(db)
         report = service.get_metrics_report()
         assert report["total_requests"] >= 1
-
-
-# ── Router ──────────────────────────────────────────────
-
-class TestAIModuleRouter:
-    @pytest.mark.asyncio
-    async def test_run_pipeline_endpoint(self, auth_client, db):
-        # 创建健康记录
-        record_data = {
-            "height": 175.0,
-            "weight": 70.0,
-            "blood_pressure_systolic": 120,
-            "blood_pressure_diastolic": 80,
-            "heart_rate": 75,
-            "temperature": 36.5,
-        }
-        await auth_client.post("/api/health/records", json=record_data)
-
-        with patch("services.ai_module_service.call_llm", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = ("分析结果", 100)
-            response = await auth_client.post(
-                "/api/ai-module/pipeline",
-                json={
-                    "input_type": "health_data",
-                    "data": {"request": "请分析我的健康状况"},
-                    "pipeline_type": "health_analysis",
-                },
-            )
-        assert response.status_code == 200
-        data = response.json()
-        assert "result" in data
-        assert "metrics" in data
-
-    @pytest.mark.asyncio
-    async def test_get_metrics_endpoint(self, auth_client):
-        response = await auth_client.get("/api/ai-module/metrics")
-        assert response.status_code == 200
-        data = response.json()
-        assert "total_requests" in data
-
-    @pytest.mark.asyncio
-    async def test_run_pipeline_invalid_type(self, auth_client):
-        response = await auth_client.post(
-            "/api/ai-module/pipeline",
-            json={
-                "input_type": "unknown",
-                "data": {},
-                "pipeline_type": "invalid_type",
-            },
-        )
-        assert response.status_code == 400
-
-    @pytest.mark.asyncio
-    async def test_run_pipeline_unauthorized(self, client):
-        response = await client.post(
-            "/api/ai-module/pipeline",
-            json={"input_type": "health_data", "data": {}, "pipeline_type": "health_analysis"},
-        )
-        assert response.status_code == 401
 
 
 # ── Exceptions ──────────────────────────────────────────
