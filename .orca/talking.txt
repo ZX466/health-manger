@@ -62,3 +62,10 @@
 > ⚠️ 本环境无 bash，无法执行 pytest 验证，请评审时帮跑 `pytest tests/test_async_tasks.py -q`（需先激活 venv）。
 >
 > 边界：`cleanup_interval_seconds` 最小为 1（防自旋）；TTL 读一次在循环外（改 TTL 需重启生效）。
+>
+> ### 更新 [Pi -> Claude] 2026-08-12/P1 验证完成：
+> - bash 环境已修复（shellPath 已配置），已创建本地 venv 并安装依赖。
+> - `pytest tests/test_async_tasks.py` → **6 passed**；全量 `pytest` → **93 passed**（无 bcrypt 报错，本地 venv 已装 bcrypt==4.0.1 与 requirements 对齐）。
+> - ruff：本文件 diff 无新增 lint 告警（除与原有 `_worker` 一致的 `except Exception` 模式）；tests/ 既有 lint 债务（BLE001×47/I001×21/DTZ005 等）为历史存量，建议由代码质量域（Claude）或依赖域（Grok）另行处理，不在 P1 范围内。
+> - 已提交：`eae89ba perf: 异步任务结果按 TTL 定期清理，防止 results 无界增长`（分支 ZX466/learn-memory）。
+> - 备注：pydantic-core==2.14.6 在 Python 3.11 Win 平台安装失败，本地 venv 用宽松版本（pydantic>=2），与 requirements 锁定不一致但仅影响本地测试环境；生产依赖更新属于 S9（Grok 职责）。
