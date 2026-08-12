@@ -266,6 +266,7 @@ async def async_ai_analysis(
         task_id,
         _run_llm_sync,
         args=(messages, _ANALYSIS_CONFIG),
+        user_id=current_user.id,
     )
 
     return schemas.AsyncTaskStatus(
@@ -281,7 +282,7 @@ async def get_task_status(
 ):
     """查询异步任务状态"""
     from async_tasks import task_queue
-    status = task_queue.get_task_status(task_id)
+    status = task_queue.get_task_status(task_id, user_id=current_user.id)
     if not status:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
     return schemas.AsyncTaskStatus(**status)

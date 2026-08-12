@@ -98,10 +98,12 @@ if os.path.exists(static_dir):
 async def serve_spa(full_path: str):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API endpoint not found")
-    static_file_path = os.path.join(static_dir, full_path) if os.path.exists(static_dir) else None
-    if static_file_path and os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+    static_root = os.path.abspath(static_dir)
+    static_file_path = os.path.abspath(os.path.join(static_root, full_path)) if os.path.exists(static_root) else None
+    if (static_file_path and os.path.commonpath([static_root, static_file_path]) == static_root
+            and os.path.isfile(static_file_path)):
         return FileResponse(static_file_path)
-    index_path = os.path.join(static_dir, "index.html") if os.path.exists(static_dir) else None
+    index_path = os.path.join(static_root, "index.html") if os.path.exists(static_root) else None
     if index_path:
         return FileResponse(index_path)
     return {"message": "API is running, but frontend is not available"}
