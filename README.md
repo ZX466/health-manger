@@ -15,7 +15,7 @@
 - **密码加密**: bcrypt (12 rounds)
 - **AI 对话**: 智谱 AI GLM-4.5-Air (httpx 连接池复用)
 - **AI 舌诊**: 火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)
-- **测试**: pytest + pytest-asyncio + pytest-cov (34 tests)
+- **测试**: pytest + pytest-asyncio + pytest-cov (109 tests)
 
 ### 前端
 - **框架**: Vue.js 3 (Options API)
@@ -64,8 +64,7 @@
 - BMI / 血压 / 心率 / 体温异常预警
 - 预警级别分类（警告、危险）
 
-### 8. 健康知识库
-- 健康知识文章、食谱大全、收藏功能
+> 注：原「健康知识库 / 健康提醒」页面因后端未实现对应功能（仅孤儿表），已在审计清理中移除，避免前端崩溃。
 
 ## 快速开始
 
@@ -79,7 +78,7 @@
 ### 创建虚拟环境（首次运行前必做）
 
 ```bash
-cd d:\aidevelop\project7
+cd <仓库根目录>   # 例如 E:\zxdevelop\project1
 
 # 创建虚拟环境
 python -m venv venv
@@ -104,6 +103,7 @@ cp .env.example .env
 
 # 编辑 .env，填入以下配置：
 # SECRET_KEY=<至少32字符的随机强密钥>     # JWT 签名密钥（必须）
+# INVITE_CODES=your-invite-codes          # 注册邀请码（逗号分隔，未配置则禁止注册）
 # ZHIPU_API_KEY=your-zhipu-api-key       # 智谱 AI（健康分析/对话）
 # ARK_API_KEY=your-ark-api-key           # 火山引擎 ARK（舌诊分析）
 # ARK_MODEL_ID=doubao-seed-1-6-vision-250815
@@ -137,47 +137,51 @@ python create_test_user.py   # 创建测试用户
 ## 项目结构
 
 ```
-project7/
-├── main.py                    # FastAPI 应用入口（CORS、SPA fallback）
-├── models.py                  # SQLAlchemy 数据库模型（12 个表）
+project1/
+├── main.py                    # FastAPI 应用入口（CORS、安全头、SPA fallback）
+├── models.py                  # SQLAlchemy 数据库模型（users.name 唯一约束）
 ├── schemas.py                 # Pydantic 请求/响应模式
 ├── database.py                # 数据库引擎与会话配置
-├── auth.py                    # JWT 认证 + SECRET_KEY 强度校验
+├── auth.py                    # JWT 认证（iat/iss/aud 声明）+ SECRET_KEY 强度校验
 ├── constants.py               # 医学阈值常量（中国临床标准）
 ├── health_rating.py           # 健康综合评级（优秀/良好/中等/较差/危险）
-├── tongue_diagnosis.py        # 舌诊分析（云端 ARK，失败抛 RuntimeError）
-├── cloud_tongue_analyzer.py   # ARK 云端舌象分析器（requests.Session 复用）
-├── feature_mapping.py         # 舌诊数据映射
 ├── chat_session.py            # 聊天会话管理（token 感知上下文截断）
-├── async_tasks.py             # 异步任务队列
+├── async_tasks.py             # 异步任务队列（TTL 定期清理 + user_id 归属校验）
 ├── settings.py                # 集中配置（环境变量 + 默认值）
 ├── requirements.txt           # Python 依赖
 ├── alembic.ini                # 数据库迁移配置
 ├── alembic/                   # Alembic 迁移脚本
+├── tongue/                    # 舌诊模块包
+│   ├── diagnosis.py           #   舌诊分析（云端 ARK）
+│   ├── cloud_analyzer.py      #   ARK 云端舌象分析器（requests.Session 复用）
+│   └── feature_mapping.py     #   舌诊数据映射
+├── ai_module/                 # AI 流水线模块（factory/pipeline/metrics/exceptions）
+├── backends/                  # AI 流水线后端（预处理/推理/后处理，llm_call 可注入）
+├── interfaces/                # AI 流水线抽象接口（Protocol）
 ├── services/                  # 业务逻辑层（SQLAlchemy 2.0 select 风格）
-│   ├── auth_service.py
+│   ├── auth_service.py        #   邀请码校验（无内置默认码）
 │   ├── health_record_service.py
-│   ├── health_service.py
-│   ├── food_service.py
-│   ├── sport_service.py
-│   ├── tongue_service.py
-│   ├── llm_service.py         # httpx 连接池复用
+│   ├── health_service.py      #   BMI/血压分析（高血压优先判定）
+│   ├── food_service.py        #   含 delete_food_record
+│   ├── sport_service.py       #   含 delete_sport_record
+│   ├── tongue_service.py      #   PIL 魔数校验 + 失败清理孤儿文件
+│   ├── llm_service.py         #   httpx 线程本地连接池
 │   ├── warning_service.py
-│   ├── security_service.py    # 中文 prompt 注入防护 + Unicode 归一化
+│   ├── security_service.py    #   prompt 注入防护 + 速率限制
 │   └── cache_service.py       # TTL 内存缓存（LLM 响应 + 舌诊结果）
 ├── routers/                   # HTTP 路由层
-│   ├── auth.py
+│   ├── auth.py                #   注册（去枚举）+ 登录（IP+用户名限流）
 │   ├── health.py
-│   ├── food.py
-│   ├── sport.py
+│   ├── food.py                #   含 DELETE /records/{id}
+│   ├── sport.py               #   含 DELETE /records/{id}
 │   ├── tongue.py
 │   ├── chat.py
 │   ├── ai_analysis.py
 │   └── warning.py
-├── tests/                     # pytest 测试（34 个用例）
-├── frontend/                  # 前端源码
+├── tests/                     # pytest 测试（109 个用例，TDD）
+├── frontend/                  # 前端源码（Vue 3）
 │   └── src/
-│       ├── views/             #   10 个页面组件
+│       ├── views/             #   8 个页面组件（健康知识/提醒页已移除）
 │       ├── components/        #   通用组件（AppSidebar, AppTopbar, CharacterAvatar 等）
 │       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏）
 │       ├── composables/       #   useHealthU（toast/modal/sound/scroll）
@@ -192,11 +196,12 @@ project7/
 
 ## 邀请码
 
-注册时需要使用有效的邀请码：
+注册时需要有效的邀请码。**系统不再内置默认邀请码**——必须通过环境变量 `INVITE_CODES` 配置（逗号分隔多个），未配置则禁止注册：
 
-| 邀请码 | 说明 |
-|--------|------|
-| `health2026` | 系统默认邀请码 |
+```bash
+# .env
+INVITE_CODES=code1,code2
+```
 
 ## 测试账户
 
@@ -227,17 +232,19 @@ project7/
 
 ### 饮食接口 (`/api/food`)
 - `GET /foods` - 食物列表（支持搜索/分类筛选）
-- `POST /foods` - 添加食物
+- `POST /foods` - 添加食物（需管理员）
 - `POST /records` - 添加饮食记录
 - `GET /records` - 饮食记录列表
 - `GET /records/stats` - 饮食统计
+- `DELETE /records/{id}` - 删除饮食记录（按用户归属校验）
 
 ### 运动接口 (`/api/sport`)
 - `GET /sports` - 运动列表（支持搜索/分类筛选）
-- `POST /sports` - 添加运动
+- `POST /sports` - 添加运动（需管理员）
 - `POST /records` - 添加运动记录
 - `GET /records` - 运动记录列表
 - `GET /records/stats` - 运动统计
+- `DELETE /records/{id}` - 删除运动记录（按用户归属校验）
 
 ### AI 分析接口 (`/api/ai`)
 - `POST /analysis` - AI 健康分析
@@ -308,15 +315,20 @@ make lint          # 代码检查
 
 1. **SECRET_KEY 强度校验**: 启动时强制 >= 32 字符，拒绝已知弱密钥
 2. **密码加密**: bcrypt 算法 (12 rounds) 加密存储，最大 72 字符
-3. **Token 认证**: JWT Token 短期有效（默认 30 分钟）
+3. **Token 认证**: JWT Token 短期有效（默认 30 分钟），含 `iat/iss/aud` 声明并在校验端验证；`sub` 缺失/异常统一返回 401
 4. **CORS 配置**: 限制允许的 HTTP 方法和请求头
-5. **输入验证**: Pydantic Field 约束（min/max/ge/le）+ Literal 枚举 + 中英文 prompt 注入防护（Unicode 归一化 + 零宽字符剥离）
+5. **输入验证**: Pydantic Field 约束 + Literal 枚举 + 中英文 prompt 注入防护（Unicode 归一化 + 零宽字符剥离 + 绕过变体黑名单）
 6. **SQL 注入防护**: SQLAlchemy ORM 参数化查询（2.0 select 风格）
-7. **文件上传安全**: UUID 文件名 + 扩展名白名单 + 10MB 大小限制
-8. **API 密钥管理**: 通过 `.env` 环境变量管理，`.env.example` 仅含占位符
-9. **集中配置**: `settings.py` 统一管理 47 项可调参数，全部从环境变量读取
-10. **LLM 缓存**: 相同健康数据的 AI 分析结果缓存 30 分钟，舌诊按图片 hash 缓存 1 小时
-9. **图像处理**: 自动下采样至 1024px，减少内存占用和处理时间
+7. **路径穿越防护**: SPA 静态文件服务用 `abspath + commonpath` 校验，阻止 `..` 逃逸
+8. **登录防爆破**: `/api/auth/login` 按 IP + 用户名限流（5 次/60 秒）
+9. **异步任务越权防护**: 任务结果绑定 `user_id`，查询时校验归属
+10. **文件上传安全**: UUID 文件名 + 扩展名白名单 + 10MB 限制 + **PIL 魔数校验**（防伪造图片）
+11. **安全响应头**: CSP / X-Frame-Options / X-Content-Type-Options / Referrer-Policy 中间件
+12. **用户名唯一约束**: `users.name` 唯一索引 + 注册 IntegrityError 兜底，注册统一提示防枚举
+13. **线程安全**: httpx client 改线程本地存储，异步任务工作线程不共享连接池
+14. **API 密钥管理**: 通过 `.env` 环境变量管理，`.env.example` 仅含占位符
+15. **集中配置**: `settings.py` 统一管理可调参数，全部从环境变量读取
+16. **LLM 缓存**: 相同健康数据的 AI 分析结果缓存 30 分钟，舌诊按图片 hash 缓存 1 小时
 
 ## License
 
