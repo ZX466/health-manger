@@ -4,7 +4,7 @@
 import requests
 from jose import jwt
 
-BASE_URL = "http://localhost:8001"
+BASE_URL = "http://localhost:8420"
 import os
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 ALGORITHM = "HS256"

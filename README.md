@@ -70,29 +70,35 @@
 
 ### 环境要求
 
-> **本项目必须在虚拟环境中运行，请勿直接使用全局 Python！**
+> **本项目使用 [uv](https://docs.astral.sh/uv/) 管理 Python 环境与依赖，请勿使用全局 Python 直接运行！**
 
-- Python 3.8+
+- Python 3.9+
+- [uv](https://docs.astral.sh/uv/)（Python 包与虚拟环境管理，替代 pip/venv）
 - Node.js 16+（仅开发模式需要）
 
-### 创建虚拟环境（首次运行前必做）
+### 创建虚拟环境（首次运行前必做，使用 uv）
 
 ```bash
+# 安装 uv（任选其一，若已安装可跳过）
+#   Windows:  winget install astral-sh.uv   或   pip install uv
+#   macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
+
 cd <仓库根目录>   # 例如 E:\zxdevelop\project1
 
-# 创建虚拟环境
-python -m venv venv
+# 创建虚拟环境 + 安装依赖（一步完成）
+uv venv .venv
+uv pip install -r requirements.txt
 
 # 激活虚拟环境
 # Windows PowerShell:
-.\venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 # Windows CMD:
-.\venv\Scripts\activate.bat
+.\.venv\Scripts\activate.bat
 # Linux/macOS:
-source venv/bin/activate
+source .venv/bin/activate
 
-# 安装依赖
-pip install -r requirements.txt
+# 或者不激活，直接用 uv run 执行任意命令：
+uv run pytest -q
 ```
 
 ### 配置环境变量
@@ -114,15 +120,14 @@ cp .env.example .env
 ### 启动服务
 
 ```bash
-# 方式一：生产模式（推荐）
-.\venv\Scripts\Activate.ps1
-uvicorn main:app --reload --port 8001
-# 访问 http://localhost:8001
+# 方式一：生产模式（推荐，端口 8420）
+uv run uvicorn main:app --reload --port 8420
+# 访问 http://localhost:8420
 
 # 方式二：开发模式（前后端分离）
-# 终端 1：后端
-uvicorn main:app --reload --port 8001
-# 终端 2：前端
+# 终端 1：后端（端口 8420）
+uv run uvicorn main:app --reload --port 8420
+# 终端 2：前端（端口 3000，/api 代理到 8420）
 cd frontend && npm install && npm run dev
 # 访问 http://localhost:3000
 ```
@@ -212,8 +217,8 @@ INVITE_CODES=code1,code2
 
 启动后端服务后访问：
 
-- **Swagger UI**: http://localhost:8001/docs
-- **ReDoc**: http://localhost:8001/redoc
+- **Swagger UI**: http://localhost:8420/docs
+- **ReDoc**: http://localhost:8420/redoc
 
 ## API 端点概览
 
@@ -303,10 +308,11 @@ INVITE_CODES=code1,code2
 ## 测试
 
 ```bash
-# 激活虚拟环境后运行
-pytest --tb=short -q                          # 运行全部测试
-pytest --cov=. --cov-report=term-missing -q   # 查看覆盖率
-make test          # 快速运行
+# 激活虚拟环境后运行，或用 uv run 直接执行
+uv run pytest --tb=short -q                          # 运行全部测试（109 个）
+uv run pytest --cov=. --cov-report=term-missing -q   # 查看覆盖率
+uv run ruff check .                                  # 代码检查
+make test          # 快速运行（需先激活环境）
 make coverage      # 带覆盖率报告
 make lint          # 代码检查
 ```
