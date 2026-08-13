@@ -23,6 +23,8 @@ if SECRET_KEY.lower() in _WEAK_KEYS:
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+JWT_ISSUER = "health-manger"
+JWT_AUDIENCE = "health-manger-api"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -48,11 +50,19 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
+    now = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire, "sub": str(to_encode.get("sub", ""))})
+        expire = now + timedelta(minutes=15)
+    # S11: 补充 iat/iss/aud 声明
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "sub": str(to_encode.get("sub", "")),
+    })
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -64,11 +74,19 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = int(payload.get("sub"))
-        if user_id is None:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER,
+        )
+        sub = payload.get("sub")
+        if sub is None:
             raise credentials_exception
-    except JWTError:
+        user_id: int = int(sub)
+    except (JWTError, TypeError, ValueError):
+        # S12: sub 缺失/非数字/声明校验失败时统一走 401，而非 500
         raise credentials_exception
 
     user = db.query(models.User).filter(models.User.id == user_id).first()

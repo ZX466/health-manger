@@ -1,6 +1,7 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -14,12 +15,9 @@ router = APIRouter(prefix="/api/auth", tags=["认证"])
 
 @router.post("/register", response_model=schemas.UserResponse)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.name == user.name).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="用户名已存在")
-
+    # S10: 不预查用户名存在性（避免用户名枚举），统一提示；重复名由唯一约束兜底
     if not validate_invite_code(user.invite_code):
-        raise HTTPException(status_code=400, detail="邀请码无效")
+        raise HTTPException(status_code=400, detail="注册失败，请检查邀请码与注册信息")
 
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
@@ -28,7 +26,12 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         invite_code=user.invite_code
     )
     db.add(db_user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # S13: 用户名唯一约束冲突（并发注册/重名）
+        db.rollback()
+        raise HTTPException(status_code=400, detail="注册失败，请检查邀请码与注册信息")
     db.refresh(db_user)
     return db_user
 

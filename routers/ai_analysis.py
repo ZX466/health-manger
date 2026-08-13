@@ -1,4 +1,7 @@
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -74,7 +77,8 @@ async def create_ai_analysis(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI 分析失败：{str(e)}")
+        logger.error("AI 分析失败: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
 
 
 @router.get("/analysis/history", response_model=list[schemas.AIAnalysisResponse])
@@ -152,7 +156,8 @@ async def quick_health_analysis(
             response_content, tokens_used = await call_llm(messages, _QUICK_CONFIG)
             llm_response_cache.set(cache_key, (response_content, tokens_used))
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"AI 分析失败：{str(e)}")
+            logger.error("AI 快速分析失败: %s", e, exc_info=True)
+            raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
 
     db_analysis = models.AIAnalysis(
         user_id=current_user.id,
@@ -206,7 +211,8 @@ async def llm_health_evaluation(
             response_content, tokens_used = await call_llm(messages, _EVALUATION_CONFIG)
             llm_response_cache.set(cache_key, (response_content, tokens_used))
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"LLM 健康评价失败：{str(e)}")
+            logger.error("LLM 健康评价失败: %s", e, exc_info=True)
+            raise HTTPException(status_code=500, detail="健康评价失败，请稍后重试")
 
     db_eval = models.AIAnalysis(
         user_id=current_user.id,

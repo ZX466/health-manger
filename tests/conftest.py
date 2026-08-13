@@ -3,6 +3,7 @@
 import os
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
+os.environ.setdefault("INVITE_CODES", "health2026")
 
 from contextlib import asynccontextmanager
 
@@ -63,7 +64,11 @@ def app(engine):
 
 @pytest.fixture()
 def test_user(db):
-    """Create a test user for authenticated requests (no API round-trip)."""
+    """Create a test user for authenticated requests (no API round-trip).
+
+    用 flush 而非 commit：避免用户跨测试持久化到共享内存库，与 users.name
+    唯一约束冲突（S13 后重复 testuser 会触发 IntegrityError）。
+    """
     import models
     from auth import get_password_hash
 
@@ -73,7 +78,7 @@ def test_user(db):
         invite_code="health2026",
     )
     db.add(user)
-    db.commit()
+    db.flush()
     db.refresh(user)
     return user
 

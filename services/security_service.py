@@ -22,6 +22,16 @@ PROMPT_INJECTION_PATTERNS = [
     r"(输出|显示|告诉|打印|复述)(你)?(的)?(系统|原始|完整|所有)(提示|prompt|指令|设定|规则)",
     r"(你的|你的真正|原本的)(身份|角色|目的|指令|prompt)",
     r"(不要|不可以|不准|禁止)(遵守|遵循|执行|听从)(你)?(之前|以前|原始)(的)?(指令|规则|限制)",
+    # S8: 补充常见绕过变体（拆词/同义改写/斜杠变体）
+    r"(?i)ignore\s*(the)?\s*(system|developer|admin)?\s*prompt",
+    r"(?i)print\s*(your|the)\s*(system|initial|full|original)\s*prompt",
+    r"(?i)reveal\s*(your|the)\s*(system|hidden|original)\s*prompt",
+    r"(?i)repeat\s*(everything|all)\s*(above|below)",
+    r"(?i)disregard\s+(the\s+)?(previous|earlier|prior)",
+    r"(?i)bypass\s*(the)?\s*(safet|guardrail|filter)",
+    r"请(展示|显示|复述|背诵)(你)?(的)?(全部|所有|原始)(系统)?(提示词|设定|指令)",
+    r"忽略(上面|之前的)?(所有)?(内容|消息|对话|规则)",
+    r"(?i)\b((role|system)\s*[:=])\s*(admin|system|developer|assistant)\b",
 ]
 
 _MAX_INPUT_LENGTH = 2000

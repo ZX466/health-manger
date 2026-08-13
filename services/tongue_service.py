@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import logging
 import os
 import uuid
 from typing import List
@@ -12,6 +13,8 @@ from sqlalchemy.orm import Session
 
 import models
 from services.cache_service import tongue_result_cache
+
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.path.join("uploads", "tongue")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -36,6 +39,17 @@ async def upload_and_analyze(
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="文件大小不能超过10MB")
+
+    # S5: 魔数/真实图像校验——content-type 可伪造，用 PIL 验证确为有效图像
+    try:
+        import io
+
+        from PIL import Image
+
+        with Image.open(io.BytesIO(content)) as img:
+            img.verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="文件不是有效的图片")
 
     filename = f"{uuid.uuid4().hex}{file_ext}"
     filepath = os.path.join(UPLOAD_DIR, filename)
@@ -83,11 +97,13 @@ async def upload_and_analyze(
         db.commit()
         db.refresh(db_diagnosis)
     except RuntimeError as e:
+        logger.error("舌诊云端分析失败: %s", e, exc_info=True)
         _cleanup_failed_diagnosis(db_diagnosis, filepath, db)
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="分析服务暂不可用，请稍后重试")
     except Exception as e:
+        logger.error("舌诊分析失败: %s", e, exc_info=True)
         _cleanup_failed_diagnosis(db_diagnosis, filepath, db)
-        raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="分析失败，请稍后重试")
 
     return db_diagnosis
 

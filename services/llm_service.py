@@ -1,10 +1,13 @@
-import json
 import asyncio
+import json
 import logging
-import httpx
+import threading
 from typing import Optional
-from services.security_service import sanitize_for_prompt
+
+import httpx
+
 import settings
+from services.security_service import sanitize_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -13,20 +16,25 @@ ZHIPU_API_URL = settings.ZHIPU_API_URL
 DEFAULT_MODEL = settings.ZHIPU_MODEL
 DEFAULT_TIMEOUT = settings.LLM_TIMEOUT
 
-# Reusable HTTP client with connection pooling
-_http_client: Optional[httpx.AsyncClient] = None
+# S14: httpx.AsyncClient 非线程安全。异步端点与 async_tasks 工作线程
+# （_run_llm_sync 新建 event loop）会并发调用，改用线程本地 client，
+# 每个线程一个独立连接池，避免共享同一 client 的竞态。
+_client_local = threading.local()
+
 
 async def _get_client() -> httpx.AsyncClient:
-    global _http_client
-    if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(timeout=DEFAULT_TIMEOUT)
-    return _http_client
+    client = getattr(_client_local, "client", None)
+    if client is None or client.is_closed:
+        client = httpx.AsyncClient(timeout=DEFAULT_TIMEOUT)
+        _client_local.client = client
+    return client
+
 
 async def close_http_client() -> None:
-    global _http_client
-    if _http_client and not _http_client.is_closed:
-        await _http_client.aclose()
-        _http_client = None
+    client = getattr(_client_local, "client", None)
+    if client and not client.is_closed:
+        await client.aclose()
+        _client_local.client = None
 
 
 class LLMConfig:

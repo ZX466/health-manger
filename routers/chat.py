@@ -1,25 +1,28 @@
+import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from database import get_db
+logger = logging.getLogger(__name__)
+
 import models
 import schemas
+import settings
 from auth import get_current_user
 from chat_session import (
-    create_session,
-    get_session,
-    get_user_sessions,
     add_message,
-    get_session_messages,
+    create_session,
     delete_session,
-    message_to_dict,
+    get_session,
     get_session_context,
+    get_session_messages,
+    get_user_sessions,
+    message_to_dict,
 )
-from services.llm_service import call_llm, LLMConfig, CHAT_SYSTEM_PROMPT
+from database import get_db
+from services.llm_service import CHAT_SYSTEM_PROMPT, LLMConfig, call_llm
 from services.security_service import check_rate_limit, sanitize_for_prompt
-import settings
 
 router = APIRouter(prefix="/api/chat", tags=["聊天会话"])
 
@@ -131,7 +134,8 @@ async def send_message(
         }
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"AI 响应失败：{str(e)}")
+        logger.error("AI 响应失败: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="AI 响应失败，请稍后重试")
 
 
 @router.post("/session/{session_id}/tongue-context", response_model=schemas.MessageResponse)

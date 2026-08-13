@@ -26,7 +26,21 @@ def _fresh_upload_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
-def _fake_png_file(content=b"fake-image-bytes"):
+def _make_valid_png() -> bytes:
+    """用 PIL 生成一张有效的 1x1 PNG（可通过 S5 魔数校验）。"""
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1, 1), (255, 255, 255)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _fake_png_file(content=None):
+    if content is None:
+        content = _make_valid_png()
+
     async def read():
         return content
 

@@ -24,7 +24,7 @@ async def test_register_success(client):
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_register_duplicate_name(client):
-    """Registering the same username twice returns 400."""
+    """Registering the same username twice returns 400 (S10: 统一提示，不泄露枚举)."""
     payload = {
         "name": "dupuser",
         "password": "password123",
@@ -33,7 +33,7 @@ async def test_register_duplicate_name(client):
     await client.post("/api/auth/register", json=payload)
     resp = await client.post("/api/auth/register", json=payload)
     assert resp.status_code == 400
-    assert "已存在" in resp.json()["detail"]
+    assert "注册失败" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio

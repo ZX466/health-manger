@@ -12,7 +12,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
+    name = Column(String(100), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
     invite_code = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=_utcnow)
