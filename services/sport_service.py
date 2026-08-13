@@ -1,6 +1,6 @@
 """Business logic for sport CRUD, exercise records, and statistics."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -86,8 +86,8 @@ def create_sport_record(
 def get_sport_records(
     user_id: int,
     db: Session,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ) -> list:
     query = (
         select(models.UserSportRecord, models.Sport.name)
@@ -97,11 +97,11 @@ def get_sport_records(
 
     if start_date:
         query = query.where(
-            models.UserSportRecord.record_date >= datetime.fromisoformat(start_date)
+            models.UserSportRecord.record_date >= datetime.combine(start_date, datetime.min.time())
         )
     if end_date:
         query = query.where(
-            models.UserSportRecord.record_date <= datetime.fromisoformat(end_date)
+            models.UserSportRecord.record_date <= datetime.combine(end_date, datetime.max.time())
         )
 
     records = db.execute(query.order_by(models.UserSportRecord.record_date.desc())).all()
@@ -138,16 +138,16 @@ def delete_sport_record(record_id: int, user_id: int, db: Session) -> dict:
 def get_sport_stats(
     user_id: int,
     db: Session,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ) -> dict:
     if not start_date:
-        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
     if not end_date:
-        end_date = datetime.now(timezone.utc).isoformat()
+        end_date = datetime.now(timezone.utc).date()
 
-    start = datetime.fromisoformat(start_date)
-    end = datetime.fromisoformat(end_date)
+    start = datetime.combine(start_date, datetime.min.time())
+    end = datetime.combine(end_date, datetime.max.time())
 
     records = db.execute(
         select(models.UserSportRecord).where(
