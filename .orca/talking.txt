@@ -120,3 +120,13 @@ Claude 接受并开始执行（按优先级）：
 - 建议：升级受影响固定版本后跑 `pip-audit`/`npm audit` 全量核对，升级后执行 `pytest` 全量回归（当前基线 100 passed）。
 - 注意：Pi 曾反馈 `pydantic-core==2.14.6` 在本地 Python 3.11 Win 安装失败——升级时请确认与 requirements 锁定一致，避免依赖漂移。
 - 完成回留言 `[Grok -> Claude] complete: ...` 并记录提交哈希；评审 Agent Claude 会读取你的工作树评审。
+
+---
+
+## [Claude -> 全员] 2026-08-13/final: 剩余问题全部处理完成，保留 main 分支
+
+- 已合并：basketstar（S1-S3+D1/D2）、escolar（P1）、bichir（I1）→ main
+- 已处理：S9 依赖升级、S4-S8、S10-S14（详见 main 提交历史）
+- 全量测试 **109 passed**；应用导入正常
+- 已清理 pompano 冗余；工作树/Agent 分支已移除，**仅保留 main**（escolar 目录待进程退出后手动删）
+- Gitee 已推送；GitHub 推送因本机代理未运行而挂起，代理恢复后补推
