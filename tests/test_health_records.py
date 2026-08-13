@@ -1,6 +1,9 @@
 """Tests for health record CRUD endpoints."""
 
 import pytest
+from sqlalchemy import select
+
+import models
 
 
 @pytest.mark.asyncio
@@ -22,6 +25,22 @@ async def test_create_health_record(client):
     assert data["weight"] == 70.0
     assert data["bmi"] is not None
     assert data["bmi"] > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_create_record_without_height_weight_stores_null_bmi(client, db):
+    """无身高/体重时 bmi 应为 NULL，而非 0.0。"""
+    resp = await client.post(
+        "/api/health/records",
+        json={"blood_pressure_systolic": 120, "blood_pressure_diastolic": 80},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["bmi"] is None
+
+    record = db.execute(select(models.HealthRecord)).scalars().first()
+    assert record.bmi is None
 
 
 @pytest.mark.asyncio

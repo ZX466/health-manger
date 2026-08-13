@@ -83,15 +83,27 @@ async def upload_and_analyze(
         db.commit()
         db.refresh(db_diagnosis)
     except RuntimeError as e:
-        db_diagnosis.analysis_status = "failed"
-        db.commit()
+        _cleanup_failed_diagnosis(db_diagnosis, filepath, db)
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        db_diagnosis.analysis_status = "failed"
-        db.commit()
+        _cleanup_failed_diagnosis(db_diagnosis, filepath, db)
         raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
 
     return db_diagnosis
+
+
+def _cleanup_failed_diagnosis(
+    diagnosis: models.TongueDiagnosis, filepath: str, db: Session
+) -> None:
+    """分析失败时清理孤儿图片文件与失败记录，避免磁盘与 DB 累积。"""
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except (OSError, IOError):
+            pass
+
+    db.delete(diagnosis)
+    db.commit()
 
 
 def get_diagnoses(
