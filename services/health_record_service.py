@@ -17,7 +17,7 @@ def create_record(
     user_id: int,
     db: Session,
 ) -> models.HealthRecord:
-    bmi = 0.0
+    bmi = None
     if record.height and record.weight:
         bmi = calculate_bmi(record.height, record.weight)
 
@@ -40,7 +40,7 @@ def create_record(
     db.commit()
     db.refresh(db_record)
 
-    if bmi > 0:
+    if bmi is not None:
         _generate_analysis(db_record, user_id, db)
 
     return db_record

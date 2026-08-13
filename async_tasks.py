@@ -22,8 +22,9 @@ class TaskStatus(str, Enum):
 
 
 class TaskResult:
-    def __init__(self, task_id: str):
+    def __init__(self, task_id: str, user_id: Optional[int] = None):
         self.task_id = task_id
+        self.user_id = user_id
         self.status = TaskStatus.PENDING
         self.result: Optional[Dict[str, Any]] = None
         self.error: Optional[str] = None
@@ -133,20 +134,22 @@ class AsyncTaskQueue:
 
     def submit_task(self, task_id: str, func: Callable,
                     args: tuple = (), kwargs: dict = None,
-                    callback: Callable = None) -> str:
+                    callback: Callable = None, user_id: Optional[int] = None) -> str:
         if kwargs is None:
             kwargs = {}
 
         with self.lock:
-            self.results[task_id] = TaskResult(task_id)
+            self.results[task_id] = TaskResult(task_id, user_id=user_id)
 
         self.task_queue.put((task_id, func, args, kwargs, callback))
 
         return task_id
 
-    def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def get_task_status(self, task_id: str, user_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
         with self.lock:
             if task_id in self.results:
+                if user_id is not None and self.results[task_id].user_id != user_id:
+                    return None
                 return self.results[task_id].to_dict()
         return None
 
