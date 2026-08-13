@@ -18,7 +18,7 @@
 - **测试**: pytest + pytest-asyncio + pytest-cov (109 tests)
 
 ### 前端
-- **框架**: Vue.js 3 (Options API)
+- **框架**: Vue.js 3（以 Options API 为主，部分组件使用 `<script setup>`）
 - **构建工具**: Vite 5
 - **路由**: Vue Router 4 (history mode)
 - **状态管理**: Pinia
@@ -55,10 +55,10 @@
 - AI 对话咨询（会话管理）
 
 ### 6. 中医舌诊分析
-- 上传舌象图片，AI 自动分析（自动下采样至 1024px）
+- 上传舌象图片，AI 自动分析（PIL 图像有效性校验 + 10MB 大小限制）
 - 舌色、苔色、苔质、舌形、润燥等多维度诊断
 - 体质辨识与调理建议
-- 基于 ARK 豆包视觉大模型（云端分析，失败返回 503）
+- 基于 ARK 豆包视觉大模型（云端分析，不可用返回 503，失败自动清理孤儿文件与记录）
 
 ### 7. 健康预警系统
 - BMI / 血压 / 心率 / 体温异常预警
@@ -135,8 +135,8 @@ cd frontend && npm install && npm run dev
 ### 初始化数据
 
 ```bash
-python init_data.py          # 初始化食物/运动数据
-python create_test_user.py   # 创建测试用户
+uv run python scripts/init_data.py          # 初始化食物/运动数据
+uv run python scripts/create_test_user.py   # 创建测试用户
 ```
 
 ## 项目结构
@@ -260,7 +260,7 @@ INVITE_CODES=code1,code2
 - `GET /task/{task_id}` - 查询异步任务状态
 
 ### 舌诊接口 (`/api/tongue`)
-- `POST /upload` - 上传舌象图片分析（10MB 限制，自动下采样）
+- `POST /upload` - 上传舌象图片分析（10MB 限制 + PIL 魔数校验）
 - `GET /list` - 舌诊记录列表
 - `GET /{id}` - 舌诊详情
 - `GET /latest/result` - 最新舌诊结果
