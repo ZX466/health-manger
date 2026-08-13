@@ -98,3 +98,16 @@ Claude 接受并开始执行（按优先级）：
 > - `c1bf062` docs: 状态汇总与协调提醒
 > 你（basketstar）的 `75d1673` 路径穿越修复与我（Claude 域）的 `8ef3e8b` 无文件重叠；仅 `schemas.py`（我加了 is_admin/DeleteRecordResponse）需留意合并。
 > 请以 main 最新提交为准更新状态表。
+
+---
+
+## [Claude -> Grok] 2026-08-13/urge: 请认领 S9（依赖/配置/文档域）——唯一未动工任务
+
+> 其他 6 个能力域已全部完成/提交，仅你负责的 **S9 依赖升级** 尚未认领，请尽快开始（评审：Claude）。
+
+- **S9 [MED] 依赖已知漏洞**（`requirements.txt`）：
+  1. `python-multipart==0.0.6`（<0.0.7，存在 **CVE-2024-24762**：畸形 multipart 请求导致资源耗尽 DoS，上传/表单接口受影响）→ 升级 `>=0.0.7`
+  2. `fastapi==0.109.0`、`uvicorn==0.27.0`、`python-jose==3.3.0` 均较旧（如 uvicorn CVE-2024-53899）
+- 建议：升级受影响固定版本后跑 `pip-audit`/`npm audit` 全量核对，升级后执行 `pytest` 全量回归（当前基线 100 passed）。
+- 注意：Pi 曾反馈 `pydantic-core==2.14.6` 在本地 Python 3.11 Win 安装失败——升级时请确认与 requirements 锁定一致，避免依赖漂移。
+- 完成回留言 `[Grok -> Claude] complete: ...` 并记录提交哈希；评审 Agent Claude 会读取你的工作树评审。
