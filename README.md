@@ -10,10 +10,11 @@
 
 ### 后端
 - **框架**: FastAPI + SQLAlchemy 2.0 + SQLite
+- **环境管理**: uv（虚拟环境 + 依赖管理）
 - **数据库迁移**: Alembic
 - **认证**: JWT Token (python-jose) + SECRET_KEY 强度校验
 - **密码加密**: bcrypt (12 rounds)
-- **AI 对话**: 智谱 AI GLM-4.5-Air (httpx 连接池复用)
+- **AI 对话**: 智谱 AI GLM-4.5-Air（httpx 线程本地连接池，异步任务工作线程安全）
 - **AI 舌诊**: 火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)
 - **测试**: pytest + pytest-asyncio + pytest-cov (109 tests)
 
@@ -25,6 +26,15 @@
 - **HTTP 客户端**: Axios
 - **设计系统**: modern-minimal（Linear / Vercel 式）——OKLch 设计令牌 + AppIcon 描线图标系统 + RingGauge/TrendChart 数据可视化组件，桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端底部 Tab
 - **交互系统**: Vue composable (toast/modal/sound/scroll-reveal/lightbox)
+
+## 前端设计系统（modern-minimal）
+
+- **设计令牌**: `tokens.css` 为唯一配色/字体来源——OKLch 冷色中性底 + 单一蓝色强调 `--accent`（派生 `--accent-strong/--accent-soft`），语义色 `success/warn/danger` 永远成对使用（文字色 + 浅底），中文字体栈含 PingFang SC/Microsoft YaHei 回退；禁止组件内硬编码颜色
+- **图标系统**: `AppIcon.vue`（22 个 1.7px 描线 SVG 图标：home/record/diet/sport/ai/tongue/alert/check/plus/chevron/device/close 等），全站功能图标统一走它；emoji 仅限吉祥物与趣图模块
+- **数据可视化**: `RingGauge.vue`（评分环，count-up 动画 + reduced-motion 降级）、`TrendChart.vue`（数据计算生成的实心面积折线图，带类别/数值标签）
+- **响应式导航**: 桌面 232px 侧栏 → ≤1024px 收成 68px 图标栏 → ≤768px 隐藏侧栏、底部 Tab 栏（56px 触控目标）
+- **可访问性**: 全局 `:focus-visible` 焦点环、触控目标 ≥44px、`prefers-reduced-motion` 全局降级
+- **动效纪律**: 仅允许 count-up 与 hover 微上移 2px；无卡片毛玻璃（顶栏除外）、无发光、无无限循环动画
 
 ## 核心功能
 
@@ -51,8 +61,8 @@
 
 ### 5. AI 健康分析
 - 基于智谱 AI GLM-4.5-Air 的智能健康顾问
-- 个性化健康建议与快速评估
-- AI 对话咨询（会话管理）
+- 个性化健康建议与快速评估（规则评分 + LLM 综合）
+- AI 对话咨询（后端会话 API 已实现；前端聊天入口待接入）
 
 ### 6. 中医舌诊分析
 - 上传舌象图片，AI 自动分析（PIL 图像有效性校验 + 10MB 大小限制）
