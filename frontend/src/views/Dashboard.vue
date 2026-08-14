@@ -101,7 +101,7 @@
           <span class="task-check" aria-hidden="true">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
           </span>
-          <span class="task-icon" aria-hidden="true" v-html="task.icon"></span>
+          <span class="task-icon" aria-hidden="true"><AppIcon :name="task.icon" :size="18" /></span>
           <span class="task-body">
             <span class="task-name">{{ task.name }}</span>
             <span class="task-meta">{{ task.meta }}</span>
@@ -123,7 +123,7 @@
         <button v-for="mod in moduleList" :key="mod.id"
           class="module" :data-od-id="'module-' + mod.id"
           @click="navigate(mod.path)">
-          <span class="module-icon" aria-hidden="true" v-html="mod.icon"></span>
+          <span class="module-icon" aria-hidden="true"><AppIcon :name="mod.icon" :size="20" /></span>
           <span class="module-title">{{ mod.title }}</span>
           <span class="module-desc">{{ mod.desc }}</span>
         </button>
@@ -232,7 +232,7 @@
         <button v-for="tab in tabList" :key="tab.id"
           class="tab" :class="{ active: activeTab === tab.id }"
           @click="onTabClick(tab)">
-          <span v-html="tab.icon"></span>
+          <AppIcon :name="tab.icon" :size="20" aria-hidden="true" />
           {{ tab.label }}
         </button>
       </div>
@@ -244,6 +244,7 @@
 import api from '../api'
 import MemeGallery from '../components/MemeGallery.vue'
 import AudioPlayer from '../components/AudioPlayer.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const SVG = {
   record: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3.8A1.8 1.8 0 0 1 10.8 2h2.4A1.8 1.8 0 0 1 15 3.8v.7"/><path d="M8.5 10h7M8.5 14h7M8.5 18h4"/></svg>',
@@ -261,7 +262,7 @@ const SVG = {
 
 export default {
   name: 'Dashboard',
-  components: { MemeGallery, AudioPlayer },
+  components: { MemeGallery, AudioPlayer, AppIcon },
   data() {
     return {
       userName: '',
@@ -297,29 +298,29 @@ export default {
 
       // tasks
       tasks: [
-        { name: '饮水 1500 / 2000 ml', meta: '建议全天均匀补水', icon: SVG.water, progress: 75, done: false },
-        { name: '久坐提醒 · 已起身 3 次', meta: '每 45 分钟站立活动 1–2 分钟', icon: SVG.activity, progress: null, done: false },
-        { name: '23:30 前放下手机', meta: '睡前 30 分钟避免屏幕光', icon: SVG.moon, progress: null, done: true }
+        { name: '饮水 1500 / 2000 ml', meta: '建议全天均匀补水', icon: 'water', progress: 75, done: false },
+        { name: '久坐提醒 · 已起身 3 次', meta: '每 45 分钟站立活动 1–2 分钟', icon: 'activity', progress: null, done: false },
+        { name: '23:30 前放下手机', meta: '睡前 30 分钟避免屏幕光', icon: 'moon', progress: null, done: true }
       ],
 
       // modules
       moduleList: [
-        { id: 'record', title: '健康记录', desc: '体重 · 血压 · 睡眠', path: '/health-record', icon: SVG.record },
-        { id: 'diet', title: '饮食管理', desc: '三餐 · 热量 · 营养', path: '/diet-management', icon: SVG.diet },
-        { id: 'sport', title: '运动管理', desc: '训练 · 时长 · 消耗', path: '/sport-management', icon: SVG.sport },
-        { id: 'ai', title: 'AI 健康分析', desc: '趋势解读 · 建议', path: '/health-analysis', icon: SVG.analysis },
-        { id: 'tongue', title: '中医舌诊', desc: '舌象分析 · 体质调理', path: '/tongue-diagnosis', icon: SVG.tongue },
-        { id: 'warning', title: '健康预警', desc: '异常监测 · 风险提醒', path: '', icon: SVG.warning }
+        { id: 'record', title: '健康记录', desc: '体重 · 血压 · 睡眠', path: '/health-record', icon: 'record' },
+        { id: 'diet', title: '饮食管理', desc: '三餐 · 热量 · 营养', path: '/diet-management', icon: 'diet' },
+        { id: 'sport', title: '运动管理', desc: '训练 · 时长 · 消耗', path: '/sport-management', icon: 'sport' },
+        { id: 'ai', title: 'AI 健康分析', desc: '趋势解读 · 建议', path: '/health-analysis', icon: 'ai' },
+        { id: 'tongue', title: '中医舌诊', desc: '舌象分析 · 体质调理', path: '/tongue-diagnosis', icon: 'tongue' },
+        { id: 'warning', title: '健康预警', desc: '异常监测 · 风险提醒', path: '', icon: 'alert' }
       ],
 
       // tab bar
       activeTab: 'home',
       tabList: [
-        { id: 'home', label: '首页', path: '/dashboard', icon: SVG.home },
-        { id: 'record', label: '记录', path: '/health-record', icon: SVG.record },
-        { id: 'sport', label: '运动', path: '/sport-management', icon: SVG.sport },
-        { id: 'tongue', label: '舌诊', path: '/tongue-diagnosis', icon: SVG.tongue },
-        { id: 'mine', label: '我的', path: '', icon: SVG.user }
+        { id: 'home', label: '首页', path: '/dashboard', icon: 'home' },
+        { id: 'record', label: '记录', path: '/health-record', icon: 'record' },
+        { id: 'sport', label: '运动', path: '/sport-management', icon: 'sport' },
+        { id: 'tongue', label: '舌诊', path: '/tongue-diagnosis', icon: 'tongue' },
+        { id: 'mine', label: '我的', path: '', icon: 'user' }
       ],
 
       // fun
