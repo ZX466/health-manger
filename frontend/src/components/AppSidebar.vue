@@ -2,7 +2,7 @@
   <aside class="sidebar" :class="{ open: mobileOpen }">
     <router-link to="/dashboard" class="sidebar-logo">
       <span class="logo-icon">慧</span>
-      慧康
+      <span class="logo-text">慧康</span>
     </router-link>
     <nav class="sidebar-nav">
       <div class="nav-section">概览</div>
@@ -15,7 +15,7 @@
         @click="$emit('navigate')"
       >
         <span v-html="item.icon" />
-        {{ item.label }}
+        <span class="nav-label">{{ item.label }}</span>
       </router-link>
 
       <div class="nav-section">健康管理</div>
@@ -28,7 +28,7 @@
         @click="$emit('navigate')"
       >
         <span v-html="item.icon" />
-        {{ item.label }}
+        <span class="nav-label">{{ item.label }}</span>
       </router-link>
 
       <div class="nav-section">工具</div>
@@ -41,7 +41,7 @@
         @click="$emit('navigate')"
       >
         <span v-html="item.icon" />
-        {{ item.label }}
+        <span class="nav-label">{{ item.label }}</span>
       </router-link>
     </nav>
     <div class="sidebar-footer">

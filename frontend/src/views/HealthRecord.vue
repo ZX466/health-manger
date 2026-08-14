@@ -3,7 +3,7 @@
 
     <div class="page-header">
       <div class="header-left">
-        <h1>📋 健康记录管理</h1>
+        <h1> 健康记录管理</h1>
         <p class="header-subtitle">记录你的身体状况，获取健康评级</p>
       </div>
       <div class="mascot-companion mascot-cat-companion">
@@ -31,7 +31,7 @@
     <!-- 健康评级横幅 -->
     <div class="rating-banner" :class="ratingClass" v-if="latestRating">
       <div class="rating-left">
-        <span class="rating-emoji">{{ latestRating.emoji || '🏅' }}</span>
+        <span class="rating-emoji">{{ latestRating.emoji || '' }}</span>
         <div class="rating-info">
           <span class="rating-label">当前健康评级</span>
           <span class="rating-level">{{ latestRating.rating }}</span>
@@ -50,7 +50,7 @@
     <div v-if="showRatingResult" class="rating-result-overlay" @click="showRatingResult = false">
       <div class="rating-result-card" @click.stop>
         <button class="result-close" @click="showRatingResult = false">×</button>
-        <div class="result-emoji">{{ latestRating?.emoji || '🏅' }}</div>
+        <div class="result-emoji">{{ latestRating?.emoji || '' }}</div>
         <div class="result-level" :class="ratingClass">{{ latestRating?.rating || '-' }}</div>
         <div class="result-score">{{ latestRating?.score || 0 }} <span>分</span></div>
         <p class="result-desc">{{ latestRating?.overall_advice || '' }}</p>
@@ -64,14 +64,14 @@
     <div class="content">
       <div class="form-section">
         <div class="form-header">
-          <h2>📝 填写健康问卷</h2>
+          <h2> 填写健康问卷</h2>
           <p class="form-hint">填写越多，评级越准确</p>
         </div>
         <form @submit.prevent="handleSubmit" class="record-form">
 
           <!-- 身体基本指标 -->
           <div class="survey-group">
-            <h3 class="group-title">📏 身体指标</h3>
+            <h3 class="group-title"> 身体指标</h3>
             <div class="form-row">
               <div class="form-group">
                 <label for="hr-height">你的身高大概是？</label>
@@ -92,7 +92,7 @@
 
           <!-- 心血管健康 -->
           <div class="survey-group">
-            <h3 class="group-title">❤️ 心血管状况</h3>
+            <h3 class="group-title"> 心血管状况</h3>
             <div class="form-row triple">
               <div class="form-group">
                 <label for="hr-systolic">心脏用力时血压</label>
@@ -120,7 +120,7 @@
 
           <!-- 体温与视力 -->
           <div class="survey-group">
-            <h3 class="group-title">🌡️ 其他指标</h3>
+            <h3 class="group-title"> 其他指标</h3>
             <div class="form-row triple">
               <div class="form-group">
                 <label for="hr-temp">最近体温正常吗？</label>
@@ -148,7 +148,7 @@
 
           <!-- 生活习惯 -->
           <div class="survey-group">
-            <h3 class="group-title">🌿 生活习惯</h3>
+            <h3 class="group-title"> 生活习惯</h3>
             <div class="form-row">
               <div class="form-group">
                 <label for="hr-exercise">运动习惯怎么样？</label>
@@ -189,10 +189,10 @@
           <div v-if="selectedRecords.length > 0" class="batch-actions">
             <span class="selected-count">已选择 {{ selectedRecords.length }} 条</span>
             <button class="action-btn export" @click="exportSelected">
-              📥 导出所选
+               导出所选
             </button>
             <button class="action-btn delete" @click="confirmDeleteSelected">
-              🗑️ 删除所选
+               删除所选
             </button>
             <button class="action-btn clear" @click="clearSelection">
               清除选择
@@ -201,7 +201,7 @@
         </div>
 
         <div v-if="records.length === 0" class="no-data">
-          <span class="no-data-icon">📋</span>
+          <span class="no-data-icon"></span>
           <p>暂无健康记录</p>
           <div class="mascot-no-data">
             <MiniCat size="large" animation="wobble" />
@@ -282,13 +282,13 @@
 
             <div class="record-actions" @click.stop>
               <button class="icon-btn view" @click="viewDetail(record)" title="查看详情">
-                👁️
+                
               </button>
               <button class="icon-btn export-single" @click="exportSingle(record)" title="导出">
-                📥
+                
               </button>
               <button class="icon-btn delete-single" @click="confirmDeleteSingle(record)" title="删除">
-                🗑️
+                
               </button>
             </div>
           </div>
@@ -300,7 +300,7 @@
     <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
       <div class="modal-content delete-modal" @click.stop>
         <div class="modal-header">
-          <span class="modal-icon warning">⚠️</span>
+          <span class="modal-icon warning"></span>
           <h3>确认删除</h3>
         </div>
         <div class="modal-body">
@@ -324,7 +324,7 @@
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetail">
       <div class="modal-content detail-modal" @click.stop>
         <div class="modal-header">
-          <h3>📋 健康记录详情</h3>
+          <h3> 健康记录详情</h3>
           <button class="close-btn" @click="closeDetail">×</button>
         </div>
         <div class="modal-body">
@@ -341,21 +341,21 @@
 
           <div class="detail-grid">
             <div class="detail-card">
-              <span class="detail-card-icon">📏</span>
+              <span class="detail-card-icon"></span>
               <div class="detail-card-content">
                 <span class="detail-card-label">身高</span>
                 <span class="detail-card-value">{{ detailRecord?.height || '-' }} cm</span>
               </div>
             </div>
             <div class="detail-card">
-              <span class="detail-card-icon">⚖️</span>
+              <span class="detail-card-icon"></span>
               <div class="detail-card-content">
                 <span class="detail-card-label">体重</span>
                 <span class="detail-card-value">{{ detailRecord?.weight || '-' }} kg</span>
               </div>
             </div>
             <div class="detail-card">
-              <span class="detail-card-icon">🩺</span>
+              <span class="detail-card-icon"></span>
               <div class="detail-card-content">
                 <span class="detail-card-label">血压</span>
                 <span class="detail-card-value">
@@ -364,21 +364,21 @@
               </div>
             </div>
             <div class="detail-card">
-              <span class="detail-card-icon">💓</span>
+              <span class="detail-card-icon"></span>
               <div class="detail-card-content">
                 <span class="detail-card-label">心率</span>
                 <span class="detail-card-value">{{ detailRecord?.heart_rate || '-' }} 次/分</span>
               </div>
             </div>
             <div class="detail-card">
-              <span class="detail-card-icon">🌡️</span>
+              <span class="detail-card-icon"></span>
               <div class="detail-card-content">
                 <span class="detail-card-label">体温</span>
                 <span class="detail-card-value">{{ detailRecord?.temperature || '-' }} ℃</span>
               </div>
             </div>
             <div class="detail-card">
-              <span class="detail-card-icon">😴</span>
+              <span class="detail-card-icon"></span>
               <div class="detail-card-content">
                 <span class="detail-card-label">睡眠</span>
                 <span class="detail-card-value">{{ detailRecord?.sleep_hours || '-' }} 小时</span>
@@ -397,7 +397,7 @@
     <!-- 操作日志 -->
     <div v-if="operationLogs.length > 0" class="logs-panel">
       <div class="logs-header">
-        <h4>📋 操作日志</h4>
+        <h4> 操作日志</h4>
         <button class="clear-logs" @click="clearLogs">清空日志</button>
       </div>
       <div class="logs-list">
@@ -792,7 +792,6 @@ export default {
   height: 72px;
   border-radius: 50%;
   background: rgba(255,255,255,0.2);
-  backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -897,7 +896,7 @@ export default {
 }
 .result-btn {
   padding: 12px 32px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: var(--radius);
@@ -967,7 +966,7 @@ export default {
 }
 
 .page-header {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   padding: 24px 40px;
   display: flex;
   justify-content: space-between;
@@ -1112,7 +1111,7 @@ h2 {
 
 .submit-btn {
   padding: 14px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: var(--radius);
@@ -1150,7 +1149,7 @@ h2 {
 }
 
 .selected-count {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   padding: 6px 14px;
   border-radius: 20px;

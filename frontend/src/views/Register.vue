@@ -117,7 +117,7 @@ export default {
 }
 .title {
   text-align: center;
-  color: var(--accent-hover);
+  color: var(--accent-strong);
   font-size: 26px;
   margin-bottom: 8px;
   font-weight: 700;

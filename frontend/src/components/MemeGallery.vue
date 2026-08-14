@@ -54,7 +54,7 @@ export default {
 .gallery-title {
   font-size: 1.2rem;
   font-weight: 700;
-  color: var(--accent-hover, #FF7B4A);
+  color: var(--accent-strong);
   margin-bottom: 16px;
 }
 .gallery-grid {
@@ -94,7 +94,7 @@ export default {
   transition: background 0.2s, transform 0.2s;
 }
 .shuffle-btn:hover {
-  background: var(--accent-hover, #FF7B4A);
+  background: var(--accent-strong);
   transform: translateY(-2px);
 }
 </style>

@@ -71,7 +71,7 @@ export default {
   align-items: center;
   gap: 8px;
   background: var(--surface, #fff);
-  border: 2px solid var(--accent-soft, #FFBFA0);
+  border: 2px solid var(--accent-soft);
   border-radius: var(--radius, 16px);
   padding: 12px 20px;
   cursor: pointer;
@@ -87,7 +87,7 @@ export default {
 }
 .clip-btn.playing {
   background: var(--accent, #FF9B71);
-  border-color: var(--accent-hover, #FF7B4A);
+  border-color: var(--accent-strong);
   color: white;
   animation: pulse-playing 0.8s ease-in-out infinite;
 }

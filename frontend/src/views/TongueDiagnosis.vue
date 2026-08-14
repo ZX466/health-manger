@@ -2,7 +2,7 @@
   <div class="tongue-diagnosis">
 
     <div class="page-header">
-      <h1>👅 中医舌诊分析</h1>
+      <h1> 中医舌诊分析</h1>
       <p>上传舌象照片或使用摄像头实时分析</p>
       <div class="mascot-companion mascot-nailong-companion">
         <MiniNailong />
@@ -11,10 +11,10 @@
 
     <div class="mode-tabs">
       <button :class="['mode-tab', { active: inputMode === 'upload' }]" @click="setInputMode('upload')">
-        📷 图片上传
+         图片上传
       </button>
       <button :class="['mode-tab', { active: inputMode === 'camera' }]" @click="setInputMode('camera')">
-        📹 摄像头实时
+         摄像头实时
       </button>
     </div>
 
@@ -23,7 +23,7 @@
       <div class="left-panel">
         <!-- 图片上传模式 -->
         <div v-if="inputMode === 'upload'" class="panel-section">
-          <h3>📷 图片上传</h3>
+          <h3> 图片上传</h3>
           <div
             class="upload-area"
             :class="{ 'dragover': isDragOver }"
@@ -40,7 +40,7 @@
               style="display: none"
             >
             <div v-if="!previewImage" class="upload-placeholder">
-              <span class="upload-icon">📸</span>
+              <span class="upload-icon"></span>
               <p>点击或拖拽图片到此处</p>
               <span class="upload-hint">支持 JPG、PNG 格式</span>
             </div>
@@ -52,7 +52,7 @@
             @click="startAnalysis"
             class="analyze-btn primary"
           >
-            🔍 开始分析
+             开始分析
           </button>
 
           <button v-if="store.analyzing" class="analyze-btn analyzing" disabled>
@@ -66,7 +66,7 @@
 
         <!-- 摄像头模式 -->
         <div v-if="inputMode === 'camera'" class="panel-section camera-panel">
-          <h3>📹 摄像头控制</h3>
+          <h3> 摄像头控制</h3>
 
           <div class="camera-status">
             <div class="status-indicator" :class="{ active: cameraActive }"></div>
@@ -79,25 +79,25 @@
               @click="startCamera"
               class="camera-btn start"
             >
-              ▶️ 开启摄像头
+              ▶ 开启摄像头
             </button>
             <button
               v-if="cameraActive"
               @click="stopCamera"
               class="camera-btn stop"
             >
-              ⏹️ 关闭摄像头
+              ⏹ 关闭摄像头
             </button>
           </div>
 
           <div v-if="cameraError" class="camera-error">
-            <span class="error-icon">⚠️</span>
+            <span class="error-icon"></span>
             <p>{{ cameraError }}</p>
             <button @click="retryCamera" class="retry-btn">重试</button>
           </div>
 
           <div class="camera-guide" v-if="cameraActive">
-            <h4>📋 拍摄指南</h4>
+            <h4> 拍摄指南</h4>
             <ul>
               <li>保持光线充足均匀</li>
               <li>舌头自然伸出放平</li>
@@ -109,7 +109,7 @@
         </div>
 
         <div class="panel-section">
-          <h3>⚙️ 分析设置</h3>
+          <h3> 分析设置</h3>
           <div class="setting-item">
             <label>置信度阈值</label>
             <input type="range" v-model="confidenceThreshold" min="0.5" max="1" step="0.05" />
@@ -127,7 +127,7 @@
         </div>
 
         <div class="panel-section tongue-coating">
-          <h3>👅 舌苔信息</h3>
+          <h3> 舌苔信息</h3>
           <div class="coating-grid">
             <div class="coating-item">
               <label>苔色</label>
@@ -140,7 +140,7 @@
                   :title="color.name + ': ' + color.desc"
                   @click="selectedCoatingColor = color.name"
                 >
-                  <span v-if="selectedCoatingColor === color.name" class="check-mark">✓</span>
+                  <span v-if="selectedCoatingColor === color.name" class="check-mark"></span>
                 </button>
               </div>
               <span class="coating-label">{{ selectedCoatingColor || '请选择' }}</span>
@@ -170,7 +170,7 @@
         </div>
 
         <div class="panel-section tips">
-          <h3>💡 拍摄提示</h3>
+          <h3> 拍摄提示</h3>
           <ul>
             <li>在自然光下拍摄效果最佳</li>
             <li>舌头自然伸出，不要用力</li>
@@ -185,7 +185,7 @@
         <!-- 图片上传模式显示 -->
         <div v-if="inputMode === 'upload'" class="image-display">
           <div v-if="!store.result && !previewImage" class="empty-state">
-            <span class="empty-icon">👅</span>
+            <span class="empty-icon"></span>
             <p>请上传舌象图片开始分析</p>
           </div>
 
@@ -209,12 +209,12 @@
         <!-- 摄像头模式显示 -->
         <div v-if="inputMode === 'camera'" class="camera-display">
           <div v-if="!cameraActive && !cameraError" class="camera-placeholder">
-            <span class="camera-placeholder-icon">📹</span>
+            <span class="camera-placeholder-icon"></span>
             <p>点击左侧"开启摄像头"开始实时分析</p>
           </div>
 
           <div v-if="cameraError" class="camera-error-display">
-            <span class="error-icon-large">⚠️</span>
+            <span class="error-icon-large"></span>
             <h3>摄像头访问错误</h3>
             <p>{{ cameraError }}</p>
             <button @click="retryCamera" class="retry-btn-large">重新尝试</button>
@@ -265,7 +265,7 @@
 
         <!-- 历史记录列表 -->
         <div class="history-section" v-if="store.historyList.length > 0">
-          <h4>📋 历史记录 ({{ store.historyList.length }})</h4>
+          <h4> 历史记录 ({{ store.historyList.length }})</h4>
           <div class="history-list">
             <div
               v-for="item in store.historyList"
@@ -286,12 +286,12 @@
       <!-- 右侧结果面板 -->
       <div class="right-panel">
         <div v-if="!store.result && !store.realtimeResult" class="no-result">
-          <span class="no-result-icon">📊</span>
+          <span class="no-result-icon"></span>
           <p>{{ inputMode === 'camera' ? '开启摄像头后开始实时分析...' : '等待分析结果...' }}</p>
         </div>
 
         <div v-if="store.result || store.realtimeResult" class="result-panel">
-          <h3>🔬 {{ inputMode === 'camera' ? '实时' : '' }}分析结果</h3>
+          <h3> {{ inputMode === 'camera' ? '实时' : '' }}分析结果</h3>
           <div class="result-source" v-if="inputMode === 'camera'">
             <span class="source-badge" :class="{ live: cameraActive }">
               {{ cameraActive ? '● LIVE' : 'PAUSED' }}
@@ -362,7 +362,7 @@
           </div>
 
           <div class="syndrome-card">
-            <h4>🏥 中医证型判断</h4>
+            <h4> 中医证型判断</h4>
             <div class="syndrome-result">
               <span class="syndrome-name">{{ (store.result || store.realtimeResult)?.tcm_syndrome || '-' }}</span>
               <span class="overall-type" :style="{ color: getTypeColor((store.result || store.realtimeResult)?.overall_type) }">
@@ -372,29 +372,29 @@
           </div>
 
           <div class="advice-section">
-            <h4>💊 健康建议</h4>
+            <h4> 健康建议</h4>
             <div class="advice-card health">
               <h5>综合评估</h5>
               <p>{{ (store.result || store.realtimeResult)?.health_advice || '暂无建议' }}</p>
             </div>
 
             <div class="advice-card diet">
-              <h5>🍲 饮食建议</h5>
+              <h5> 饮食建议</h5>
               <p>{{ (store.result || store.realtimeResult)?.diet_suggestion || '暂无建议' }}</p>
             </div>
 
             <div class="advice-card lifestyle">
-              <h5>🏃 生活建议</h5>
+              <h5> 生活建议</h5>
               <p>{{ (store.result || store.realtimeResult)?.lifestyle_advice || '暂无建议' }}</p>
             </div>
           </div>
 
           <div class="action-buttons" v-if="inputMode === 'upload'">
             <button @click="exportResult" class="action-btn export">
-              📥 导出报告
+               导出报告
             </button>
             <button @click="reAnalyze" class="action-btn retry">
-              🔄 重新分析
+               重新分析
             </button>
           </div>
         </div>
@@ -688,7 +688,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .tongue-diagnosis {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
 }
 
 .page-header {
@@ -724,12 +724,11 @@ onBeforeUnmount(() => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
-  backdrop-filter: blur(10px);
 }
 
 .mode-tab.active {
   background: white;
-  color: var(--accent-hover);
+  color: var(--accent-strong);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
@@ -886,7 +885,7 @@ onBeforeUnmount(() => {
 }
 
 .camera-guide li::before {
-  content: "✓";
+  content: "";
   position: absolute;
   left: 0;
   color: #52c41a;
@@ -903,7 +902,7 @@ onBeforeUnmount(() => {
   background: #FFFCFA;
 }
 .upload-area:hover, .upload-area.dragover {
-  border-color: var(--accent-hover);
+  border-color: var(--accent-strong);
   background: #FFF5EE;
 }
 .upload-placeholder .upload-icon {
@@ -938,7 +937,7 @@ onBeforeUnmount(() => {
   transition: all 0.3s;
 }
 .analyze-btn.primary {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
 }
 .analyze-btn.primary:hover {
@@ -956,7 +955,7 @@ onBeforeUnmount(() => {
   width: 18px;
   height: 18px;
   border: 2px solid #FFE4D6;
-  border-top-color: var(--accent-hover);
+  border-top-color: var(--accent-strong);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-right: 8px;
@@ -995,7 +994,7 @@ onBeforeUnmount(() => {
   min-width: 60px;
   text-align: right;
   font-weight: 600;
-  color: var(--accent-hover);
+  color: var(--accent-strong);
 }
 
 .tongue-coating {
@@ -1042,11 +1041,11 @@ onBeforeUnmount(() => {
 
 .color-btn:hover {
   transform: scale(1.1);
-  border-color: var(--accent-hover);
+  border-color: var(--accent-strong);
 }
 
 .color-btn.active {
-  border-color: var(--accent-hover);
+  border-color: var(--accent-strong);
   box-shadow: 0 0 0 2px rgba(255, 155, 113, 0.3);
 }
 
@@ -1079,12 +1078,12 @@ onBeforeUnmount(() => {
 }
 
 .thickness-btn:hover {
-  border-color: var(--accent-hover);
-  color: var(--accent-hover);
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
 }
 
 .thickness-btn.active {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   border-color: transparent;
 }
@@ -1100,7 +1099,7 @@ onBeforeUnmount(() => {
   padding: 8px;
   border: none;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   font-size: 13px;
   cursor: pointer;
@@ -1140,7 +1139,7 @@ onBeforeUnmount(() => {
   padding-left: 16px;
 }
 .tips li::before {
-  content: "✓";
+  content: "";
   position: absolute;
   left: 0;
   color: #52c41a;
@@ -1295,7 +1294,7 @@ onBeforeUnmount(() => {
 }
 
 .realtime-result-item.latest {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
 }
 
@@ -1342,7 +1341,7 @@ onBeforeUnmount(() => {
   transition: all 0.2s;
 }
 .history-item:hover {
-  border-color: var(--accent-hover);
+  border-color: var(--accent-strong);
   box-shadow: 0 2px 8px rgba(255,155,113,0.2);
 }
 .history-thumb {
@@ -1428,7 +1427,7 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 .result-table th {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   padding: 10px 8px;
   text-align: left;
@@ -1545,8 +1544,8 @@ onBeforeUnmount(() => {
   transition: all 0.2s;
 }
 .action-btn:hover {
-  border-color: var(--accent-hover);
-  color: var(--accent-hover);
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
 }
 .action-btn.export:hover { border-color: #52c41a; color: #52c41a; }
 .action-btn.retry:hover { border-color: #1890ff; color: #1890ff; }

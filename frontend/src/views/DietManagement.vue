@@ -3,7 +3,7 @@
 
     <div class="content">
       <div class="section-header">
-        <h1>🍎 饮食管理</h1>
+        <h1> 饮食管理</h1>
         <p>记录每日饮食，管理营养摄入</p>
         <div class="mascot-companion mascot-cat-companion">
           <MiniCat />
@@ -12,20 +12,20 @@
 
       <div class="tabs">
         <button :class="{ active: activeTab === 'records' }" @click="activeTab = 'records'">
-          📝 饮食记录
+           饮食记录
         </button>
         <button :class="{ active: activeTab === 'foods' }" @click="activeTab = 'foods'">
-          🥗 食物库
+           食物库
         </button>
         <button :class="{ active: activeTab === 'stats' }" @click="activeTab = 'stats'">
-          📊 统计分析
+           统计分析
         </button>
       </div>
 
       <div v-if="activeTab === 'records'" class="tab-content">
         <div class="action-bar">
           <button @click="showAddRecord = true" class="btn-primary">
-            ➕ 添加饮食记录
+             添加饮食记录
           </button>
           <input 
             type="date" 
@@ -40,10 +40,10 @@
             <div class="record-info">
               <div class="food-name">{{ record.food_name }}</div>
               <div class="record-meta">
-                <span>🍽️ {{ record.meal_type || '未分类' }}</span>
-                <span>⚖️ {{ record.quantity_grams }}g</span>
-                <span>🔥 {{ record.calories }} kcal</span>
-                <span>📅 {{ formatDate(record.record_date) }}</span>
+                <span> {{ record.meal_type || '未分类' }}</span>
+                <span> {{ record.quantity_grams }}g</span>
+                <span> {{ record.calories }} kcal</span>
+                <span> {{ formatDate(record.record_date) }}</span>
               </div>
             </div>
             <button @click="deleteRecord(record.id)" class="btn-delete">删除</button>
@@ -54,7 +54,7 @@
       <div v-if="activeTab === 'foods'" class="tab-content">
         <div class="action-bar">
           <button v-if="isAdmin" @click="showAddFood = true" class="btn-primary">
-            ➕ 添加食物
+             添加食物
           </button>
           <input 
             type="text" 
@@ -70,9 +70,9 @@
             <h3>{{ food.name }}</h3>
             <p class="food-category">{{ food.category || '未分类' }}</p>
             <div class="food-nutrition">
-              <span>🔥 {{ food.calories_per_100g || 0 }} kcal</span>
-              <span>🥩 {{ food.protein_per_100g || 0 }}g 蛋白质</span>
-              <span>🍚 {{ food.carbs_per_100g || 0 }}g 碳水</span>
+              <span> {{ food.calories_per_100g || 0 }} kcal</span>
+              <span> {{ food.protein_per_100g || 0 }}g 蛋白质</span>
+              <span> {{ food.carbs_per_100g || 0 }}g 碳水</span>
             </div>
             <button @click="selectFood(food)" class="btn-small">添加到记录</button>
           </div>
@@ -349,7 +349,7 @@ export default {
 }
 .btn-primary {
   padding: 12px 24px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: var(--radius);
@@ -476,7 +476,7 @@ export default {
 }
 .progress {
   height: 100%;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   transition: width 0.3s;
 }
 .modal-overlay {

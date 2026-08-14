@@ -3,7 +3,7 @@
 
     <div class="content">
       <div class="section-header">
-        <h1>🏃 运动管理</h1>
+        <h1> 运动管理</h1>
         <p>记录运动数据，追踪热量消耗</p>
         <div class="mascot-companion mascot-nailong-companion">
           <MiniNailong />
@@ -12,20 +12,20 @@
 
       <div class="tabs">
         <button :class="{ active: activeTab === 'records' }" @click="activeTab = 'records'">
-          📝 运动记录
+           运动记录
         </button>
         <button :class="{ active: activeTab === 'sports' }" @click="activeTab = 'sports'">
-          🏋️ 运动库
+           运动库
         </button>
         <button :class="{ active: activeTab === 'stats' }" @click="activeTab = 'stats'">
-          📊 统计分析
+           统计分析
         </button>
       </div>
 
       <div v-if="activeTab === 'records'" class="tab-content">
         <div class="action-bar">
           <button @click="showAddRecord = true" class="btn-primary">
-            ➕ 添加运动记录
+             添加运动记录
           </button>
           <input 
             type="date" 
@@ -40,9 +40,9 @@
             <div class="record-info">
               <div class="sport-name">{{ record.sport_name }}</div>
               <div class="record-meta">
-                <span>⏱️ {{ record.duration_minutes }} 分钟</span>
-                <span>🔥 {{ record.calories_burned }} kcal</span>
-                <span>📅 {{ formatDate(record.record_date) }}</span>
+                <span>⏱ {{ record.duration_minutes }} 分钟</span>
+                <span> {{ record.calories_burned }} kcal</span>
+                <span> {{ formatDate(record.record_date) }}</span>
               </div>
               <div v-if="record.notes" class="record-notes">{{ record.notes }}</div>
             </div>
@@ -54,7 +54,7 @@
       <div v-if="activeTab === 'sports'" class="tab-content">
         <div class="action-bar">
           <button v-if="isAdmin" @click="showAddSport = true" class="btn-primary">
-            ➕ 添加运动
+             添加运动
           </button>
           <input 
             type="text" 
@@ -70,8 +70,8 @@
             <h3>{{ sport.name }}</h3>
             <p class="sport-category">{{ sport.category || '未分类' }}</p>
             <div class="sport-info">
-              <span>🔥 {{ sport.calories_per_hour || 0 }} kcal/小时</span>
-              <span>📊 {{ sport.intensity_level || '中等' }}</span>
+              <span> {{ sport.calories_per_hour || 0 }} kcal/小时</span>
+              <span> {{ sport.intensity_level || '中等' }}</span>
             </div>
             <button @click="selectSport(sport)" class="btn-small">添加到记录</button>
           </div>
@@ -101,8 +101,8 @@
               <span>{{ stats.count }} 次</span>
             </div>
             <div class="sport-stat-details">
-              <span>🔥 {{ stats.calories }} kcal</span>
-              <span>⏱️ {{ stats.duration }} 分钟</span>
+              <span> {{ stats.calories }} kcal</span>
+              <span>⏱ {{ stats.duration }} 分钟</span>
             </div>
             <div class="progress-bar">
               <div class="progress" :style="{ width: getPercentage(stats.calories) + '%' }"></div>
@@ -353,7 +353,7 @@ export default {
 }
 .btn-primary {
   padding: 12px 24px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: var(--radius);
@@ -501,7 +501,7 @@ export default {
 }
 .progress {
   height: 100%;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   transition: width 0.3s;
 }
 .modal-overlay {

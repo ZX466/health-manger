@@ -9,7 +9,7 @@
         <div class="analysis-cards">
           <div class="analysis-card bmi-card">
             <div class="card-header">
-              <span class="card-icon">⚖️</span>
+              <span class="card-icon"></span>
               <h3>BMI 体重指数</h3>
             </div>
             <div class="card-status" :class="'status-' + latestAnalysis.bmi_status">
@@ -20,7 +20,7 @@
 
           <div class="analysis-card bp-card">
             <div class="card-header">
-              <span class="card-icon">🩺</span>
+              <span class="card-icon"></span>
               <h3>血压状况</h3>
             </div>
             <div class="card-status" :class="'status-' + latestAnalysis.blood_pressure_status">
@@ -31,7 +31,7 @@
 
           <div class="analysis-card overall-card">
             <div class="card-header">
-              <span class="card-icon">💪</span>
+              <span class="card-icon"></span>
               <h3>整体健康评估</h3>
             </div>
             <div class="card-status overall" :class="'status-' + latestAnalysis.overall_status">
@@ -43,7 +43,7 @@
       </div>
 
       <div v-else class="no-analysis">
-        <div class="no-data-icon">📊</div>
+        <div class="no-data-icon"></div>
         <h2>暂无健康分析</h2>
           <div class="mascot-no-data">
             <MiniCat size="large" animation="wobble" />
@@ -51,7 +51,7 @@
           </div>
         <p>请先添加健康记录，系统将自动为您生成健康分析报告</p>
         <button @click="$router.push('/health-record')" class="action-btn primary">
-          ➕ 添加健康记录
+           添加健康记录
         </button>
       </div>
 
@@ -148,7 +148,7 @@ export default {
   transition: transform 0.3s;
 }
 .analysis-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 .card-header {
   display: flex;
@@ -176,7 +176,7 @@ export default {
   padding: 12px 30px;
 }
 .status-正常 {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
 }
 .status-偏瘦 {
@@ -216,7 +216,7 @@ export default {
 }
 .overall-card {
   border-left: 4px solid var(--success);
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
 }
 .overall-card .card-header h3 {
   color: white;
@@ -257,7 +257,7 @@ export default {
   transition: transform 0.2s;
 }
 .action-btn.primary {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
 }
 .action-btn:hover {
@@ -307,7 +307,7 @@ export default {
   color: var(--muted);
 }
 .status-tag.overall {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  background: var(--accent);
   color: white;
 }
 .mascot-no-data {
