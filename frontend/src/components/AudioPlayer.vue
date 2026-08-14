@@ -7,7 +7,6 @@
       :class="{ playing: playingKey === clip.key }"
       @click="play(clip)"
     >
-      <span class="clip-icon">{{ clip.icon }}</span>
       <span class="clip-label">{{ clip.label }}</span>
     </button>
   </div>
@@ -17,10 +16,10 @@
 import { audioClips } from '../assets/index.js'
 
 const CLIP_META = [
-  { key: 'bellyLaugh', icon: '😂', label: '捧腹大笑' },
-  { key: 'crazyLaugh', icon: '🤣', label: '疯狂大笑' },
-  { key: 'giggle', icon: '🤭', label: '咯咯笑' },
-  { key: 'pixabayLaugh', icon: '😆', label: '卡通笑声' },
+  { key: 'bellyLaugh', label: '捧腹大笑' },
+  { key: 'crazyLaugh', label: '疯狂大笑' },
+  { key: 'giggle', label: '咯咯笑' },
+  { key: 'pixabayLaugh', label: '卡通笑声' },
 ]
 
 export default {
@@ -70,26 +69,25 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--surface, #fff);
+  background: var(--surface);
   border: 2px solid var(--accent-soft);
-  border-radius: var(--radius, 16px);
+  border-radius: var(--radius-md);
   padding: 12px 20px;
   cursor: pointer;
   transition: all 0.25s;
   font-size: 14px;
-  color: var(--fg, #333);
+  color: var(--fg);
 }
 .clip-btn:hover {
-  background: var(--bg, #FFF5EE);
-  border-color: var(--accent, #FF9B71);
+  background: var(--bg);
+  border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(255, 155, 113, 0.2);
+  
 }
 .clip-btn.playing {
-  background: var(--accent, #FF9B71);
+  background: var(--accent);
   border-color: var(--accent-strong);
   color: white;
-  animation: pulse-playing 0.8s ease-in-out infinite;
 }
 .clip-icon { font-size: 1.3rem; }
 .clip-label { font-weight: 600; }

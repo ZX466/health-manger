@@ -156,25 +156,25 @@ export default {
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 181, 194, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .error-message {
   color: var(--danger);
   font-size: 14px;
   text-align: center;
   padding: 12px;
-  background: #fff0f0;
+  background: var(--danger-soft);
   border-radius: var(--radius);
-  border: 1px solid #ffd6d6;
+  border: 1px solid var(--danger-soft);
 }
 .success-message {
   color: var(--success);
   font-size: 14px;
   text-align: center;
   padding: 12px;
-  background: #f0fff4;
+  background: var(--success-soft);
   border-radius: var(--radius);
-  border: 1px solid #c6f6d5;
+  border: 1px solid var(--border);
 }
 .submit-btn {
   padding: 14px;
@@ -198,7 +198,6 @@ export default {
   cursor: not-allowed;
 }
 .submit-btn.loading {
-  animation: bounce-laugh 0.6s ease-in-out infinite;
 }
 .auth-link {
   text-align: center;

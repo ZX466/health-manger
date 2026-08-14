@@ -83,7 +83,7 @@ export default {
 }
 .shuffle-btn {
   margin-top: 16px;
-  background: var(--accent, #FF9B71);
+  background: var(--accent);
   color: white;
   border: none;
   padding: 10px 24px;

@@ -313,7 +313,7 @@
                   <td>
                     <span
                       class="color-badge"
-                      :style="{ background: (store.result || store.realtimeResult)?.tongue_color?.color || '#ccc' }"
+                      :style="{ background: (store.result || store.realtimeResult)?.tongue_color?.color || 'var(--muted)' }"
                     >
                       {{ (store.result || store.realtimeResult)?.tongue_color?.name || '-' }}
                     </span>
@@ -325,7 +325,7 @@
                   <td>
                     <span
                       class="color-badge"
-                      :style="{ background: (store.result || store.realtimeResult)?.coating_color?.color || '#ccc' }"
+                      :style="{ background: (store.result || store.realtimeResult)?.coating_color?.color || 'var(--muted)' }"
                     >
                       {{ (store.result || store.realtimeResult)?.coating_color?.name || '-' }}
                     </span>
@@ -608,7 +608,7 @@ function getTypeColor(type) {
     '阳虚舌象': '#13c2c2',
     '异常舌象': '#f5222d'
   }
-  return colors[type] || '#999999'
+  return colors[type] || 'var(--muted)'
 }
 
 function exportResult() {
@@ -770,7 +770,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   margin-bottom: 16px;
   padding: 10px;
-  background: #FFF5EE;
+  background: var(--warn-soft);
   border-radius: var(--radius);
 }
 
@@ -778,12 +778,11 @@ onBeforeUnmount(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #ccc;
+  background: var(--muted);
 }
 
 .status-indicator.active {
-  background: #52c41a;
-  animation: pulse 1.5s infinite;
+  background: var(--success);
 }
 
 @keyframes pulse {
@@ -808,7 +807,7 @@ onBeforeUnmount(() => {
 }
 
 .camera-btn.start {
-  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  background: var(--success);
   color: white;
 }
 
@@ -818,7 +817,7 @@ onBeforeUnmount(() => {
 }
 
 .camera-btn.stop {
-  background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
+  background: var(--danger);
   color: white;
 }
 
@@ -830,7 +829,7 @@ onBeforeUnmount(() => {
 .camera-error {
   text-align: center;
   padding: 16px;
-  background: #fff5f5;
+  background: var(--danger-soft);
   border-radius: var(--radius);
   margin-top: 12px;
 }
@@ -860,7 +859,7 @@ onBeforeUnmount(() => {
 .camera-guide {
   margin-top: 16px;
   padding: 12px;
-  background: #FFF5EE;
+  background: var(--warn-soft);
   border-radius: var(--radius);
 }
 
@@ -888,22 +887,22 @@ onBeforeUnmount(() => {
   content: "";
   position: absolute;
   left: 0;
-  color: #52c41a;
+  color: var(--success);
   font-size: 10px;
 }
 
 .upload-area {
-  border: 2px dashed #d9d9d9;
+  border: 2px dashed var(--border);
   border-radius: var(--radius);
   padding: 30px 20px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
-  background: #FFFCFA;
+  background: var(--warn-soft);
 }
 .upload-area:hover, .upload-area.dragover {
   border-color: var(--accent-strong);
-  background: #FFF5EE;
+  background: var(--warn-soft);
 }
 .upload-placeholder .upload-icon {
   font-size: 48px;
@@ -945,7 +944,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 6px 20px rgba(255,155,113,0.4);
 }
 .analyze-btn.analyzing {
-  background: #FFF0E8;
+  background: var(--warn-soft);
   color: var(--muted);
   cursor: not-allowed;
 }
@@ -954,7 +953,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2px solid #FFE4D6;
+  border: 2px solid var(--border);
   border-top-color: var(--accent-strong);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -973,7 +972,7 @@ onBeforeUnmount(() => {
   font-size: 13px;
   margin-top: 8px;
 }
-.clear-btn:hover { color: #ff4d4f; }
+.clear-btn:hover { color: var(--danger); }
 
 .setting-item {
   display: flex;
@@ -998,7 +997,7 @@ onBeforeUnmount(() => {
 }
 
 .tongue-coating {
-  background: linear-gradient(135deg, #fef9f3 0%, #fff5eb 100%);
+  background: var(--warn-soft);
 }
 
 .coating-grid {
@@ -1029,7 +1028,7 @@ onBeforeUnmount(() => {
 .color-btn {
   width: 36px;
   height: 36px;
-  border: 2px solid #FFE4D6;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
   transition: all 0.2s;
@@ -1046,13 +1045,12 @@ onBeforeUnmount(() => {
 
 .color-btn.active {
   border-color: var(--accent-strong);
-  box-shadow: 0 0 0 2px rgba(255, 155, 113, 0.3);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .check-mark {
   color: white;
   font-weight: bold;
-  text-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
 
 .coating-label {
@@ -1068,7 +1066,7 @@ onBeforeUnmount(() => {
 
 .thickness-btn {
   padding: 6px 12px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: white;
   font-size: 12px;
@@ -1113,7 +1111,7 @@ onBeforeUnmount(() => {
 
 .clear-btn-small {
   padding: 8px 16px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: white;
   color: var(--muted);
@@ -1122,8 +1120,8 @@ onBeforeUnmount(() => {
 }
 
 .clear-btn-small:hover {
-  border-color: #ff4d4f;
-  color: #ff4d4f;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .tips ul {
@@ -1142,7 +1140,7 @@ onBeforeUnmount(() => {
   content: "";
   position: absolute;
   left: 0;
-  color: #52c41a;
+  color: var(--success);
   font-weight: bold;
 }
 
@@ -1166,7 +1164,7 @@ onBeforeUnmount(() => {
 .empty-state, .camera-placeholder {
   text-align: center;
   padding: 100px 20px;
-  color: #ccc;
+  color: var(--muted);
 }
 .empty-state .empty-icon, .camera-placeholder-icon {
   font-size: 80px;
@@ -1277,7 +1275,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-top: 12px;
   padding: 10px;
-  background: #FFF5EE;
+  background: var(--warn-soft);
   border-radius: var(--radius);
   overflow-x: auto;
 }
@@ -1334,7 +1332,7 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 .history-item {
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 8px;
   cursor: pointer;
@@ -1379,7 +1377,7 @@ onBeforeUnmount(() => {
 .no-result {
   text-align: center;
   padding: 60px 20px;
-  color: #ccc;
+  color: var(--muted);
 }
 .no-result-icon {
   font-size: 60px;
@@ -1403,14 +1401,13 @@ onBeforeUnmount(() => {
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  background: #FFF0E8;
+  background: var(--warn-soft);
   color: var(--muted);
 }
 
 .source-badge.live {
-  background: #fff1f0;
-  color: #ff4d4f;
-  animation: pulseBadge 1.5s infinite;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 @keyframes pulseBadge {
@@ -1437,7 +1434,7 @@ onBeforeUnmount(() => {
 .result-table th:last-child { border-radius: 0 6px 0 0; }
 .result-table td {
   padding: 10px 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 .result-table tr:last-child td:first-child { border-radius: 0 0 0 6px; }
@@ -1452,7 +1449,7 @@ onBeforeUnmount(() => {
   vertical-align: middle;
 }
 .feature-dot.tongue { background: #FF69B4; }
-.feature-dot.coating { background: #FFFFFF; border: 1px solid #FFE4D6; }
+.feature-dot.coating { background: #FFFFFF; border: 1px solid var(--border); }
 .feature-dot.thickness { background: #90EE90; }
 .feature-dot.shape { background: #87CEEB; }
 .feature-dot.moisture { background: #DDA0DD; }
@@ -1469,12 +1466,12 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(0,0,0,0.1);
 }
 .desc {
-  color: #888;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .syndrome-card {
-  background: linear-gradient(135deg, #FFF5EE 0%, #FFE4D6 100%);
+  background: linear-gradient(135deg, var(--warn-soft) 0%, var(--border) 100%);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 20px;
@@ -1508,7 +1505,7 @@ onBeforeUnmount(() => {
   font-size: 14px;
 }
 .advice-card {
-  background: #FFFCFA;
+  background: var(--warn-soft);
   border-radius: var(--radius);
   padding: 14px;
   margin-bottom: 12px;
@@ -1525,8 +1522,8 @@ onBeforeUnmount(() => {
   line-height: 1.6;
   margin: 0;
 }
-.advice-card.diet { border-left-color: #52c41a; }
-.advice-card.lifestyle { border-left-color: #1890ff; }
+.advice-card.diet { border-left-color: var(--success); }
+.advice-card.lifestyle { border-left-color: var(--info); }
 
 .action-buttons {
   display: flex;
@@ -1536,7 +1533,7 @@ onBeforeUnmount(() => {
 .action-btn {
   flex: 1;
   padding: 10px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: white;
   cursor: pointer;
@@ -1547,8 +1544,8 @@ onBeforeUnmount(() => {
   border-color: var(--accent-strong);
   color: var(--accent-strong);
 }
-.action-btn.export:hover { border-color: #52c41a; color: #52c41a; }
-.action-btn.retry:hover { border-color: #1890ff; color: #1890ff; }
+.action-btn.export:hover { border-color: var(--success); color: var(--success); }
+.action-btn.retry:hover { border-color: var(--info); color: var(--info); }
 
 @media (max-width: 1200px) {
   .diagnosis-container {

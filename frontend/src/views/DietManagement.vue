@@ -358,7 +358,7 @@ export default {
 }
 .date-picker, .search-input {
   padding: 12px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
 }
@@ -389,7 +389,7 @@ export default {
 }
 .btn-delete {
   padding: 8px 16px;
-  background: #fee;
+  background: var(--warn-soft);
   color: var(--danger);
   border: none;
   border-radius: var(--radius);
@@ -470,7 +470,7 @@ export default {
 .progress-bar {
   flex: 1;
   height: 20px;
-  background: #FFF0E8;
+  background: var(--warn-soft);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -516,7 +516,7 @@ export default {
 .form-group input, .form-group select {
   width: 100%;
   padding: 12px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
 }
@@ -527,7 +527,7 @@ export default {
 }
 .btn-cancel {
   padding: 12px 24px;
-  background: #FFF0E8;
+  background: var(--warn-soft);
   border: none;
   border-radius: var(--radius);
   cursor: pointer;

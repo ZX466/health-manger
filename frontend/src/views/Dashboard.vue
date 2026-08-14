@@ -18,11 +18,11 @@
           </svg>
         </span>
         <span class="status-chip" v-if="latestRating">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          <AppIcon name="check" :size="14" :stroke="2" />
           {{ latestRating.rating || '今日状态良好' }}
         </span>
         <button class="btn btn-primary hero-record-btn" @click="openModal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <AppIcon name="plus" :size="16" :stroke="2" />
           快捷记录
         </button>
       </div>
@@ -99,7 +99,7 @@
         <label class="task" v-for="(task, i) in tasks" :key="i">
           <input type="checkbox" class="sr-only" v-model="task.done" />
           <span class="task-check" aria-hidden="true">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <AppIcon name="check" :size="13" :stroke="3" />
           </span>
           <span class="task-icon" aria-hidden="true"><AppIcon :name="task.icon" :size="18" /></span>
           <span class="task-body">
@@ -144,16 +144,16 @@
       <div v-else class="analysis-body">
         <ul class="analysis-list">
           <li v-for="(item, i) in analysisItems" :key="i" class="analysis-line">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            <AppIcon name="check" :size="18" :stroke="1.9" />
             <span>{{ item }}</span>
           </li>
         </ul>
         <a class="link-more" href="#" @click.prevent="navigate('/health-analysis')">
           查看完整分析
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <AppIcon name="arrow" :size="15" :stroke="2" />
         </a>
         <div class="device-note">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10 5.5h4M9.5 18.5h5"/></svg>
+          <AppIcon name="device" :size="18" :stroke="1.7" />
           <span>心率实时趋势需连接佩戴设备后启用。当前展示为示例数据。</span>
         </div>
       </div>
@@ -166,7 +166,7 @@
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.5c1 1.4 2.3 2 3.5 2s2.5-.6 3.5-2"/><path d="M9 10h.01M15 10h.01"/></svg>
           趣图乐一乐 · 今日份放松
         </span>
-        <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        <AppIcon class="chev" name="chevron" :size="18" :stroke="1.8" />
       </button>
       <div class="fun-panel" v-show="funOpen" id="funPanel">
         <div class="fun-inner">
@@ -185,7 +185,7 @@
             <p class="modal-sub">保存后将出现在今日记录中</p>
           </div>
           <button class="icon-btn" @click="closeModal" aria-label="关闭">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            <AppIcon name="close" :size="18" :stroke="1.8" />
           </button>
         </div>
         <form @submit.prevent="submitRecord" novalidate>
@@ -222,7 +222,7 @@
 
     <!-- ===== Toast ===== -->
     <div class="toast" :class="{ show: toastVisible }" role="status" aria-live="polite">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <AppIcon name="check" :size="16" :stroke="2.2" />
       <span>{{ toastMsg }}</span>
     </div>
 
@@ -245,20 +245,6 @@ import api from '../api'
 import MemeGallery from '../components/MemeGallery.vue'
 import AudioPlayer from '../components/AudioPlayer.vue'
 import AppIcon from '../components/AppIcon.vue'
-
-const SVG = {
-  record: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3.8A1.8 1.8 0 0 1 10.8 2h2.4A1.8 1.8 0 0 1 15 3.8v.7"/><path d="M8.5 10h7M8.5 14h7M8.5 18h4"/></svg>',
-  diet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.5C7 11 14 5 20 4c-1 8-8 15-15.5 15.5z"/><path d="M8.5 15.5c3-1 5.2-3 6.2-6"/></svg>',
-  sport: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3.6l2.9 6 4.5-12 2.9 6H21"/></svg>',
-  analysis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M6.8 12h3.1l1.7-3 1.9 5.8 1.6-2.8h2.1"/></svg>',
-  tongue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 12c0-3 2-5.5 4.5-5.5s4.5 2.5 4.5 5.5-2 5.5-4.5 5.5S7.5 15 7.5 12z"/><path d="M12 8.5v5"/></svg>',
-  warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 3 19.5h18L12 3.5z"/><path d="M12 10v3.5M12 16.8v.4"/></svg>',
-  water: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c3.4 4 5.7 6.6 5.7 9.3a5.7 5.7 0 0 1-11.4 0c0-2.7 2.3-5.3 5.7-9.3z"/></svg>',
-  activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3.6l2.9 6 4.5-12 2.9 6H21"/></svg>',
-  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 13.5A8.5 8.5 0 1 1 10.5 3a7 7 0 0 0 10 10.5z"/></svg>',
-  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 4l8.5 6.5"/><path d="M5.5 9.5V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/></svg>',
-  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'
-}
 
 export default {
   name: 'Dashboard',

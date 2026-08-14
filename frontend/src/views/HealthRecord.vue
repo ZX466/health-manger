@@ -744,19 +744,19 @@ export default {
   border-radius: 50%;
 }
 .rating-banner.rating-top {
-  background: linear-gradient(135deg, #4CAF50 0%, #81C784 100%);
+  background: var(--success);
 }
 .rating-banner.rating-great {
-  background: linear-gradient(135deg, #42A5F5 0%, #64B5F6 100%);
+  background: var(--info);
 }
 .rating-banner.rating-ok {
   background: linear-gradient(135deg, var(--accent) 0%, var(--warning) 100%);
 }
 .rating-banner.rating-meh {
-  background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
+  background: var(--warn);
 }
 .rating-banner.rating-low {
-  background: linear-gradient(135deg, #F44336 0%, #EF5350 100%);
+  background: var(--danger);
 }
 .rating-left {
   display: flex;
@@ -765,7 +765,6 @@ export default {
 }
 .rating-emoji {
   font-size: 48px;
-  animation: rating-bounce 2s ease-in-out infinite;
 }
 @keyframes rating-bounce {
   0%, 100% { transform: translateY(0); }
@@ -860,7 +859,6 @@ export default {
 .result-emoji {
   font-size: 64px;
   margin-bottom: 8px;
-  animation: rating-bounce 1.5s ease-in-out infinite;
 }
 .result-level {
   font-size: 36px;
@@ -868,11 +866,11 @@ export default {
   letter-spacing: 3px;
   margin-bottom: 8px;
 }
-.result-level.rating-top { color: #4CAF50; }
-.result-level.rating-great { color: #42A5F5; }
+.result-level.rating-top { color: var(--success); }
+.result-level.rating-great { color: var(--info); }
 .result-level.rating-ok { color: var(--accent); }
-.result-level.rating-meh { color: #FF9800; }
-.result-level.rating-low { color: #F44336; }
+.result-level.rating-meh { color: var(--warn); }
+.result-level.rating-low { color: var(--danger); }
 .result-score {
   font-size: 48px;
   font-weight: 800;
@@ -924,8 +922,8 @@ export default {
   margin: 0;
 }
 .survey-group {
-  background: #FFFCFA;
-  border: 1px solid #FFE8D6;
+  background: var(--warn-soft);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 4px;
@@ -935,7 +933,7 @@ export default {
   color: var(--fg);
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px dashed #FFE4D6;
+  border-bottom: 1px dashed var(--border);
 }
 .input-with-hint {
   display: flex;
@@ -948,8 +946,8 @@ export default {
 }
 .input-hint {
   padding: 12px 12px;
-  background: #FFF5EE;
-  border: 2px solid #FFE4D6;
+  background: var(--warn-soft);
+  border: 2px solid var(--border);
   border-left: none;
   border-radius: 0 var(--radius) var(--radius) 0;
   color: var(--muted);
@@ -1077,7 +1075,7 @@ h2 {
 .form-group select,
 .form-group textarea {
   padding: 12px 14px;
-  border: 2px solid #FFE4D6;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
   transition: border-color 0.2s;
@@ -1098,15 +1096,15 @@ h2 {
 }
 
 .message.success {
-  background: #f0f9f0;
+  background: var(--success-soft);
   color: var(--success);
-  border: 1px solid #c8e6c9;
+  border: 1px solid var(--border);
 }
 
 .message.error {
-  background: #fff5f5;
+  background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid #ffcdd2;
+  border: 1px solid var(--border);
 }
 
 .submit-btn {
@@ -1159,7 +1157,7 @@ h2 {
 
 .action-btn {
   padding: 8px 16px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: white;
   cursor: pointer;
@@ -1173,7 +1171,7 @@ h2 {
 }
 
 .action-btn.export:hover {
-  background: #f0f9f0;
+  background: var(--success-soft);
 }
 
 .action-btn.delete {
@@ -1182,7 +1180,7 @@ h2 {
 }
 
 .action-btn.delete:hover {
-  background: #fff5f5;
+  background: var(--danger-soft);
 }
 
 .action-btn.clear {
@@ -1190,7 +1188,7 @@ h2 {
 }
 
 .action-btn.clear:hover {
-  background: #f5f5f5;
+  background: var(--border);
 }
 
 .no-data {
@@ -1227,7 +1225,7 @@ h2 {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  border: 2px solid #FFE4D6;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
   cursor: pointer;
@@ -1242,11 +1240,11 @@ h2 {
 
 .record-card.selected {
   border-color: var(--accent);
-  background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+  background: linear-gradient(135deg, var(--bg) 0%, var(--accent-soft) 100%);
 }
 
 .record-card.single-selected {
-  box-shadow: 0 0 0 3px rgba(255, 155, 113, 0.3);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .record-checkbox {
@@ -1270,7 +1268,7 @@ h2 {
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .record-meta {
@@ -1293,22 +1291,22 @@ h2 {
 }
 
 .record-bmi.bmi-low {
-  background: #e3f2fd;
+  background: var(--info-soft);
   color: var(--info);
 }
 
 .record-bmi.bmi-normal {
-  background: #e8f5e9;
+  background: var(--success-soft);
   color: var(--success);
 }
 
 .record-bmi.bmi-high {
-  background: #fff8e1;
+  background: var(--warn-soft);
   color: var(--warning);
 }
 
 .record-bmi.bmi-obese {
-  background: #ffebee;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -1320,28 +1318,28 @@ h2 {
 }
 
 .status-badge.夯 {
-  background: #f6ffed;
-  color: #52c41a;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status-badge.顶级 {
-  background: #e6f7ff;
-  color: #1890ff;
+  background: var(--info-soft);
+  color: var(--info);
 }
 
 .status-badge.人上人 {
-  background: #fffbe6;
-  color: #faad14;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .status-badge.NPC {
-  background: #fff7e6;
-  color: #fa8c16;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .status-badge.拉完了 {
-  background: #fff1f0;
-  color: #f5222d;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .record-grid {
@@ -1375,7 +1373,7 @@ h2 {
 .record-diet {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed #eee;
+  border-top: 1px dashed var(--border);
   font-size: 12px;
 }
 
@@ -1397,7 +1395,7 @@ h2 {
 .icon-btn {
   width: 32px;
   height: 32px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: white;
   cursor: pointer;
@@ -1410,12 +1408,12 @@ h2 {
 
 .icon-btn:hover {
   border-color: var(--accent);
-  background: #FFF5EE;
+  background: var(--warn-soft);
 }
 
 .icon-btn.delete-single:hover {
   border-color: var(--danger);
-  background: #fff5f5;
+  background: var(--danger-soft);
 }
 
 /* Modal */
@@ -1510,13 +1508,13 @@ h2 {
 }
 
 .modal-btn.cancel {
-  background: #f5f5f5;
-  border: 1px solid #FFE4D6;
+  background: var(--border);
+  border: 1px solid var(--border);
   color: var(--muted);
 }
 
 .modal-btn.cancel:hover {
-  background: #eee;
+  background: var(--border);
 }
 
 .modal-btn.confirm {
@@ -1526,7 +1524,7 @@ h2 {
 }
 
 .modal-btn.confirm:hover {
-  background: #d32f2f;
+  background: var(--danger);
 }
 
 .detail-modal {
@@ -1538,7 +1536,7 @@ h2 {
 .detail-modal .modal-header {
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .detail-modal .modal-header h3 {
@@ -1571,7 +1569,7 @@ h2 {
   display: flex;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .detail-label {
@@ -1597,7 +1595,7 @@ h2 {
   align-items: center;
   gap: 12px;
   padding: 14px;
-  background: #FFF5EE;
+  background: var(--warn-soft);
   border-radius: 10px;
 }
 
@@ -1633,7 +1631,7 @@ h2 {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
-  background: #FFF5EE;
+  background: var(--warn-soft);
   padding: 12px;
   border-radius: var(--radius);
 }
@@ -1655,7 +1653,7 @@ h2 {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .logs-header h4 {
@@ -1688,7 +1686,7 @@ h2 {
   gap: 8px;
   padding: 6px 0;
   font-size: 12px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--border);
 }
 
 .log-item:last-child {
@@ -1708,22 +1706,22 @@ h2 {
 }
 
 .log-type.info {
-  background: #e3f2fd;
+  background: var(--info-soft);
   color: var(--info);
 }
 
 .log-type.success {
-  background: #e8f5e9;
+  background: var(--success-soft);
   color: var(--success);
 }
 
 .log-type.warn {
-  background: #fff3e0;
+  background: var(--warn-soft);
   color: var(--warning);
 }
 
 .log-type.error {
-  background: #ffebee;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 

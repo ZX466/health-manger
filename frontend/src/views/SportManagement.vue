@@ -362,7 +362,7 @@ export default {
 }
 .date-picker, .search-input {
   padding: 12px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
 }
@@ -399,7 +399,7 @@ export default {
 }
 .btn-delete {
   padding: 8px 16px;
-  background: #fee;
+  background: var(--warn-soft);
   color: var(--danger);
   border: none;
   border-radius: var(--radius);
@@ -474,7 +474,7 @@ export default {
 .sport-stat {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 .sport-stat:last-child {
   border-bottom: none;
@@ -495,7 +495,7 @@ export default {
 }
 .progress-bar {
   height: 20px;
-  background: #FFF0E8;
+  background: var(--warn-soft);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -541,7 +541,7 @@ export default {
 .form-group input, .form-group select, .form-group textarea {
   width: 100%;
   padding: 12px;
-  border: 1px solid #FFE4D6;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
 }
@@ -552,7 +552,7 @@ export default {
 }
 .btn-cancel {
   padding: 12px 24px;
-  background: #FFF0E8;
+  background: var(--warn-soft);
   border: none;
   border-radius: var(--radius);
   cursor: pointer;

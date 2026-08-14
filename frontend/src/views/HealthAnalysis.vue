@@ -180,27 +180,27 @@ export default {
   color: white;
 }
 .status-偏瘦 {
-  background: #fff3e0;
+  background: var(--warn-soft);
   color: var(--warning);
 }
 .status-偏低 {
-  background: #e3f2fd;
+  background: var(--info-soft);
   color: var(--info);
 }
 .status-偏胖 {
-  background: #fff8e1;
+  background: var(--warn-soft);
   color: var(--warning);
 }
 .status-偏高 {
-  background: #fff8e1;
+  background: var(--warn-soft);
   color: var(--warning);
 }
 .status-肥胖 {
-  background: #ffebee;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 .status-高血压 {
-  background: #ffebee;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 .card-advice {
@@ -283,7 +283,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border: 2px solid #FFE4D6;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   transition: border-color 0.3s;
 }
@@ -303,7 +303,7 @@ export default {
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  background: #FFF0E8;
+  background: var(--warn-soft);
   color: var(--muted);
 }
 .status-tag.overall {
