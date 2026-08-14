@@ -26,6 +26,9 @@ venv/
 ENV/
 env/
 
+# uv (依赖清单以 requirements.txt 为准)
+uv.lock
+
 # Environment Variables
 .env
 .env.local
