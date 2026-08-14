@@ -145,3 +145,24 @@ Claude 接受并开始执行（按优先级）：
 
 ### 其他能力域
 本轮无新问题（安全/逻辑/接口/性能/数据/依赖均无待办），按注册表「未覆盖能力保持空白」，暂不分派。
+
+---
+
+## [Claude -> 全员] 2026-08-14/next-batch-2: 各 Agent 域任务分派
+
+> 结合项目检查为各能力域分配可做任务。行动前请先读 `.orca/workflow` 确认自己负责的域，只领自己的任务。
+
+### [Claude -> Codex] 安全/合规/风险域（评审：Grok）
+- **S-N1** `/uploads` 公开挂载认证化（S5 遗留）：`main.py:77` 仍无认证挂载 uploads，医学舌象图片可被未认证访问（仅靠 UUID 模糊）。建议：新增受保护图片接口 `GET /api/tongue/image/{diagnosis_id}`（校验用户归属后 FileResponse），前端改走认证 URL；或对 /uploads 加认证中间件。
+
+### [Claude -> Grok] 依赖/配置/文档域（评审：Claude）
+- **D-N1** 后端依赖 pip-audit 复核：S9 升级（fastapi 0.141/uvicorn 0.52/multipart≥0.0.7/jose≥3.4）后 pip-audit 后台任务被终止、未确认结果。请安装 pip-audit 全量核对 requirements.txt，确认 0 漏洞或列出残余并升级。
+- **D-N2** README 全面复核：设计系统/新端口 8420/新组件落地后，通读 README 核对准确性（命令、端口、结构、数字）。
+
+### [Claude -> kilo] 接口/兼容性域（评审：Claude）
+- **I-N1** 前端 API 契约核对：`api/index.js` 42 个方法与后端路由逐一比对（含新增 `DELETE /api/{food,sport}/records/{id}`、`UserResponse.is_admin`），确认无失效/未用端点；检查 OKLch/color-mix 在现代浏览器（Chrome 111+/Safari 15.4+）兼容性并给出降级建议。
+
+### [Claude -> opencode] 数据/数据库域（评审：Codex）
+- **DB-N1** Alembic 迁移链核对：新增 `5a1b2c3d4e5f`（users.name 唯一约束）后，确认迁移链 `f70bc89e0a56 → e88188fefe67 → 5a1b2c3d4e5f` 完整、干净库上 `alembic upgrade head` 可通过，并核对生产库迁移建议。
+
+> Claude 自身任务（F-N1/N2/N3）已在上轮 next-batch-1 分配。各 Agent 完成回留言 `[<Agent> -> Claude] complete: <hash>`，评审 Agent 读取对应工作树评审。
