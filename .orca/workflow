@@ -1,17 +1,24 @@
 # Orca 多 Agent 协作工作流
 
-核心要点: 每个能力域都会有一个agent负责，一个agent有一个工作树，每个能力域只指定一个推荐 Agent，不重复分配。
-评审agent可以读取访问需要评审的工作树
-注意!!!(各agent之间尽量不要直接相互交流，有必要的话可以通过项目文件夹里的.orca/talking.txt(每个工作树都有)间接留言)
-让每个agent行动前都读取这个文档.orca/workflow,找到他自己负责的内容，不要越界
+**核心要点（所有 Agent 行动前必读）：**
+- 每个能力域有且只有一个推荐 Agent 负责，一个 Agent 对应一个工作树，不重复分配。
+- 评审 Agent 只读取被评审工作树，不修改代码，不越界。
+- ⚠️ 各 Agent 之间严禁直接交流；有必要时，通过本工作树 `.orca/talking.txt` 间接留言。
+- ⚠️ 任何 Agent 行动前必须先读取本工作树的 `.orca/workflow`，找到自己负责的能力域，只做自己域内的事，不越界。
 
 ## 0. 留言板机制（talking.txt）
 
-- **每个工作树都有 `.orca/talking.txt`**（含主项目根目录，各 Agent 认领/汇报时读取自己工作树里的那一份）。
-- 留言格式：`[发信人 -> 收信人] 时间/任务: 内容`。只追加，不删除他人留言。
-- **Claude（协调者）**：在 `.orca/talking.txt` 分派任务（`[Claude -> <Agent>] 任务号/域: ...`）。
-- **各 Agent**：从 `.orca/talking.txt` 接受任务（回 `[<Agent> -> Claude] accept: ...`），完成后回 `[<Agent> -> Claude] complete: ...` 汇报，评审 Agent 据此读取对应工作树评审。
-- **任务流转**：分派 → 接受 → 执行（TDD）→ 完成汇报 → 评审 → 合并 main。
+- **每个工作树都有 `.orca/talking.txt`**（含主项目根目录；各 Agent 认领/汇报时读取**自己工作树**里的那一份）。
+- 留言格式：`[发信人 -> 收信人] 时间/任务: 内容`。**只追加，永远不删除他人留言**。
+- **Claude（协调者）分派任务**：Claude 在各工作树 `.orca/talking.txt` 写入 `[Claude -> <Agent>] 任务号: 任务内容`；各 Agent 读取本工作树 talking.txt，看到发给自己的 `[Claude -> <Agent>]` 消息即为任务入口，须回 `accept` 认领。
+- **各 Agent 任务流转**：
+  1. `[Claude -> Agent] assign:` — 任务分派
+  2. `[Agent -> Claude] accept:` — 认领（说明工作树、开始时间）
+  3. `[Agent -> Claude] progress:` / `blocked:` — 执行中/阻塞（可选）
+  4. `[Agent -> Claude] complete: <hash>` — 完成（必须带提交哈希、测试结果）
+  5. `[ReviewAgent -> Claude] review: pass | changes_requested` — 评审结果
+- **评审流程**：推荐 Agent 完成后回 `complete`；评审 Agent 读取被评审工作树后，回 `review: pass` 或 `review: changes_requested <说明>`。
+- **冲突处理**：同一任务只允许一个 Agent 认领；冲突或重复实现标记 `blocked`，等待 Claude 裁决。
 
 ## 1. Agent 注册表
 
@@ -21,9 +28,9 @@
 | 能力域 | 推荐 Agent | 评审 Agent |
 |---|---|---|
 | 架构 / 代码质量 / 逻辑 / 测试 | Claude | Codex |
-| 依赖 / 配置 / 文档 | Grok | Claude |
-| 安全 / 合规 / 风险 | Codex | Grok |
-| 性能 | Pi | grok |
+| 依赖 / 配置 / 文档 | cline | Claude |
+| 安全 / 合规 / 风险 | Codex | cline |
+| 性能 | Pi | cline |
 | 数据 / 数据库 | opencode | Codex |
 | 接口 / 兼容性 | kilo | Claude |
 | 前端 / 体验 / 发布 / 运维 | Claude | codex |

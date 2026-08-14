@@ -5,9 +5,9 @@
 | 能力域 | 推荐 Agent | 评审 Agent |
 |---|---|---|
 | 架构 / 代码质量 / 逻辑 / 测试 | Claude | Codex |
-| 依赖 / 配置 / 文档 | Grok | Claude |
-| 安全 / 合规 / 风险 | Codex | Grok |
-| 性能 | Pi | grok |
+| 依赖 / 配置 / 文档 | cline | Claude |
+| 安全 / 合规 / 风险 | Codex | cline |
+| 性能 | Pi | cline |
 | 数据 / 数据库 | opencode | Codex |
 | 接口 / 兼容性 | kilo | Claude |
 | 前端 / 体验 / 发布 / 运维 | Claude | codex |

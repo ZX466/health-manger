@@ -61,7 +61,7 @@ img, svg { display: block; }
   text-decoration: none;
   transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
 }
-.nav-item:hover { background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
+.nav-item:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
 .nav-item.active { color: var(--fg); font-weight: 600; background: var(--accent-soft); }
 .nav-item.active svg { color: var(--accent); } /* 每屏仅 1 处实色：活跃指示 */
 .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
@@ -91,14 +91,14 @@ img, svg { display: block; }
   color: var(--muted); transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
-.sound-toggle:hover { background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
+.sound-toggle:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
 .sound-toggle.muted { opacity: 0.45; }
 .sound-toggle svg { width: 14px; height: 14px; }
 
 /* ── 顶栏：唯一允许的 frosted 层（导航 chrome） ───────── */
 .app-topbar, .topbar {
   position: sticky; top: 0; z-index: 40;
-  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  background: rgba(245, 245, 247, 0.82); background: color-mix(in oklch, var(--bg) 82%, transparent);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: var(--border-hairline);
   padding: 0 32px; height: 60px;
@@ -114,7 +114,7 @@ img, svg { display: block; }
   color: var(--muted); transition: background 0.15s, color 0.15s;
   position: relative;
 }
-.topbar-btn:hover { background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
+.topbar-btn:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
 .topbar-btn svg { width: 18px; height: 18px; }
 .notif-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; border: 2px solid var(--surface); }
 
@@ -125,7 +125,7 @@ img, svg { display: block; }
 /* ── 移动端侧栏背板（旧体系） ────────────────────────── */
 .sidebar-backdrop {
   position: fixed; inset: 0; z-index: 29;
-  background: oklch(16% 0.012 250 / 0.42);
+  background: rgba(26, 26, 46, 0.42); background: oklch(16% 0.012 250 / 0.42);
   opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
 }
 .sidebar-backdrop.visible { opacity: 1; pointer-events: auto; }

@@ -181,5 +181,38 @@ export default {
   },
   getTongueStats() {
     return api.get('/tongue/stats/summary')
+  },
+
+  getHealthEvaluation() {
+    return api.post('/ai/health-evaluation')
+  },
+  asyncAIAnalysis(data) {
+    return api.post('/ai/async-analysis', data)
+  },
+  getTaskStatus(taskId) {
+    return api.get(`/ai/task/${taskId}`)
+  },
+
+  getWarningStats() {
+    return api.get('/warning/stats')
+  },
+
+  createChatSession(data) {
+    return api.post('/chat/session', data)
+  },
+  getChatSessions() {
+    return api.get('/chat/sessions')
+  },
+  getChatMessages(sessionId) {
+    return api.get(`/chat/session/${sessionId}/messages`)
+  },
+  sendChatMessage(sessionId, data) {
+    return api.post(`/chat/session/${sessionId}/message`, data)
+  },
+  deleteChatSession(sessionId) {
+    return api.delete(`/chat/session/${sessionId}`)
+  },
+  createTongueContextChat(sessionId) {
+    return api.post(`/chat/session/${sessionId}/tongue-context`)
   }
 }

@@ -74,7 +74,7 @@ const ariaLabel = computed(() =>
 .trend-chart__svg { width: 100%; height: auto; display: block; overflow: visible; }
 .trend-chart__grid line { stroke: var(--border); stroke-dasharray: 3 4; }
 .trend-chart__axis { stroke: var(--border); }
-.trend-chart__area { fill: color-mix(in oklch, var(--fg) 5%, transparent); }
+.trend-chart__area { fill: rgba(26, 26, 46, 0.05); fill: color-mix(in oklch, var(--fg) 5%, transparent); }
 .trend-chart__line { stroke: var(--fg); stroke-width: 1.6; }
 .trend-chart__dot { fill: var(--surface); stroke: var(--fg); stroke-width: 1.6; }
 .trend-chart__value { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
