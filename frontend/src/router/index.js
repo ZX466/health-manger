@@ -1,12 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
-import Dashboard from '../views/Dashboard.vue'
-import HealthRecord from '../views/HealthRecord.vue'
-import HealthAnalysis from '../views/HealthAnalysis.vue'
-import DietManagement from '../views/DietManagement.vue'
-import SportManagement from '../views/SportManagement.vue'
-import TongueDiagnosis from '../views/TongueDiagnosis.vue'
+
+// P-N1: 路由级懒加载——按需加载视图，缩小首屏 JS 体积
+const Login = () => import('../views/Login.vue')
+const Register = () => import('../views/Register.vue')
+const Dashboard = () => import('../views/Dashboard.vue')
+const HealthRecord = () => import('../views/HealthRecord.vue')
+const HealthAnalysis = () => import('../views/HealthAnalysis.vue')
+const DietManagement = () => import('../views/DietManagement.vue')
+const SportManagement = () => import('../views/SportManagement.vue')
+const TongueDiagnosis = () => import('../views/TongueDiagnosis.vue')
 
 const routes = [
   {

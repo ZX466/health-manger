@@ -9,6 +9,8 @@ import threading
 import time
 from typing import Any, Optional
 
+import settings
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_TTL_SECONDS = 3600  # 1 hour
@@ -61,5 +63,13 @@ def make_cache_key(*parts: str) -> str:
     return hashlib.md5(combined.encode()).hexdigest()
 
 
-llm_response_cache = TTLCache(ttl=1800, max_size=100)
-tongue_result_cache = TTLCache(ttl=3600, max_size=50)
+# P-N2: 缓存参数从 settings 读取（支持环境变量 LLM_CACHE_TTL/LLM_CACHE_MAX_SIZE 等覆盖），
+# 避免配置定义与实现硬编码值漂移
+llm_response_cache = TTLCache(
+    ttl=settings.LLM_CACHE_TTL,
+    max_size=settings.LLM_CACHE_MAX_SIZE,
+)
+tongue_result_cache = TTLCache(
+    ttl=settings.TONGUE_CACHE_TTL,
+    max_size=settings.TONGUE_CACHE_MAX_SIZE,
+)
