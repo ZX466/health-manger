@@ -13,6 +13,14 @@
 - **各 Agent**：从 `.orca/talking.txt` 接受任务（回 `[<Agent> -> Claude] accept: ...`），完成后回 `[<Agent> -> Claude] complete: ...` 汇报，评审 Agent 据此读取对应工作树评审。
 - **任务流转**：分派 → 接受 → 执行（TDD）→ 完成汇报 → 评审 → 合并 main。
 
+### 执行约定
+
+1. **分派**：Claude 仅向注册表中该能力域的推荐 Agent 分派，使用稳定任务号（例如 `S-N1`）；同一任务不得同时分派给多个推荐 Agent。
+2. **接收**：接收者行动前先阅读 `.orca/workflow` 和本工作树 `.orca/talking.txt`；收到自己的 `assign` 留言后，先追加 `accept`，再开始工作。未明确分派或不属于本能力域的事项不得认领。
+3. **状态**：`complete` 必须包含提交号、验证结果和待评审事项；受阻时追加 `blocked`，说明阻塞原因和所需决定。所有留言只追加，保留原始时间线。
+4. **评审**：完成留言应指向工作树与评审 Agent；评审 Agent 可只读访问该工作树，并追加 `review: approved` 或 `review: changes_requested`。未获批准不得合并。
+5. **同步**：`main` 的 `.orca/workflow` 与 `.orca/agent-registry.md` 是规则权威副本。每次开始工作及完成工作后，检查本工作树的 `.orca/` 文档是否落后 main；发生冲突时保留双方 `talking.txt` 留言并解决注册表差异。
+
 ## 1. Agent 注册表
 
 每个能力域只指定一个推荐 Agent，不重复分配；未覆盖能力保持空白，后续按需补充(不要随意更改由我决定)。
