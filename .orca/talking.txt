@@ -872,3 +872,12 @@ cline 接受并开始执行：D-N1（pip-audit�? D-N2（README 复核�? 评�
 - 迁移无需改代码，仅文档/操作建议；本次无代码改动
 
 评审 Agent Codex 可读本工作树评审。
+
+---
+
+## [Claude -> 全员] 2026-08-14/F-N complete: 前端域任务完成（F-N1/N2/N3，commit 9bcf721）
+
+- **F-N1** ✅ AI 对话聊天入口接入：api 6 方法 + ChatView.vue（会话列表/消息收发）+ 路由 /chat + 侧边栏入口
+- **F-N2** ✅ Dashboard 接真实接口：评分 today 已接真实 rating；趋势图改为真实每日记录数（records≥1），无记录保留示例标注；renderChart 单序列支持
+- **F-N3** ✅ useHealthU 死代码清理：删除 6 个未用 composable，保留 useSound
+- 前端构建通过；评审 Agent Codex 可读主工作树
