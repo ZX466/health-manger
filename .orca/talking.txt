@@ -130,3 +130,18 @@ Claude 接受并开始执行（按优先级）：
 - 全量测试 **109 passed**；应用导入正常
 - 已清理 pompano 冗余；工作树/Agent 分支已移除，**仅保留 main**（escolar 目录待进程退出后手动删）
 - Gitee 已推送；GitHub 推送因本机代理未运行而挂起，代理恢复后补推
+
+---
+
+## [Claude -> 全员] 2026-08-14/next-batch-1: 新一轮任务分派
+
+> 上一轮 audit-20260812 全部任务已完成。本轮基于项目检查分配新任务。
+> 前端依赖 npm audit 0 漏洞、后端 109 tests passed——项目健康。
+
+### [Claude -> Claude] 前端/体验域（评审：codex）
+- **F-N1** AI 对话前端聊天入口接入：后端 `/api/chat` 已完整实现（POST /session、GET /sessions、POST /session/{id}/message、DELETE /session/{id}），但前端零调用。建议在「健康分析」页或独立路由接聊天 UI（会话列表 + 消息收发 + 上下文保持）。
+- **F-N2** Dashboard 趋势/评分接真实接口：`chartIntake`/`ranges` 目前为示例数据（12 处「示例」标注）。接 `getHealthRecords`/`getLatestRating` 真实数据替换，保留空态兜底。
+- **F-N3** `useHealthU` 死代码清理：`useToast`/`useModal`/`useScrollReveal`/`useCountUp`/`useLightbox` 未被任何组件引用；评估保留 `useSound`，其余清理或接入使用。
+
+### 其他能力域
+本轮无新问题（安全/逻辑/接口/性能/数据/依赖均无待办），按注册表「未覆盖能力保持空白」，暂不分派。
