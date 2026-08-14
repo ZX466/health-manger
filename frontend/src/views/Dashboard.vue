@@ -73,16 +73,16 @@
 
         <div class="card" data-od-id="trend-card">
           <div class="card-head">
-            <h2 class="card-title">近 7 天热量趋势</h2>
-            <span class="card-sub">摄入 vs 运动消耗 · 示例数据</span>
+            <h2 class="card-title">{{ chartReal ? '近 7 天健康记录趋势' : '近 7 天热量趋势' }}</h2>
+            <span class="card-sub">{{ chartReal ? '每日记录次数 · 真实数据' : '摄入 vs 运动消耗 · 示例数据' }}</span>
           </div>
           <div class="chart-box" ref="chartBox">
             <div class="chart-legend" aria-hidden="true">
-              <span class="legend-item"><span class="legend-dot" style="background:var(--warn);"></span>热量摄入 kcal</span>
-              <span class="legend-item"><span class="legend-dot" style="background:var(--success);"></span>运动消耗 kcal</span>
-              <span class="legend-item"><span class="legend-dot line" style="background:var(--muted);border-radius:2px;"></span>目标 2000</span>
+              <span class="legend-item"><span class="legend-dot" style="background:var(--warn);"></span>{{ chartReal ? '每日记录数' : '热量摄入 kcal' }}</span>
+              <span v-if="!chartReal" class="legend-item"><span class="legend-dot" style="background:var(--success);"></span>运动消耗 kcal</span>
+              <span v-if="!chartReal" class="legend-item"><span class="legend-dot line" style="background:var(--muted);border-radius:2px;"></span>目标 2000</span>
             </div>
-            <svg class="chart-svg" ref="trendChart" viewBox="0 0 600 260" role="img" aria-label="近7天热量趋势图，数据为示例"></svg>
+            <svg class="chart-svg" ref="trendChart" viewBox="0 0 600 260" role="img" :aria-label="chartReal ? '近7天健康记录趋势图，真实数据' : '近7天热量趋势图，数据为示例'"></svg>
             <div class="chart-tip" ref="chartTip"></div>
           </div>
         </div>
@@ -281,6 +281,7 @@ export default {
       chartBurn:   [420, 380, 520, 310, 460, 610, 350],
       chartGoal: 2000,
       chartMax: 2600,
+      chartReal: false,
 
       // tasks
       tasks: [
@@ -420,6 +421,23 @@ export default {
         this.stats.totalRecords = recRes.data.length
         if (recRes.data.length > 0) this.latestRecord = recRes.data[0]
 
+        // F-N2: 真实健康记录接入趋势图（每日记录次数）；无记录时保持示例并标注
+        const records = recRes.data || []
+        if (records.length >= 1) {
+          const byDay = {}
+          records.slice(0, 14).forEach(r => {
+            const d = r.record_date ? new Date(r.record_date).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '今日'
+            byDay[d] = (byDay[d] || 0) + 1
+          })
+          const entries = Object.entries(byDay).slice(-7)
+          this.chartDays = entries.map(([k]) => k)
+          this.chartIntake = entries.map(([, v]) => v)
+          this.chartBurn = []
+          this.chartGoal = 0
+          this.chartMax = Math.max(...this.chartIntake, 1) * 1.3
+          this.chartReal = true
+        }
+
         const analysisRes = await api.getLatestAnalysis()
         this.latestAnalysis = analysisRes.data
       } catch (e) { /* silent */ }
@@ -510,16 +528,22 @@ export default {
         t.textContent = d
         svg.appendChild(t)
       })
-      // goal line
-      svg.appendChild(mk('line', { x1:X0, y1:py(this.chartGoal), x2:X1, y2:py(this.chartGoal), stroke:'var(--muted)', 'stroke-width':1.4, 'stroke-dasharray':'4 6', opacity:0.75 }))
+      // goal line（示例模式才显示）
+      if (!this.chartReal) {
+        svg.appendChild(mk('line', { x1:X0, y1:py(this.chartGoal), x2:X1, y2:py(this.chartGoal), stroke:'var(--muted)', 'stroke-width':1.4, 'stroke-dasharray':'4 6', opacity:0.75 }))
+      }
       // areas + lines
       svg.appendChild(mk('path', { d:areaPath(this.chartIntake), fill:'var(--warn)', opacity:0.12, 'pointer-events':'none' }))
-      svg.appendChild(mk('path', { d:areaPath(this.chartBurn), fill:'var(--success)', opacity:0.12, 'pointer-events':'none' }))
       svg.appendChild(mk('path', { d:linePath(this.chartIntake), fill:'none', stroke:'var(--warn)', 'stroke-width':2.2, 'stroke-linecap':'round', 'pointer-events':'none' }))
-      svg.appendChild(mk('path', { d:linePath(this.chartBurn), fill:'none', stroke:'var(--success)', 'stroke-width':2.2, 'stroke-linecap':'round', 'pointer-events':'none' }))
+      if (this.chartBurn.length) {
+        svg.appendChild(mk('path', { d:areaPath(this.chartBurn), fill:'var(--success)', opacity:0.12, 'pointer-events':'none' }))
+        svg.appendChild(mk('path', { d:linePath(this.chartBurn), fill:'none', stroke:'var(--success)', 'stroke-width':2.2, 'stroke-linecap':'round', 'pointer-events':'none' }))
+      }
       // dots
       this.chartIntake.forEach((v,i) => svg.appendChild(mk('circle', { cx:px(i), cy:py(v), r:3.4, fill:'var(--surface)', stroke:'var(--warn)', 'stroke-width':2, 'pointer-events':'none' })))
-      this.chartBurn.forEach((v,i) => svg.appendChild(mk('circle', { cx:px(i), cy:py(v), r:3.4, fill:'var(--surface)', stroke:'var(--success)', 'stroke-width':2, 'pointer-events':'none' })))
+      if (this.chartBurn.length) {
+        this.chartBurn.forEach((v,i) => svg.appendChild(mk('circle', { cx:px(i), cy:py(v), r:3.4, fill:'var(--surface)', stroke:'var(--success)', 'stroke-width':2, 'pointer-events':'none' })))
+      }
       // hit area + tooltip
       const hit = mk('rect', { x:X0-4, y:Y0, width:X1-X0+8, height:Y1-Y0, fill:'transparent' })
       svg.appendChild(hit)
@@ -531,7 +555,9 @@ export default {
           const rx = (e.clientX - rect.left) * (W / rect.width)
           const idx = Math.max(0, Math.min(this.chartDays.length-1, Math.round((rx - X0) / ((X1-X0) / (this.chartDays.length-1)))))
           const cx = px(idx) * (rect.width / W)
-          tip.innerHTML = '<div><b>摄入 ' + this.chartIntake[idx] + ' kcal</b> · 消耗 ' + this.chartBurn[idx] + ' kcal</div><div style="opacity:.75;margin-top:2px;">' + this.chartDays[idx] + ' · 目标 ' + this.chartGoal + '</div>'
+          tip.innerHTML = this.chartReal
+            ? '<div><b>记录数 ' + this.chartIntake[idx] + '</b> · ' + this.chartDays[idx] + '</div>'
+            : '<div><b>摄入 ' + this.chartIntake[idx] + ' kcal</b> · 消耗 ' + (this.chartBurn[idx] || 0) + ' kcal</div><div style="opacity:.75;margin-top:2px;">' + this.chartDays[idx] + ' · 目标 ' + this.chartGoal + '</div>'
           tip.classList.add('show')
           const cw = chartBox.clientWidth
           tip.style.left = Math.min(Math.max(cx, 70), cw - 150) + 'px'
