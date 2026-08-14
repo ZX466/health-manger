@@ -57,8 +57,16 @@ async def test_tongue_image_requires_owner_authentication(app, db, client, anon_
 async def test_uploaded_files_are_not_publicly_mounted(app, anon_client):
     assert not any(getattr(route, "path", None) == "/uploads" for route in app.routes)
 
-    response = await anon_client.get("/uploads/tongue/nonexistent.png")
-    assert response.status_code != 200 or response.headers.get("content-type") != "image/png"
+    image_path = Path("uploads") / "tongue" / "security-regression.png"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"private-image-bytes")
+    try:
+        response = await anon_client.get("/uploads/tongue/security-regression.png")
+    finally:
+        image_path.unlink(missing_ok=True)
+
+    assert response.status_code != 200
+    assert response.content != b"private-image-bytes"
     assert "blob:" in response.headers["content-security-policy"]
 
 

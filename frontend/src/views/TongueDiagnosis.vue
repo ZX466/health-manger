@@ -597,6 +597,16 @@ async function loadProtectedImage(id) {
 }
 
 async function loadHistoryImages() {
+  const visibleIds = new Set(store.historyList.map(({ id }) => id))
+  const retainedUrls = Object.entries(protectedImageUrls.value).reduce((urls, [id, url]) => {
+    if (visibleIds.has(Number(id))) {
+      return { ...urls, [id]: url }
+    }
+    URL.revokeObjectURL(url)
+    return urls
+  }, {})
+  protectedImageUrls.value = retainedUrls
+
   await Promise.all(store.historyList.map(async ({ id }) => {
     try {
       await loadProtectedImage(id)
