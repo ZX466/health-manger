@@ -4,7 +4,7 @@
 
 ## 项目简介
 
-本系统旨在帮助大学生管理个人健康数据，提供健康记录、饮食管理、运动管理、AI 健康分析、中医舌诊和预警等功能。前端采用 glassmorphism 毛玻璃设计系统，侧边栏导航布局。
+本系统旨在帮助大学生管理个人健康数据，提供健康记录、饮食管理、运动管理、AI 健康分析、中医舌诊和预警等功能。前端采用 modern-minimal 设计系统（Linear / Vercel 式：冷色中性底 + 单一蓝色强调，OKLch 令牌），响应式侧边栏 + 移动端底部 Tab 导航。
 
 ## 技术栈
 
@@ -23,7 +23,7 @@
 - **路由**: Vue Router 4 (history mode)
 - **状态管理**: Pinia
 - **HTTP 客户端**: Axios
-- **设计系统**: Glassmorphism 毛玻璃风格 (CSS 变量令牌 + 侧边栏布局)
+- **设计系统**: modern-minimal（Linear / Vercel 式）——OKLch 设计令牌 + AppIcon 描线图标系统 + RingGauge/TrendChart 数据可视化组件，桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端底部 Tab
 - **交互系统**: Vue composable (toast/modal/sound/scroll-reveal/lightbox)
 
 ## 核心功能
@@ -187,10 +187,10 @@ project1/
 ├── frontend/                  # 前端源码（Vue 3）
 │   └── src/
 │       ├── views/             #   8 个页面组件（健康知识/提醒页已移除）
-│       ├── components/        #   通用组件（AppSidebar, AppTopbar, CharacterAvatar 等）
-│       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏）
+│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, CharacterAvatar 等）
+│       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏 + 移动端底部 Tab）
 │       ├── composables/       #   useHealthU（toast/modal/sound/scroll）
-│       ├── styles/            #   tokens.css + layout.css + components.css
+│       ├── styles/            #   tokens.css（OKLch 令牌）+ layout.css + components.css
 │       ├── assets/            #   静态资源管理
 │       ├── router/            #   路由配置（含 auth guard）
 │       ├── api/               #   API 调用封装
