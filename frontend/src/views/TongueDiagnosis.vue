@@ -273,7 +273,7 @@
               class="history-item"
               @click="loadHistoryDetail(item)"
             >
-              <img :src="getImageUrl(item.image_path)" class="history-thumb" />
+              <img :src="protectedImageUrls[item.id] || ''" class="history-thumb" />
               <div class="history-info">
                 <span class="history-type">{{ item.overall_type || '分析中' }}</span>
                 <span class="history-date">{{ formatDate(item.created_at) }}</span>
@@ -417,6 +417,8 @@ const canvasElement = ref(null)
 
 const inputMode = ref('upload')
 const previewImage = ref(null)
+const previewImageId = ref(null)
+const protectedImageUrls = ref({})
 const selectedFile = ref(null)
 const isDragOver = ref(false)
 
@@ -487,6 +489,7 @@ function clearImage() {
 async function startAnalysis() {
   if (!selectedFile.value && inputMode.value === 'upload') return
   await store.uploadAndAnalyze(selectedFile.value, 'upload', null)
+  await loadHistoryImages()
 }
 
 async function startCamera() {
@@ -571,6 +574,7 @@ async function captureAndAnalyze() {
   }
 
   await store.uploadAndAnalyze(null, 'camera', captureFn)
+  await loadHistoryImages()
 }
 
 async function loadHistoryDetail(item) {
@@ -578,16 +582,41 @@ async function loadHistoryDetail(item) {
   try {
     const response = await api.getTongueDetail(item.id)
     store.result = response.data
-    previewImage.value = getImageUrl(item.image_path)
+    previewImageId.value = item.id
+    previewImage.value = await loadProtectedImage(item.id)
   } catch (err) {
     alert('加载详情失败')
   }
 }
 
-function getImageUrl(path) {
-  if (!path) return ''
-  if (path.startsWith('http')) return path
-  return path
+async function loadProtectedImage(id) {
+  if (protectedImageUrls.value[id]) return protectedImageUrls.value[id]
+
+  const response = await api.getTongueImage(id)
+  const url = URL.createObjectURL(response.data)
+  protectedImageUrls.value = { ...protectedImageUrls.value, [id]: url }
+  return url
+}
+
+async function loadHistoryImages() {
+  const visibleIds = new Set(store.historyList.map(({ id }) => id))
+  if (previewImageId.value) visibleIds.add(previewImageId.value)
+  const retainedUrls = Object.entries(protectedImageUrls.value).reduce((urls, [id, url]) => {
+    if (visibleIds.has(Number(id))) {
+      return { ...urls, [id]: url }
+    }
+    URL.revokeObjectURL(url)
+    return urls
+  }, {})
+  protectedImageUrls.value = retainedUrls
+
+  await Promise.all(store.historyList.map(async ({ id }) => {
+    try {
+      await loadProtectedImage(id)
+    } catch {
+      // A missing image should not prevent the history metadata from rendering.
+    }
+  }))
 }
 
 function formatDate(dateStr) {
@@ -675,12 +704,14 @@ function clearCoatingSelection() {
   selectedCoatingThickness.value = null
 }
 
-onMounted(() => {
-  store.loadHistory()
+onMounted(async () => {
+  await store.loadHistory()
+  await loadHistoryImages()
 })
 
 onBeforeUnmount(() => {
   stopCamera()
+  Object.values(protectedImageUrls.value).forEach(URL.revokeObjectURL)
 })
 </script>
 
