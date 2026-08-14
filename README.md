@@ -16,7 +16,7 @@
 - **密码加密**: bcrypt (12 rounds)
 - **AI 对话**: 智谱 AI GLM-4.5-Air（httpx 线程本地连接池，异步任务工作线程安全）
 - **AI 舌诊**: 火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)
-- **测试**: pytest + pytest-asyncio + pytest-cov (109 tests)
+- **测试**: pytest + pytest-asyncio + pytest-cov (112 tests)
 
 ### 前端
 - **框架**: Vue.js 3（以 Options API 为主，部分组件使用 `<script setup>`）
@@ -25,7 +25,7 @@
 - **状态管理**: Pinia
 - **HTTP 客户端**: Axios
 - **设计系统**: modern-minimal（Linear / Vercel 式）——OKLch 设计令牌 + AppIcon 描线图标系统 + RingGauge/TrendChart 数据可视化组件，桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端底部 Tab
-- **交互系统**: Vue composable (toast/modal/sound/scroll-reveal/lightbox)
+- **交互系统**: Vue composable（`useSound` 音效；useToast/Modal/ScrollReveal/CountUp/Lightbox 已作为死代码清理）
 
 ## 前端设计系统（modern-minimal）
 
@@ -218,13 +218,13 @@ project1/
 │   ├── chat.py
 │   ├── ai_analysis.py
 │   └── warning.py
-├── tests/                     # pytest 测试（109 个用例，TDD）
+├── tests/                     # pytest 测试（112 个用例，TDD）
 ├── frontend/                  # 前端源码（Vue 3）
 │   └── src/
-│       ├── views/             #   8 个页面组件（健康知识/提醒页已移除）
-│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, CharacterAvatar 等）
+│       ├── views/             #   9 个页面组件（健康知识/提醒页已移除，含聊天页 ChatView）
+│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, CharacterAvatar, ChatView 依赖等）
 │       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏 + 移动端底部 Tab）
-│       ├── composables/       #   useHealthU（toast/modal/sound/scroll）
+│       ├── composables/       #   useHealthU（useSound）
 │       ├── styles/            #   tokens.css（OKLch 令牌）+ layout.css + components.css
 │       ├── assets/            #   静态资源管理
 │       ├── router/            #   路由配置（含 auth guard）
@@ -345,7 +345,7 @@ INVITE_CODES=code1,code2
 
 ```bash
 # 激活虚拟环境后运行，或用 uv run 直接执行
-uv run pytest --tb=short -q                          # 运行全部测试（109 个）
+uv run pytest --tb=short -q                          # 运行全部测试（112 个）
 uv run pytest --cov=. --cov-report=term-missing -q   # 查看覆盖率
 uv run ruff check .                                  # 代码检查
 make test          # 快速运行（需先激活环境）
