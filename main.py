@@ -51,7 +51,7 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault(
         "Content-Security-Policy",
-        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+        "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
         "script-src 'self'; connect-src 'self'; font-src 'self' data:",
     )
     return response
@@ -73,9 +73,6 @@ app.include_router(ai_analysis.router)
 app.include_router(warning.router)
 app.include_router(tongue.router)
 app.include_router(chat.router)
-
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

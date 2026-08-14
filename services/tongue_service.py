@@ -5,6 +5,7 @@ import hashlib
 import logging
 import os
 import uuid
+from pathlib import Path
 from typing import List
 
 from fastapi import HTTPException, UploadFile
@@ -146,6 +147,21 @@ def get_diagnosis(diagnosis_id: int, user_id: int, db: Session) -> models.Tongue
     if not diagnosis:
         raise HTTPException(status_code=404, detail="舌诊记录不存在")
     return diagnosis
+
+
+def get_diagnosis_image_path(diagnosis: models.TongueDiagnosis) -> str:
+    """Return an existing diagnosis image only when it remains under UPLOAD_DIR."""
+    upload_root = Path(UPLOAD_DIR).resolve()
+    image_path = Path(diagnosis.image_path).resolve()
+    try:
+        image_path.relative_to(upload_root)
+    except ValueError:
+        logger.warning("Rejected tongue image path outside upload directory: %s", image_path)
+        raise HTTPException(status_code=404, detail="舌诊图片不存在")
+
+    if not image_path.is_file():
+        raise HTTPException(status_code=404, detail="舌诊图片不存在")
+    return str(image_path)
 
 
 def get_latest_completed(user_id: int, db: Session) -> models.TongueDiagnosis:

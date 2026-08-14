@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -10,6 +11,7 @@ from services.tongue_service import (
     upload_and_analyze,
     get_diagnoses,
     get_diagnosis,
+    get_diagnosis_image_path,
     get_latest_completed,
     delete_diagnosis,
     get_stats,
@@ -76,6 +78,16 @@ def get_tongue_stats(
     db: Session = Depends(get_db),
 ):
     return get_stats(current_user.id, db)
+
+
+@router.get("/image/{diagnosis_id}")
+def get_tongue_image(
+    diagnosis_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    diagnosis = get_diagnosis(diagnosis_id, current_user.id, db)
+    return FileResponse(get_diagnosis_image_path(diagnosis))
 
 
 @router.get("/{diagnosis_id}", response_model=schemas.TongueDiagnosisResponse)

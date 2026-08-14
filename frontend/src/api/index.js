@@ -173,6 +173,9 @@ export default {
   getTongueDetail(id) {
     return api.get(`/tongue/${id}`)
   },
+  getTongueImage(id) {
+    return api.get(`/tongue/image/${id}`, { responseType: 'blob' })
+  },
   getLatestTongueResult() {
     return api.get('/tongue/latest/result')
   },
