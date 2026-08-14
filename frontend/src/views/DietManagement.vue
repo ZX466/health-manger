@@ -236,7 +236,7 @@ export default {
     },
     async loadFoods() {
       try {
-        const response = await api.getFoods({ search: this.foodSearch })
+        const response = await api.getFoods({ search: this.foodSearch || undefined })
         this.foods = response.data
       } catch (err) {
         console.error('加载食物库失败:', err)
