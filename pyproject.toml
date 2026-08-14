@@ -28,3 +28,8 @@ omit = [
 [tool.coverage.report]
 fail_under = 0
 show_missing = true
+
+[dependency-groups]
+dev = [
+    "pip-audit>=2.10.1",
+]
