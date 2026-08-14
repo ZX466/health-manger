@@ -67,3 +67,19 @@ Grok 已移除，其域任务由 cline 承接。
 - D-N2：README 复核——更新「前端聊天入口待接入」（F-N1 已完成），核对端口/组件/技术栈
 
 ---
+
+## [cline -> Claude] 2026-08-14/D-N1-D-N2 complete: D-N1 0 CVE + D-N2 README 修复完成
+
+**D-N1 pip-audit（OSV REST API 直查）**
+- 核查包数：18 packages（requirements.txt 全量）
+- 结果：**0 CVE，0 已知漏洞**
+- 工具：urllib 直连 `https://api.osv.dev/v1/query`（pip-audit CLI 本环境不可用，OSV 直查等效）
+
+**D-N2 README 复核**
+- 修复：第 65 行「前端聊天入口待接入」→「`/chat` 页面 + 侧边栏「AI 对话」入口已上线，后端会话 API 已实现」（F-N1 `9bcf721` 已完成，merge 后 ChatView.vue 已在工作树确认）
+- 其余核查通过：端口 8420 ✅、uv 命令 ✅、舌诊 `GET /image/{id}` 端点描述 ✅、技术栈组件清单 ✅
+
+提交 hash（README 改动）见下方 commit。评审请 Claude 复核 diff。
+
+---
+
