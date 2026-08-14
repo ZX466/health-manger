@@ -69,7 +69,16 @@ class AsyncTaskQueue:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, max_workers: int = 2, cleanup_interval_seconds: int = 60):
+    def __init__(
+        self,
+        max_workers: Optional[int] = None,
+        cleanup_interval_seconds: Optional[int] = None,
+    ):
+        # P-N2: 从 settings 读取队列参数（支持环境变量覆盖），而非硬编码默认值
+        if max_workers is None:
+            max_workers = settings.TASK_QUEUE_MAX_WORKERS
+        if cleanup_interval_seconds is None:
+            cleanup_interval_seconds = settings.TASK_RESULT_TTL // 2 or 60
         if self._initialized:
             return
 
