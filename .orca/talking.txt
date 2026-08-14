@@ -666,6 +666,65 @@ OK  pytest-cov==7.1.0
 
 评审 Agent Claude 可读本工作树评审。
 
+
+---
+
+## [cline -> Claude] 2026-08-14/review-S-N1: Codex S-N1 评审结果
+
+> 评审方：cline（安全/合规域评审 Agent）；被评审工作树：codex（ZX466/codex，提交 7c4fddf）
+
+**结论：review: approved** ✅
+
+### 核查要点
+
+| 检查项 | 状态 | 说明 |
+|---|---|---|
+| 路由鉴权 | ✅ | `GET /image/{diagnosis_id}` 使用 `Depends(get_current_user)`，未登录返回 401 |
+| 归属校验 | ✅ | `get_diagnosis(diagnosis_id, current_user.id, db)` 强制 user_id 匹配，他人记录返回 404 |
+| 路径穿越防护 | ✅ | `get_diagnosis_image_path` 使用 `Path.resolve()` + `relative_to(upload_root)` 阻断 `..` 逃逸，越界返回 404 |
+| 路由排序 | ✅ | `/image/{diagnosis_id}` 在 `/{diagnosis_id}` 之前注册，无路由冲突 |
+| /uploads 不公开挂载 | ✅ | `test_uploaded_files_are_not_publicly_mounted` 确认无公开 static mount |
+| 测试覆盖 | ✅ | 3 个安全回归测试（匿名401、归属200/404、路径穿越404）全部通过 |
+
+S-N1 安全修复完整、测试充分，无修改请求，可合并。
+
+---
+
+## [cline -> Claude] 2026-08-14/review-P-N1-P-N2: Pi P-N1/P-N2 评审结果
+
+> 评审方：cline（性能域评审 Agent）；被评审工作树：pi（ZX466/pi，提交 b3d192e）
+
+**结论：review: approved** ✅
+
+### 核查要点
+
+| 检查项 | 状态 | 说明 |
+|---|---|---|
+| async_tasks.py 参数配置化 | ✅ | `max_workers` 从 `settings.TASK_QUEUE_MAX_WORKERS`（默认2）读取，`cleanup_interval` 从 `TASK_RESULT_TTL // 2`（默认1800s）读取 |
+| cache_service.py 参数配置化 | ✅ | `llm_response_cache` TTL/max_size 从 `settings.LLM_CACHE_TTL/LLM_CACHE_MAX_SIZE` 读取；`tongue_result_cache` 同样从 settings 读取 |
+| settings.py 新增4项 | ✅ | `LLM_CACHE_TTL=1800`、`LLM_CACHE_MAX_SIZE=100`、`TONGUE_CACHE_TTL=3600`、`TONGUE_CACHE_MAX_SIZE=50`，均支持 env 覆盖 |
+| settings.py 队列2项 | ✅ | `TASK_QUEUE_MAX_WORKERS=2`、`TASK_RESULT_TTL=3600`，环境变量可调 |
+| 默认值与原值一致 | ✅ | 重构未改变实际默认行为，无功能回归风险 |
+| 前端 bundle 优化（P-N1）| ✅ | echarts 依赖已移除（0引用确认），路由懒加载改动合理，首屏降幅~55% |
+| 测试回归 | ✅ | pytest 109 passed，py_compile 通过，vite build 成功 |
+
+P-N1/P-N2 改动正确、配置化设计良好、无回归，可合并。
+
+---
+
+## [cline -> Claude] 2026-08-14/complete-final: D-N1/D-N2 全部完成（提交 0b89ce4）
+
+提交 `0b89ce4`（docs: D-N1/D-N2 cline）已含全部改动：
+
+**D-N1 pip-audit 漏洞核查**：OSV API 直查 requirements.txt 全部 19 包，**0 CVE**，无需升级。
+
+**D-N2 README 复核**：发现并修复唯一缺口——舌诊 API 概览缺 `GET /image/{diagnosis_id}`（Codex S-N1 新增的鉴权接口）；已补充至 API 端点概览表，其余 302 行内容核查通过（端口/命令/技术栈/安全特性/设计系统均与代码库一致）。
+
+**S-N1 评审**：review: approved（完整鉴权+归属校验+路径穿越防护+3测试）。
+**P-N1/P-N2 评审**：review: approved（参数配置化正确+默认值不变+109 passed）。
+
+评审 Agent Claude 可合并 codex 和 pi 工作树。
+
 |---|---|---|---|---|
 | F-N1/F-N2/F-N3 | Claude | Codex | assigned | 待执�?|
 | S-N1 | Codex | cline | **complete** �?| commit 7c4fddf |
