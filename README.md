@@ -129,17 +129,42 @@ cp .env.example .env
 
 ### 启动服务
 
-```bash
-# 方式一：生产模式（推荐，端口 8420）
-uv run uvicorn main:app --reload --port 8420
-# 访问 http://localhost:8420
+> 前置：已按上文创建 `.venv` 并安装依赖、已配置 `.env`（至少 `SECRET_KEY`，否则启动即报错；`INVITE_CODES` 未配置则禁止注册）。
 
-# 方式二：开发模式（前后端分离）
-# 终端 1：后端（端口 8420）
+#### 方式一：生产模式（推荐，端口 8420）
+
+```bash
+# ① 构建前端（生成 static/ 产物，生产由 FastAPI 直接托管；首次运行必做）
+cd frontend && npm install && npm run build && cd ..
+
+# ② 应用数据库迁移（开发环境 create_all 会自动建表，此步可跳过）
+uv run alembic upgrade head
+
+# ③ 启动后端
+uv run uvicorn main:app --port 8420
+# 访问 http://localhost:8420
+```
+
+#### 方式二：开发模式（前后端分离，热更新）
+
+```bash
+# 终端 1：后端（端口 8420，--reload 热重载）
 uv run uvicorn main:app --reload --port 8420
-# 终端 2：前端（端口 3000，/api 代理到 8420）
+
+# 终端 2：前端（端口 3000，Vite 将 /api 代理到 8420）
 cd frontend && npm install && npm run dev
 # 访问 http://localhost:3000
+```
+
+#### 验证启动
+
+```bash
+# 后端健康检查（应返回 {"status":"healthy"}）
+curl http://localhost:8420/api/health
+
+# API 交互文档
+# http://localhost:8420/docs  （Swagger UI）
+# http://localhost:8420/redoc （ReDoc）
 ```
 
 ### 初始化数据
