@@ -9,6 +9,7 @@ const HealthAnalysis = () => import('../views/HealthAnalysis.vue')
 const DietManagement = () => import('../views/DietManagement.vue')
 const SportManagement = () => import('../views/SportManagement.vue')
 const TongueDiagnosis = () => import('../views/TongueDiagnosis.vue')
+const ChatView = () => import('../views/ChatView.vue')
 
 const routes = [
   {
@@ -62,6 +63,12 @@ const routes = [
     name: 'TongueDiagnosis',
     component: TongueDiagnosis,
     meta: { requiresAuth: true, title: '中医舌诊' }
+  },
+  {
+    path: '/chat',
+    name: 'ChatView',
+    component: ChatView,
+    meta: { requiresAuth: true, title: 'AI 对话' }
   }
 ]
 

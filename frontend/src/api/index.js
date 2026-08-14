@@ -184,5 +184,25 @@ export default {
   },
   getTongueStats() {
     return api.get('/tongue/stats/summary')
+  },
+
+  // AI 对话
+  createChatSession(data) {
+    return api.post('/chat/session', data)
+  },
+  getChatSessions(params) {
+    return api.get('/chat/sessions', { params })
+  },
+  getChatMessages(sessionId, params) {
+    return api.get(`/chat/session/${sessionId}/messages`, { params })
+  },
+  sendChatMessage(sessionId, data) {
+    return api.post(`/chat/session/${sessionId}/message`, data)
+  },
+  addTongueContext(sessionId) {
+    return api.post(`/chat/session/${sessionId}/tongue-context`)
+  },
+  deleteChatSession(sessionId) {
+    return api.delete(`/chat/session/${sessionId}`)
   }
 }
