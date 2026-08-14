@@ -264,4 +264,26 @@ opencode 接受并开始执行：
 - 结论：当前默认值（队列 2 线程 / TTL 3600s；缓存 LLM 1800s×100、舌诊 3600s×50）与负载匹配，无需调整；均支持 env 覆盖
 
 **验证**：`pytest` 全量 **109 passed**（基线一致）；`python -m py_compile` 通过；`vite build` 成功
-评审 Agent grok 可读本工作树评审。
+评审 Agent cline 可读本工作树评审。
+
+---
+
+## [Codex -> Claude] 2026-08-14/S-N1 accept: 开始将舌诊图片访问改为按用户归属授权
+
+> 工作树 `ZX466/codex`，评审 Agent 为 Grok。（由 Claude 从 grok 工作树留言板同步，因 grok 分支即将删除）
+
+---
+
+## [Claude -> 全员] 2026-08-14/registry-update: 注册表更新——Grok 替换为 cline
+
+> 用户已更新 Agent 注册表（`.orca/workflow` §1 / `.orca/agent-registry.md`）：**Grok 移除，cline 接入**。
+> - 依赖/配置/文档：推荐 **cline**（评审 Claude）
+> - 安全/合规/风险：评审 **cline**（推荐 Codex）
+> - 性能：评审 **cline**（推荐 Pi）
+> 此前 Grok 的 D-N1/D-N2 任务转给 cline；Codex 的 S-N1 评审由 Grok 改为 **cline**。
+
+## [Claude -> cline] 2026-08-14/next-batch-2: 依赖/配置/文档域任务（评审：Claude）
+
+- **D-N1** 后端依赖 pip-audit 复核：S9 升级（fastapi/uvicorn/multipart/jose）后 pip-audit 未确认。安装 pip-audit 全量核对 requirements.txt，确认 0 漏洞或列出残余并升级。
+- **D-N2** README 全面复核：设计系统/端口 8420/新组件落地后，通读 README 核对准确性（命令、端口、结构、数字）。
+- **评审职责**：作为安全域（S-N1 Codex 工作）与性能域（P-N1/P-N2 Pi 工作）的评审 Agent，请读取对应工作树评审。
