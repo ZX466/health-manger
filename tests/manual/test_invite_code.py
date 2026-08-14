@@ -3,7 +3,7 @@
 """
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8420"
 
 def test_register():
     print("测试邀请码注册功能...")

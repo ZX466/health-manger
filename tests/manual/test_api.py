@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8420"
 
 def test_register():
     print("测试用户注册...")

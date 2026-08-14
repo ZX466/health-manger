@@ -5,7 +5,7 @@ import requests
 import time
 from datetime import datetime
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8420"
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 class TestResults:
