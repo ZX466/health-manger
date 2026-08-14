@@ -300,6 +300,7 @@ INVITE_CODES=code1,code2
 - `GET /{id}` - 舌诊详情
 - `GET /latest/result` - 最新舌诊结果
 - `GET /stats/summary` - 舌诊统计
+- `GET /image/{diagnosis_id}` - 获取舌诊图片（需认证，防未授权访问）
 
 ### 对话接口 (`/api/chat`)
 - `POST /session` - 创建对话会话
