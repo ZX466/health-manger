@@ -186,7 +186,21 @@ export default {
     return api.get('/tongue/stats/summary')
   },
 
-  // AI 对话
+// AI 健康分析（kilo I-N1 补齐）
+  getHealthEvaluation() {
+    return api.post('/ai/health-evaluation')
+  },
+  asyncAIAnalysis(data) {
+    return api.post('/ai/async-analysis', data)
+  },
+  getTaskStatus(taskId) {
+    return api.get(`/ai/task/${taskId}`)
+  },
+  getWarningStats() {
+    return api.get('/warning/stats')
+  },
+
+  // AI 对话（Claude F-N1）
   createChatSession(data) {
     return api.post('/chat/session', data)
   },

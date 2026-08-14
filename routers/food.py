@@ -35,7 +35,7 @@ def create_food_endpoint(
 @router.get("/foods", response_model=List[schemas.FoodResponse])
 def get_foods_endpoint(
     category: Optional[str] = Query(None, max_length=50),
-    search: Optional[str] = Query(None, min_length=1, max_length=100),
+    search: Optional[str] = Query(None, min_length=0, max_length=100),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

@@ -240,7 +240,7 @@ export default {
     },
     async loadSports() {
       try {
-        const response = await api.getSports({ search: this.sportSearch })
+        const response = await api.getSports({ search: this.sportSearch || undefined })
         this.sports = response.data
       } catch (err) {
         console.error('加载运动库失败:', err)
