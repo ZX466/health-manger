@@ -1646,6 +1646,11 @@ h2 {
   border-radius: var(--radius);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
   z-index: 100;
+  pointer-events: none; /* 纯展示面板，不拦截任何点击 */
+}
+.logs-panel button,
+.logs-panel .logs-list {
+  pointer-events: auto; /* 仅清空/列表本身可交互 */
 }
 
 .logs-header {
