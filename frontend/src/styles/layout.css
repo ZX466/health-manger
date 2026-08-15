@@ -32,6 +32,7 @@ img, svg { display: block; }
   padding: 24px 16px 16px;
 }
 .app-main { flex: 1; min-width: 0; }
+.app-shell .main { margin-left: 0; } /* flex 容器内 main 由 flex:1 撑满，禁用旧体系 margin-left（避免双重偏移致内容区变窄） */
 
 .sidebar-logo {
   display: flex; align-items: center; gap: 10px;

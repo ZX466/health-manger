@@ -942,6 +942,7 @@ export default {
 }
 .input-with-hint input {
   flex: 1;
+  min-width: 0; /* 允许 flex 正确压缩/撑满，避免 input 溢出变窄 */
   border-radius: var(--radius) 0 0 var(--radius);
 }
 .input-hint {
@@ -1020,7 +1021,7 @@ export default {
   margin: 0 auto;
   padding: 30px;
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: 1.4fr 1fr;
   gap: 30px;
 }
 
@@ -1056,7 +1057,8 @@ h2 {
   gap: 16px;
 }
 .form-row.triple {
-  grid-template-columns: 1fr 1fr 1fr;
+  /* 三列改两列：血压（收缩/舒张）一行，心率换行——避免输入框被压成 30px */
+  grid-template-columns: 1fr 1fr;
 }
 
 .form-group {
