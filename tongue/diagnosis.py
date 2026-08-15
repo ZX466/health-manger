@@ -5,6 +5,8 @@
 """
 
 import os
+from typing import Optional
+
 from tongue.feature_mapping import (
     TONGUE_COLOR_DETAILS, COATING_COLOR_DETAILS,
     COATING_THICKNESS_DESCRIPTIONS, TONGUE_SHAPE_DESCRIPTIONS,
@@ -41,12 +43,14 @@ def _get_cloud_analyzer():
     return _cloud_analyzer
 
 
-def analyze_tongue_image(image_path: str) -> dict:
+def analyze_tongue_image(image_path: str, vision_config: Optional[dict] = None) -> dict:
     """
     分析舌象图像
 
     Args:
         image_path: 舌象图像文件路径
+        vision_config: 用户自定义视觉模型配置 {provider, base_url, model, api_key}；
+                       为空时回退默认 ARK 视觉模型。
 
     Returns:
         舌诊分析结果字典
@@ -58,9 +62,19 @@ def analyze_tongue_image(image_path: str) -> dict:
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"图像文件不存在：{image_path}")
 
-    cloud = _get_cloud_analyzer()
-    if not cloud or not cloud.is_configured:
-        raise RuntimeError("分析服务暂不可用：云端 ARK API 未配置，请在 .env 中设置 ARK_API_KEY 和 ARK_MODEL_ID")
+    # 用户配置了视觉模型则用之，否则回退默认 ARK
+    if vision_config and vision_config.get("api_key") and vision_config.get("model"):
+        from tongue.cloud_analyzer import CloudTongueAnalyzer
+
+        cloud = CloudTongueAnalyzer(
+            api_key=vision_config["api_key"],
+            model_id=vision_config["model"],
+            base_url=vision_config.get("base_url"),
+        )
+    else:
+        cloud = _get_cloud_analyzer()
+        if not cloud or not cloud.is_configured:
+            raise RuntimeError("分析服务暂不可用：未配置视觉模型，请在 AI 设置或 .env 中配置")
 
     try:
         ai_result = cloud.analyze(image_path)

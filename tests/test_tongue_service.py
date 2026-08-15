@@ -51,7 +51,7 @@ def _fake_png_file(content=None):
 async def test_failed_analysis_removes_orphan_file_and_record(db, _fresh_upload_dir, monkeypatch):
     """分析失败后：磁盘无孤儿图片文件，DB 无 failed 记录残留。"""
 
-    def boom(image_path):
+    def boom(image_path, vision_config=None):
         raise RuntimeError("analyze failed")
 
     monkeypatch.setattr("tongue.analyze_tongue_image", boom)
@@ -69,7 +69,7 @@ async def test_failed_analysis_removes_orphan_file_and_record(db, _fresh_upload_
 async def test_failed_analysis_cleans_file_but_reports_503(db, _fresh_upload_dir, monkeypatch):
     """分析失败应返回 503（RuntimeError），且不污染 DB 与磁盘。"""
 
-    def boom(image_path):
+    def boom(image_path, vision_config=None):
         raise RuntimeError("analyze failed")
 
     monkeypatch.setattr("tongue.analyze_tongue_image", boom)

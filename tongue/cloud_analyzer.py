@@ -1,7 +1,7 @@
 """
-云端舌象分析模块 - 火山引擎 ARK 平台集成
-使用豆包视觉大模型进行舌象识别，无需本地模型
-API: https://ark.cn-beijing.volces.com/api/v3/responses
+云端舌象分析模块
+默认使用火山引擎 ARK 豆包视觉模型；支持 OpenAI 兼容视觉接口（自定义 Base URL/模型/Key）。
+统一走 OpenAI 兼容 chat/completions 格式（image_url data URI），兼容智谱 GLM-4V / OpenAI / ARK 等。
 """
 import os
 import json
@@ -17,9 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class CloudTongueAnalyzer:
-    """火山引擎 ARK 云端舌象分析器（Responses API）"""
+    """云端舌象分析器（OpenAI 兼容视觉接口）。
 
-    BASE_URL = "https://ark.cn-beijing.volces.com/api/v3/responses"
+    支持通过 api_key / model_id / base_url 注入用户自定义配置；
+    未指定时回退默认火山引擎 ARK 豆包视觉模型。
+    """
+
+    BASE_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 
     SYSTEM_PROMPT = """你是一位专业的中医舌诊专家，具有20年临床经验。请根据用户上传的舌象图片，进行专业的舌象分析。
 
@@ -37,9 +41,15 @@ class CloudTongueAnalyzer:
 只返回JSON，不要其他文字。示例：
 {"tongue_color":"淡红","coating_color":"白苔","coating_thickness":"薄苔","tongue_shape":"正常","moisture_level":"正常","has_cracks":false,"has_teeth_marks":false,"tongue_spirit":"荣润","confidence":0.85}"""
 
-    def __init__(self, api_key: Optional[str] = None, model_id: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_id: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
         self.api_key = api_key or os.getenv("ARK_API_KEY", "")
         self.model_id = model_id or os.getenv("ARK_MODEL_ID", "doubao-seed-1-6-vision-250815")
+        self.base_url = base_url or os.getenv("ARK_API_URL", self.BASE_URL)
         self._session: Optional[requests.Session] = None
 
     @property
@@ -66,7 +76,7 @@ class CloudTongueAnalyzer:
 
     def analyze(self, image_path: str) -> Dict:
         if not self.is_configured:
-            raise RuntimeError("未配置 ARK_API_KEY 和 ARK_MODEL_ID，请在 .env 文件中设置")
+            raise RuntimeError("未配置视觉模型 API Key / 模型，请在 AI 设置或 .env 中配置")
 
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"图像文件不存在：{image_path}")
@@ -74,26 +84,22 @@ class CloudTongueAnalyzer:
         session = self._get_session()
         base64_image = self.encode_image_base64(image_path)
 
+        # OpenAI 兼容视觉格式（智谱 GLM-4V / OpenAI / ARK /chat/completions 均支持）
         payload = {
             "model": self.model_id,
-            "input": [
+            "messages": [
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "input_image",
-                            "image_url": base64_image,
-                        },
-                        {
-                            "type": "input_text",
-                            "text": self.SYSTEM_PROMPT + "\n\n请分析这张舌象图片，返回JSON格式的诊断结果",
-                        },
+                        {"type": "image_url", "image_url": {"url": base64_image}},
+                        {"type": "text", "text": self.SYSTEM_PROMPT + "\n\n请分析这张舌象图片，返回JSON格式的诊断结果"},
                     ],
                 }
             ],
+            "max_tokens": 1000,
         }
 
-        response = session.post(self.BASE_URL, json=payload, timeout=60)
+        response = session.post(self.base_url, json=payload, timeout=60)
         response.raise_for_status()
         data = response.json()
 

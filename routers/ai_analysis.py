@@ -309,22 +309,28 @@ def get_ai_config(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """获取当前用户 AI 配置（API Key 仅返回掩码）。"""
+    """获取当前用户 AI 配置（聊天 + 舌诊视觉两套，API Key 仅返回掩码）。"""
     cfg = get_config(db, current_user.id)
     if not cfg:
         return schemas.AIConfigResponse(
             provider="zhipu", model="glm-4.5-Air", base_url=None,
             api_key_masked="", has_api_key=False,
         )
-    masked = ""
-    if cfg.api_key_encrypted:
-        masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted))
+    masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
+    vision_masked = ""
+    if cfg.vision_api_key_encrypted:
+        vision_masked = mask_api_key(decrypt_api_key(cfg.vision_api_key_encrypted))
     return schemas.AIConfigResponse(
         provider=cfg.provider,
         model=cfg.model,
         base_url=cfg.base_url,
         api_key_masked=masked,
         has_api_key=bool(cfg.api_key_encrypted),
+        vision_provider=cfg.vision_provider,
+        vision_model=cfg.vision_model,
+        vision_base_url=cfg.vision_base_url,
+        vision_api_key_masked=vision_masked,
+        has_vision_api_key=bool(cfg.vision_api_key_encrypted),
     )
 
 
@@ -334,18 +340,26 @@ def update_ai_config(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """保存用户 AI 配置（api_key 为空则保留原值）。"""
+    """保存用户 AI 配置（聊天 + 视觉；api_key 为空则保留原值）。"""
     cfg = save_config(
         db, current_user.id,
         provider=payload.provider,
         model=payload.model,
         base_url=payload.base_url,
         api_key=payload.api_key,
+        vision_provider=payload.vision_provider,
+        vision_model=payload.vision_model,
+        vision_base_url=payload.vision_base_url,
+        vision_api_key=payload.vision_api_key,
     )
     masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
+    vision_masked = mask_api_key(decrypt_api_key(cfg.vision_api_key_encrypted)) if cfg.vision_api_key_encrypted else ""
     return schemas.AIConfigResponse(
         provider=cfg.provider, model=cfg.model, base_url=cfg.base_url,
         api_key_masked=masked, has_api_key=bool(cfg.api_key_encrypted),
+        vision_provider=cfg.vision_provider, vision_model=cfg.vision_model,
+        vision_base_url=cfg.vision_base_url, vision_api_key_masked=vision_masked,
+        has_vision_api_key=bool(cfg.vision_api_key_encrypted),
     )
 
 

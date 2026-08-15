@@ -72,11 +72,15 @@ async def upload_and_analyze(
     try:
         from tongue import analyze_tongue_image
 
+        # 使用用户自定义视觉模型配置（未配置回退默认 ARK）
+        from services.ai_config_service import build_vision_config_for_user
+        vision_config = build_vision_config_for_user(db, user_id)
+
         cached_result = tongue_result_cache.get(image_hash)
         if cached_result:
             result = cached_result
         else:
-            result = await asyncio.to_thread(analyze_tongue_image, filepath)
+            result = await asyncio.to_thread(analyze_tongue_image, filepath, vision_config)
             tongue_result_cache.set(image_hash, result)
 
         db_diagnosis.tongue_color = result["tongue_color"]

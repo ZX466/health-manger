@@ -381,10 +381,16 @@ class WarningStatsResponse(BaseModel):
 
 
 class AIConfigUpdate(BaseModel):
+    # 聊天/分析模型
     provider: Literal["zhipu", "openai", "ark"] = "zhipu"
     model: str = Field(..., min_length=1, max_length=100)
     base_url: Optional[str] = Field(None, max_length=500)
     api_key: Optional[str] = Field(None, min_length=1, max_length=500)
+    # 舌诊视觉模型
+    vision_provider: Optional[Literal["zhipu", "openai", "ark"]] = None
+    vision_model: Optional[str] = Field(None, max_length=100)
+    vision_base_url: Optional[str] = Field(None, max_length=500)
+    vision_api_key: Optional[str] = Field(None, min_length=1, max_length=500)
 
 
 class AIConfigResponse(BaseModel):
@@ -393,6 +399,12 @@ class AIConfigResponse(BaseModel):
     base_url: Optional[str] = None
     api_key_masked: str = ""
     has_api_key: bool = False
+    # 舌诊视觉模型
+    vision_provider: Optional[str] = None
+    vision_model: Optional[str] = None
+    vision_base_url: Optional[str] = None
+    vision_api_key_masked: str = ""
+    has_vision_api_key: bool = False
 
 
 class AIConfigTestResponse(BaseModel):

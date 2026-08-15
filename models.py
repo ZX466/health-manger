@@ -230,16 +230,30 @@ class TongueDiagnosis(Base):
 
 
 class AIConfig(Base):
-    """用户自定义 AI 配置（每用户独立，API Key 加密存储）。"""
+    """用户自定义 AI 配置（每用户独立，API Key 加密存储）。
+
+    含两套模型：
+    - 聊天/分析模型（provider/base_url/model/api_key_encrypted）：AI 对话、健康分析、快速/评价
+    - 舌诊视觉模型（vision_*）：舌象图片分析，必须支持图像输入（多模态）
+    """
 
     __tablename__ = "ai_configs"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+
+    # 聊天/分析模型
     provider = Column(String(20), nullable=False, default="zhipu")  # zhipu | openai | ark
     base_url = Column(String(500), nullable=True)
     model = Column(String(100), nullable=False, default="glm-4.5-Air")
     api_key_encrypted = Column(String(1000), nullable=True)
+
+    # 舌诊视觉模型（必须支持图像输入）
+    vision_provider = Column(String(20), nullable=True)  # zhipu | openai | ark
+    vision_base_url = Column(String(500), nullable=True)
+    vision_model = Column(String(100), nullable=True)
+    vision_api_key_encrypted = Column(String(1000), nullable=True)
+
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
