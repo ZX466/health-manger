@@ -380,6 +380,27 @@ class WarningStatsResponse(BaseModel):
     danger: int
 
 
+class AIConfigUpdate(BaseModel):
+    provider: Literal["zhipu", "openai", "ark"] = "zhipu"
+    model: str = Field(..., min_length=1, max_length=100)
+    base_url: Optional[str] = Field(None, max_length=500)
+    api_key: Optional[str] = Field(None, min_length=1, max_length=500)
+
+
+class AIConfigResponse(BaseModel):
+    provider: str
+    model: str
+    base_url: Optional[str] = None
+    api_key_masked: str = ""
+    has_api_key: bool = False
+
+
+class AIConfigTestResponse(BaseModel):
+    success: bool
+    message: str
+    model: Optional[str] = None
+
+
 class TongueStatsResponse(BaseModel):
     total_records: int
     completed_records: int

@@ -38,17 +38,30 @@ async def close_http_client() -> None:
 
 
 class LLMConfig:
+    """LLM 调用配置。
+
+    provider/api_key/base_url 支持运行时覆盖（用户自定义 AI 配置）：
+    未指定时回退到默认智谱环境变量配置。所有 provider 均走
+    OpenAI 兼容 chat/completions 格式（zhipu/openai/ark 均支持）。
+    """
+
     def __init__(
         self,
         model: str = DEFAULT_MODEL,
         temperature: float = 0.7,
         max_tokens: int = 1500,
-        timeout: float = DEFAULT_TIMEOUT
+        timeout: float = DEFAULT_TIMEOUT,
+        provider: str = "zhipu",
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
     ):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
+        self.provider = provider
+        self.api_key = api_key if api_key is not None else ZHIPU_API_KEY
+        self.base_url = base_url if base_url is not None else ZHIPU_API_URL
 
 
 # Retry configuration
@@ -71,12 +84,12 @@ async def call_llm(
     # --- 配置校验与请求准备 ---
     config = config or LLMConfig()
 
-    if not ZHIPU_API_KEY:
-        raise ValueError("未配置智谱 AI API 密钥 (ZHIPU_API_KEY)")
+    if not config.api_key:
+        raise ValueError("未配置 AI API 密钥")
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {ZHIPU_API_KEY}"
+        "Authorization": f"Bearer {config.api_key}"
     }
 
     payload = {
@@ -98,7 +111,7 @@ async def call_llm(
 
             client = await _get_client()
             response = await client.post(
-                ZHIPU_API_URL,
+                config.base_url,
                 headers=headers,
                 json=payload,
                 timeout=config.timeout

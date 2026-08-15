@@ -20,6 +20,14 @@ from services.llm_service import (
     call_llm,
 )
 from services.security_service import check_rate_limit
+from services.ai_config_service import (
+    build_llm_config_for_user,
+    get_config,
+    save_config,
+    delete_config,
+    decrypt_api_key,
+    mask_api_key,
+)
 
 router = APIRouter(prefix="/api/ai", tags=["AI 健康分析"])
 
@@ -60,7 +68,7 @@ async def create_ai_analysis(
     messages = build_health_analysis_prompt(health_data, analysis.request_content)
 
     try:
-        response_content, tokens_used = await call_llm(messages, _ANALYSIS_CONFIG)
+        response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _ANALYSIS_CONFIG))
 
         db_analysis = models.AIAnalysis(
             user_id=current_user.id,
@@ -153,7 +161,7 @@ async def quick_health_analysis(
     else:
         messages = build_quick_analysis_prompt(health_data)
         try:
-            response_content, tokens_used = await call_llm(messages, _QUICK_CONFIG)
+            response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _QUICK_CONFIG))
             llm_response_cache.set(cache_key, (response_content, tokens_used))
         except Exception as e:
             logger.error("AI 快速分析失败: %s", e, exc_info=True)
@@ -208,7 +216,7 @@ async def llm_health_evaluation(
             rule_rating=latest_analysis.health_rating or "未知",
         )
         try:
-            response_content, tokens_used = await call_llm(messages, _EVALUATION_CONFIG)
+            response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _EVALUATION_CONFIG))
             llm_response_cache.set(cache_key, (response_content, tokens_used))
         except Exception as e:
             logger.error("LLM 健康评价失败: %s", e, exc_info=True)
@@ -271,7 +279,7 @@ async def async_ai_analysis(
     task_queue.submit_task(
         task_id,
         _run_llm_sync,
-        args=(messages, _ANALYSIS_CONFIG),
+        args=(messages, build_llm_config_for_user(db, current_user.id, _ANALYSIS_CONFIG)),
         user_id=current_user.id,
     )
 
@@ -292,3 +300,92 @@ async def get_task_status(
     if not status:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
     return schemas.AsyncTaskStatus(**status)
+
+
+# ── AI 配置（每用户自定义供应商/模型） ──────────────
+
+@router.get("/config", response_model=schemas.AIConfigResponse)
+def get_ai_config(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """获取当前用户 AI 配置（API Key 仅返回掩码）。"""
+    cfg = get_config(db, current_user.id)
+    if not cfg:
+        return schemas.AIConfigResponse(
+            provider="zhipu", model="glm-4.5-Air", base_url=None,
+            api_key_masked="", has_api_key=False,
+        )
+    masked = ""
+    if cfg.api_key_encrypted:
+        masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted))
+    return schemas.AIConfigResponse(
+        provider=cfg.provider,
+        model=cfg.model,
+        base_url=cfg.base_url,
+        api_key_masked=masked,
+        has_api_key=bool(cfg.api_key_encrypted),
+    )
+
+
+@router.put("/config", response_model=schemas.AIConfigResponse)
+def update_ai_config(
+    payload: schemas.AIConfigUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """保存用户 AI 配置（api_key 为空则保留原值）。"""
+    cfg = save_config(
+        db, current_user.id,
+        provider=payload.provider,
+        model=payload.model,
+        base_url=payload.base_url,
+        api_key=payload.api_key,
+    )
+    masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
+    return schemas.AIConfigResponse(
+        provider=cfg.provider, model=cfg.model, base_url=cfg.base_url,
+        api_key_masked=masked, has_api_key=bool(cfg.api_key_encrypted),
+    )
+
+
+@router.delete("/config", response_model=schemas.MessageResponse)
+def remove_ai_config(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """清除用户 AI 配置，恢复默认智谱。"""
+    delete_config(db, current_user.id)
+    return {"message": "已恢复默认 AI 配置"}
+
+
+@router.post("/config/test", response_model=schemas.AIConfigTestResponse)
+async def test_ai_config(
+    payload: schemas.AIConfigUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """用提交的配置测试连接（不保存）。api_key 缺省时用已保存的密钥。"""
+    api_key = payload.api_key
+    if not api_key:
+        cfg = get_config(db, current_user.id)
+        if cfg and cfg.api_key_encrypted:
+            api_key = decrypt_api_key(cfg.api_key_encrypted)
+
+    config = LLMConfig(
+        provider=payload.provider,
+        model=payload.model,
+        base_url=payload.base_url,
+        api_key=api_key,
+        temperature=0.1,
+        max_tokens=8,
+    )
+    try:
+        content, _ = await call_llm(
+            [{"role": "user", "content": "ping"}],
+            config,
+        )
+        return schemas.AIConfigTestResponse(success=True, message="连接成功", model=payload.model)
+    except Exception as e:
+        logger.info("AI 配置测试失败: %s", e)
+        return schemas.AIConfigTestResponse(success=False, message=f"连接失败：请检查 Base URL/API Key/模型名")

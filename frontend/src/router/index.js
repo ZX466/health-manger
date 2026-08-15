@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// P-N1: 路由级懒加载——按需加载视图，缩小首屏 JS 体积
+// 路由级懒加载——按需加载视图，缩小首屏 JS 体积
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
@@ -10,6 +10,7 @@ const DietManagement = () => import('../views/DietManagement.vue')
 const SportManagement = () => import('../views/SportManagement.vue')
 const TongueDiagnosis = () => import('../views/TongueDiagnosis.vue')
 const ChatView = () => import('../views/ChatView.vue')
+const AISettings = () => import('../views/AISettings.vue')
 
 const routes = [
   {
@@ -69,6 +70,12 @@ const routes = [
     name: 'ChatView',
     component: ChatView,
     meta: { requiresAuth: true, title: 'AI 对话' }
+  },
+  {
+    path: '/ai-settings',
+    name: 'AISettings',
+    component: AISettings,
+    meta: { requiresAuth: true, title: 'AI 设置' }
   }
 ]
 

@@ -23,6 +23,7 @@ from chat_session import (
 from database import get_db
 from services.llm_service import CHAT_SYSTEM_PROMPT, LLMConfig, call_llm
 from services.security_service import check_rate_limit, sanitize_for_prompt
+from services.ai_config_service import build_llm_config_for_user
 
 router = APIRouter(prefix="/api/chat", tags=["聊天会话"])
 
@@ -114,7 +115,7 @@ async def send_message(
     messages.append({"role": "user", "content": safe_content})
 
     try:
-        response_content, tokens_used = await call_llm(messages, _CHAT_CONFIG)
+        response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _CHAT_CONFIG))
 
         # LLM 成功后再一起落库（用户 + assistant），避免半提交：
         # 失败时两者都不落库、db.rollback() 有效、重试不会重复追加用户消息

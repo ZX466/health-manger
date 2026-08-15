@@ -229,3 +229,20 @@ class TongueDiagnosis(Base):
     user = relationship("User", backref="tongue_diagnoses")
 
 
+class AIConfig(Base):
+    """用户自定义 AI 配置（每用户独立，API Key 加密存储）。"""
+
+    __tablename__ = "ai_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    provider = Column(String(20), nullable=False, default="zhipu")  # zhipu | openai | ark
+    base_url = Column(String(500), nullable=True)
+    model = Column(String(100), nullable=False, default="glm-4.5-Air")
+    api_key_encrypted = Column(String(1000), nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    user = relationship("User", backref="ai_configs")
+
+

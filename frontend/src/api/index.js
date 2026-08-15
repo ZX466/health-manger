@@ -218,5 +218,19 @@ export default {
   },
   deleteChatSession(sessionId) {
     return api.delete(`/chat/session/${sessionId}`)
+  },
+
+  // AI 配置（自定义供应商/模型）
+  getAiConfig() {
+    return api.get('/ai/config')
+  },
+  saveAiConfig(data) {
+    return api.put('/ai/config', data)
+  },
+  deleteAiConfig() {
+    return api.delete('/ai/config')
+  },
+  testAiConfig(data) {
+    return api.post('/ai/config/test', data)
   }
 }
