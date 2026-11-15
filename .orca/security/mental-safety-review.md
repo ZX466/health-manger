@@ -37,7 +37,8 @@
 - [x] 只读复核 Q9、免责声明、隐私/保留、EXIF/GPS、上传鉴权/大小、OCR/识餐注入、限流与诊断边界；每项列出现状、风险、整改建议与负责任务。
 - [x] 按注册表只读评审 M-DB1 与 M-LOGIC1；问题只在本工作树 talking.txt 留言。
 - [x] 验证：全量 pytest、ruff、编译/import main、依赖增量与敏感信息检查、diff 复核；安全后端变更不调用浏览器。全量失败已逐项报告，不伪报 PASS。
-- [ ] 本地约定式提交；talking.txt 回 complete、待评审点与跨域整改项；更新本工作树 memory.md。
+- [x] 本地约定式提交 `6c77022`；talking.txt 留交付结果、待评审点与跨域整改项；更新本工作树 memory.md。
+- [ ] 跨域适配完成后全量回归通过、cline 独立评审完成，再回 complete；当前按 blocked 留交接，不伪报任务验收完成。
 
 ## 执行记录
 
