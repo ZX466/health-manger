@@ -11,7 +11,7 @@
 | 任务 | Agent | 状态 | 提交 |
 |---|---|---|---|
 | M-DB1 心理数据层 | opencode | ✅ 完成 · Codex 评审 pass | `68583e2`（已合并） |
-| M-API1 契约与路由 | kilo | ✅ 完成 · 待 Claude 评审 | `785f354` + `41db8f8` |
+| M-API1 契约与路由 | kilo | ✅ 完成 · Claude 评审 pass | `785f354` + `41db8f8` |
 | M-SEC1 安全兜底 | Codex | 🟡 实现完成 · 集成 blocked | `6c77022` + `2ec3b98` |
 | M-PERF1 流式对话 | Pi | ✅ 完成 · cline 评审 pass | `ba5eda2`（已合并） |
 | M-PERF2 视觉管线 | Pi | ✅ 完成 · cline 评审 pass | `9e43850`（已合并） |
@@ -40,26 +40,32 @@
 
 **Claude（协调 + 前端）**
 - [x] 修 M-LOGIC1 评审项（`c41a484`）：`_crisis_hint` 已支持对象资源；`summary.serious_mode` 已纳入健康评级“危险”，保留 PHQ-9 15–19 保守策略。待 Codex 复核。
-- [ ] 评审 M-API1 `785f354`（接口契约/兼容性）。
+- [x] 评审 M-API1 + M-API2 ①③（`785f354`/`b31214a`）：pass；2 处文档 nit 待 kilo 顺手修（示例号码、未配置措辞）。
 - [ ] M-FE1：心理页、量表、人设卡、流式聊天、呼吸环、木鱼等（依赖已具备）。
 - [ ] M-SEC1 合并门：cline 评审 pass + A01/A02 集成完成后再合。
 
 **kilo**
-- [ ] `schemas.ScaleSubmitResponse.resources` 改为对象列表（对齐口径 10）。
+- [x] `resources` 对象化（`b31214a`，评审 pass）。
+- [x] `api-v2.md` 的 `safety.level`/资源示例对齐口径 9/10（评审 pass；待修示例号码与“未配置”措辞）。
 - [ ] `routers/food.py:130`、`routers/health.py:114` 改 `await arecognize_meal` / `aextract_report`。
-- [ ] `api-v2.md` 的 `safety.level` 与资源示例对齐口径 9/10。
 - [ ] `persona_style` 接线：`services/ai_config_service.save_config` + `routers/ai_analysis.py` GET/PUT。
 
 **Codex**
-- [ ] 等 cline 评审 `6c77022`；等 A01（Claude）/A02（kilo）/Pi 接入后同步 main、重跑全量，回 `complete M-SEC1`。
+- [x] cline 评审 `6c77022`：**pass**（61 safety tests，30 天窗口/隔离/Q9 兜底/Prompt 覆盖/资源无号码均核验）。
+- [ ] 同步 main、复核 A01、重跑全量（预期 198）后回 `complete M-SEC1`；合并门仍需 A02（kilo resources 已就绪）。
 
 **Pi**
-- [ ] 接入 `assess_user_risk` / `build_system_prompt` 到两条聊天路径，SSE 首帧 `safety`。
-- [ ] 识餐/OCR 输出过滤控制字符、收敛非有限数。
+- [x] 识餐/OCR 控制字符与 NaN/Inf 收敛（`a4bc6ba`，待 cline 评审；分支需先同步 main）。
+- [ ] 接入 `assess_user_risk` / `build_system_prompt` 到两条聊天路径，SSE 首帧 `safety`（等 M-SEC1 合入 main）。
 - [ ] `be3bd61` 待合并（图片解码顺序修复）。
 
 **cline**
-- [ ] 评审 M-SEC1；M-FE1 合并后定稿 M-DOC1（README/.env/CLAUDE/AGENTS）。
+- [x] 评审 M-SEC1：**pass**；M-DOC1 草稿已按裁决口径更新（`2de2c2e`）。
+- [ ] 评审 M-PERF3（Pi 同步 main 后）；M-FE1 合并后定稿 M-DOC1。
+
+**opencode**
+- [x] M-DB2 数据层回归：全部通过（`5cfc607`）。
+- [ ] 空闲，等新派单。
 
 **opencode**
 - [ ] 空闲，等新派单。
