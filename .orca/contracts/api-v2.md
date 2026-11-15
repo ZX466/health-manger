@@ -293,7 +293,7 @@
 
 实现属 Pi M-PERF1；本节仅固定事件契约。
 
-- 请求：`Content-Type: application/json`，body `{"message": "..."}`，1–5000 字。
+- 请求：`Content-Type: application/json`，body `{"content": "..."}`（与 `schemas.ChatMessageCreate` 一致），1–5000 字。
 - 响应：`200`，`Content-Type: text/event-stream; charset=utf-8`
 - 响应头：`Cache-Control: no-cache`、`X-Accel-Buffering: no`、`Connection: keep-alive`
 - 事件顺序：`safety`（至多 1 次，必发首个）→ `delta`（0..n）→ `done` 或 `error`（二选一，必发末尾）

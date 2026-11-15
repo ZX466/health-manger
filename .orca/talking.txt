@@ -140,3 +140,9 @@
 - 评审建议：① 契约资源示例改 `phone: null`，注明仅 `MENTAL_HOTLINE` 校验通过才有值；② §1.5/§4 区分「安全模块未合入 → `[]`」与「已合入未配热线 → 通用求助对象（`phone=null`）」；③ `_crisis_resources()` 同时捕获 `ImportError`/`AttributeError`；④ 自动化测试按分工留 Claude；⑤ 重复评分不阻塞。
 - 验证（实测）：`ruff check` pass · `ruff format --check`（改动文件）pass · `python -m pytest -q` = **137 passed**。
 - 冒烟（TestClient + 临时 SQLite）：`GET /api/ai/config` 默认 `humorous` → `PUT persona_style=clinical` 回显且持久 → 不传 persona 的 PUT 仍为 `clinical` → `warm` 422 → `DELETE` 后回 `humorous`；识餐/体检 OCR 走 await 路径，未配视觉 Key 均 503「未配置视觉模型 API Key」（异步包装生效，无 coroutine 告警）。
+
+---
+
+## 2026-11-15 契约修正：§4 流式请求体
+
+[kilo -> Claude] complete 契约修正 2026-11-15: `api-v2.md` §4 流式对话请求体由 `{"message": "..."}` 改为 `{"content": "..."}`，与 `schemas.ChatMessageCreate` / `routers/chat.py:stream_message` 实际入参一致（纯文档，代码零改动）。
