@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import threading
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -182,6 +183,87 @@ async def call_llm(messages: list, config: LLMConfig | None = None) -> tuple:
     raise RuntimeError(
         f"AI 服务在 {MAX_RETRIES} 次重试后仍然失败：{last_exception}"
     ) from last_exception
+
+
+async def stream_llm(messages: list, config: LLMConfig | None = None) -> AsyncIterator[str]:
+    """流式调用 OpenAI 兼容的 chat/completions 接口，逐块产出增量文本。
+
+    与 call_llm 的区别：
+    - 请求体 stream=True，用 httpx 的流式响应逐行解析 SSE；
+    - 只产出 choices[0].delta.content（忽略 reasoning_content 等思考字段）；
+    - **不重试**：一旦已向下游产出内容，重试会导致重复文本，故失败即抛错。
+
+    抛出:
+        ValueError  -- API 密钥未配置
+        RuntimeError -- 超时 / 连接失败 / 非 200 响应（错误信息不含 API Key）
+    """
+    config = config or LLMConfig()
+
+    if not config.api_key:
+        raise ValueError("未配置 AI API 密钥")
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.api_key}",
+    }
+    payload = {
+        "model": config.model,
+        "messages": messages,
+        "temperature": config.temperature,
+        "max_tokens": config.max_tokens,
+        "stream": True,
+    }
+
+    logger.info("LLM 流式请求开始 (model=%s, timeout=%.1fs)", config.model, config.timeout)
+    client = await _get_client()
+
+    try:
+        async with client.stream(
+            "POST",
+            config.base_url,
+            headers=headers,
+            json=payload,
+            timeout=config.timeout,
+        ) as response:
+            if response.status_code != 200:
+                body = (await response.aread()).decode("utf-8", errors="replace")[:200]
+                raise RuntimeError(
+                    f"AI 服务调用失败 (HTTP {response.status_code})：{body}"
+                )
+
+            async for raw_line in response.aiter_lines():
+                line = raw_line.strip()
+                if not line or not line.startswith("data:"):
+                    # 空行是 SSE 事件分隔符，其余（如 ": keep-alive"）忽略
+                    continue
+
+                data = line[len("data:") :].strip()
+                if data == "[DONE]":
+                    break
+
+                try:
+                    chunk = json.loads(data)
+                except json.JSONDecodeError:
+                    logger.warning("LLM 流式响应出现非 JSON 数据块，已跳过")
+                    continue
+
+                choices = chunk.get("choices") or []
+                if not choices:
+                    continue
+
+                delta = choices[0].get("delta") or {}
+                content = delta.get("content")
+                if content:
+                    yield content
+
+    except httpx.TimeoutException as exc:
+        logger.warning("LLM 流式请求超时: %s", type(exc).__name__)
+        raise RuntimeError("AI 服务响应超时，请稍后重试") from exc
+    except httpx.HTTPError as exc:
+        logger.warning("LLM 流式请求连接失败: %s", type(exc).__name__)
+        raise RuntimeError(f"AI 服务连接失败（{type(exc).__name__}），请稍后重试") from exc
+
+    logger.info("LLM 流式请求结束 (model=%s)", config.model)
 
 
 def build_health_analysis_prompt(health_data: dict, user_question: str) -> list:

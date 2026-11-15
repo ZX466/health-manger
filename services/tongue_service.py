@@ -12,7 +12,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 import models
-from services.cache_service import tongue_result_cache
+import settings
+from services.cache_service import make_cache_key, tongue_result_cache
+from services.image_service import ImageValidationError, prepare_image
 
 logger = logging.getLogger(__name__)
 
@@ -38,22 +40,20 @@ async def upload_and_analyze(file: UploadFile, user_id: int, db: Session) -> mod
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="文件大小不能超过10MB")
 
-    # S5: 魔数/真实图像校验——content-type 可伪造，用 PIL 验证确为有效图像
+    # M-PERF2: 统一走 prepare_image —— 用 PIL 验证真实图像（content-type 可伪造）、
+    # 纠正 EXIF 方向、长边降采样到 1024、重编码 JPEG 并剥离 EXIF/GPS，
+    # 既减少落盘体积，也减少上传视觉模型的字节数。
     try:
-        import io
+        prepared = await asyncio.to_thread(prepare_image, content)
+    except ImageValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        from PIL import Image
-
-        with Image.open(io.BytesIO(content)) as img:
-            img.verify()
-    except Exception:
-        raise HTTPException(status_code=400, detail="文件不是有效的图片")
-
-    filename = f"{uuid.uuid4().hex}{file_ext}"
+    filename = f"{uuid.uuid4().hex}.jpg"
     filepath = os.path.join(UPLOAD_DIR, filename)
+    # 用原始上传字节做哈希：同一张图无论压缩结果如何都能命中分析缓存
     image_hash = hashlib.sha256(content).hexdigest()
 
-    await asyncio.to_thread(Path(filepath).write_bytes, content)
+    await asyncio.to_thread(Path(filepath).write_bytes, prepared)
 
     db_diagnosis = models.TongueDiagnosis(
         user_id=user_id,
@@ -72,12 +72,20 @@ async def upload_and_analyze(file: UploadFile, user_id: int, db: Session) -> mod
 
         vision_config = build_vision_config_for_user(db, user_id)
 
-        cached_result = tongue_result_cache.get(image_hash)
+        # M-PERF2: 缓存 key 必须含视觉模型标识，否则切换模型后会命中旧模型的结果
+        cfg = vision_config or {}
+        cache_key = make_cache_key(
+            str(cfg.get("provider") or "default"),
+            str(cfg.get("model") or settings.ARK_MODEL_ID),
+            image_hash,
+        )
+
+        cached_result = tongue_result_cache.get(cache_key)
         if cached_result:
             result = cached_result
         else:
             result = await asyncio.to_thread(analyze_tongue_image, filepath, vision_config)
-            tongue_result_cache.set(image_hash, result)
+            tongue_result_cache.set(cache_key, result)
 
         db_diagnosis.tongue_color = result["tongue_color"]
         db_diagnosis.coating_color = result["coating_color"]

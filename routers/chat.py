@@ -1,6 +1,8 @@
+import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -19,14 +21,31 @@ from chat_session import (
     get_user_sessions,
     message_to_dict,
 )
-from database import get_db
+from database import SessionLocal, get_db
 from services.ai_config_service import build_llm_config_for_user
-from services.llm_service import CHAT_SYSTEM_PROMPT, LLMConfig, call_llm
+from services.llm_service import CHAT_SYSTEM_PROMPT, LLMConfig, call_llm, stream_llm
 from services.security_service import check_rate_limit, sanitize_for_prompt
 
 router = APIRouter(prefix="/api/chat", tags=["聊天会话"])
 
 _CHAT_CONFIG = LLMConfig(temperature=settings.CHAT_TEMPERATURE, max_tokens=settings.CHAT_MAX_TOKENS)
+
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "X-Accel-Buffering": "no",
+    "Connection": "keep-alive",
+}
+
+
+def _sse(event: str, data: dict) -> str:
+    """组装一条 SSE 事件；data 必须是单行 JSON（换行由 json 转义）。"""
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _estimate_tokens(text: str) -> int:
+    if not text:
+        return 0
+    return max(1, len(text) // settings.CHARS_PER_TOKEN_ZH)
 
 
 @router.post("/session", response_model=schemas.ChatSessionResponse)
@@ -142,6 +161,97 @@ async def send_message(
         db.rollback()
         logger.exception("AI 响应失败")
         raise HTTPException(status_code=500, detail="AI 响应失败，请稍后重试")
+
+
+@router.post("/session/{session_id}/stream")
+async def stream_message(
+    session_id: int,
+    message_data: schemas.ChatMessageCreate,
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SSE 流式对话（M-PERF1）。事件顺序：safety（待 M-SEC1）→ delta* → done|error。"""
+    check_rate_limit(
+        f"chat:{current_user.id}",
+        max_requests=settings.CHAT_RATE_LIMIT,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
+
+    session = get_session(db=db, session_id=session_id, user_id=current_user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    safe_content = sanitize_for_prompt(message_data.content, max_length=2000)
+
+    # 先取历史（不含本次消息），再把本次用户消息追加给 LLM
+    context = get_session_context(
+        db=db,
+        session_id=session_id,
+        max_messages=settings.CHAT_CONTEXT_MAX_MESSAGES,
+    )
+    config = build_llm_config_for_user(db, current_user.id, _CHAT_CONFIG)
+
+    messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    messages.extend(context)
+    messages.append({"role": "user", "content": safe_content})
+
+    # 决策 5：用户消息先落库；assistant 仅在完整结束后落库，断开即丢弃半截回复
+    add_message(db=db, session_id=session_id, role="user", content=safe_content)
+
+    async def event_stream():
+        chunks: list[str] = []
+        stream_db = SessionLocal()
+        try:
+            # TODO(M-SEC1): services.safety_service 落地后，在首个 delta 之前
+            # 按契约发 event: safety {level, crisis, resources}，并在此处覆写
+            # system prompt 为严肃关怀版本（决策 6）。当前模块未就绪，按派单约定不发。
+            try:
+                async for piece in stream_llm(messages, config):
+                    if await request.is_disconnected():
+                        logger.info("客户端断开，中止流式响应 (session=%d)", session_id)
+                        return
+                    chunks.append(piece)
+                    yield _sse("delta", {"content": piece})
+            except Exception as exc:
+                logger.exception("流式 AI 响应失败 (session=%d)", session_id)
+                yield _sse("error", {"detail": _public_stream_error(exc)})
+                return
+
+            text = "".join(chunks)
+            if not text:
+                yield _sse("error", {"detail": "AI 未返回内容，请稍后重试"})
+                return
+
+            tokens_used = _estimate_tokens(text)
+            stored = add_message(
+                db=stream_db,
+                session_id=session_id,
+                role="assistant",
+                content=text,
+                tokens_used=tokens_used,
+            )
+            yield _sse("done", {"message_id": stored.id, "tokens_used": tokens_used})
+        finally:
+            stream_db.close()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream; charset=utf-8",
+        headers=SSE_HEADERS,
+    )
+
+
+def _public_stream_error(exc: Exception) -> str:
+    """对外只暴露安全文案，避免把上游响应体/凭据细节透给前端。"""
+    message = str(exc)
+    if "超时" in message:
+        return "AI 服务响应超时，请稍后重试"
+    if "密钥" in message:
+        return "未配置 AI API 密钥，请先在 AI 设置中完善"
+    if "HTTP 4" in message:
+        return "AI 服务拒绝了本次请求，请检查 AI 设置"
+    return "AI 响应失败，请稍后重试"
 
 
 @router.post("/session/{session_id}/tongue-context", response_model=schemas.MessageResponse)
