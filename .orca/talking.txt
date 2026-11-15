@@ -45,6 +45,48 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 
 ---
 
+## 2026-11-15 M 系列派单（身心双维升级 · 零新增依赖）
+
+用户已确认新版方案。Claude 已落 `services/scale_scoring.py`（PHQ-9/GAD-7 纯函数 + Q9 危机标记）。
+
+| 任务 | Agent | 能力域 | 依赖 | 状态 |
+|---|---|---|---|---|
+| M-DB1 心理数据层 | opencode | 数据/数据库 | — | 已派单 |
+| M-API1 契约与路由 | kilo | 接口/兼容性 | M-DB1 | 已派单（文档/ schemas 先行） |
+| M-SEC1 安全兜底 | Codex | 安全/合规/风险 | M-DB1 | 已派单（纯函数先行） |
+| M-PERF1 流式对话 | Pi | 性能 | — | 已派单 |
+| M-PERF2 视觉管线/图片压缩 | Pi | 性能 | M-PERF1 | 排队 |
+| M-LOGIC1 心理服务 + 交叉预警 | Claude | 架构/逻辑/测试 | M-DB1 | 排队 |
+| M-FE1 心理前端 + 年轻化 | Claude | 前端/体验 | M-API1/M-PERF1 | 排队 |
+| M-DOC1 文档/配置 | cline | 依赖/配置/文档 | 全部 | 排队 |
+
+评审链：opencode→Codex；kilo→Claude；Codex→cline；Pi→cline；Claude→Codex。
+
+### 关键决策（统一口径，不再分叉）
+1. 睡眠只记每日 `sleep_hours`（0–16），不记入睡/起床时间；睡眠债 = 近 7 个有记录日 `Σ max(0, 8 − hours)`，覆盖 <4 天显示“数据不足”。
+2. 心理打卡每人每天一条，同日重复提交 = 更新。
+3. 量表每类每天最多提交 3 次；PHQ-9 第 9 题 >0 或总分 ≥20、GAD-7 ≥15 → `crisis_flag=true`；后端强制，前端不得隐藏资源。
+4. 拍照识餐只返回草稿，不写库；确认后创建 `Food`（`description` 前缀 `[AI估算]`）再走现有餐记录接口。体检 OCR 同理，只回草稿，复用现有健康记录表单。
+5. 流式对话：用户消息先落库；assistant 仅在 `done` 后落库；断开即中止上游、丢弃半截回复，不新增“部分消息”字段。
+6. `persona_style` 默认 `humorous`；高风险/危机时后端强制切换严肃关怀 Prompt，前端同步隐藏玩梗文案。
+7. 热线只从环境变量读取，默认空；不得编造号码。紧急文案只写 120/110 + 学校心理咨询中心。
+8. 零新增依赖；除 `MentalRecord`、`ScaleAssessment`、`AIConfig.persona_style` 外不改表结构。
+
+### 文件所有权（互斥，冲突即 blocked）
+- opencode：`models.py`、`alembic/versions/*`
+- kilo：`schemas.py`、`routers/mental.py`、`routers/food.py`、`routers/health.py`、`main.py`、`.orca/contracts/api-v2.md`
+- Pi：`services/llm_service.py`、`routers/chat.py`、`services/image_service.py`、`services/vision_service.py`、`services/food_recognition_service.py`、`services/report_ocr_service.py`、`services/tongue_service.py`、`tongue/cloud_analyzer.py`、`services/cache_service.py`
+- Codex：`services/safety_service.py`、`.orca/security/mental-safety-review.md`、`tests/test_safety_service.py`
+- Claude：`services/scale_scoring.py`（已落）、`services/mental_service.py`、`services/warning_service.py`、`frontend/**`、其余新增测试
+- cline：`README.md`、`.env.example`、`CLAUDE.md`、`AGENTS.md`（`requirements.txt` 只核对不改）
+
+### 开工/收尾口径
+- 先 `git merge --ff-only main`；本分支已有提交则 `git rebase main`；只解自己文件冲突，他人文件冲突立即 `blocked`。
+- 测试固定 `uv run python -m pytest -q`（`uv run pytest` 会因 sys.path 报 `ModuleNotFoundError: database`）。
+- 完成回 `complete: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+
+---
+
 ## 2026-11-15 新派单：M-API1 心理/识别接口契约与路由
 
 [Claude -> kilo] M-API1 2026-11-15: 新接口契约 + schemas + 路由。先追加 `[kilo -> Claude] accept M-API1:` 再开工。
