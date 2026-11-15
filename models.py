@@ -1,6 +1,18 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -256,7 +268,52 @@ class AIConfig(Base):
     vision_model = Column(String(100), nullable=True)
     vision_api_key_encrypted = Column(String(1000), nullable=True)
 
+    # 心理关怀人设风格（humorous | serious）
+    persona_style = Column(String(16), nullable=False, default="humorous", server_default="humorous")
+
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     user = relationship("User", backref="ai_configs")
+
+
+class MentalRecord(Base):
+    """心理每日打卡（每人每天一条，同日重复提交即更新）。"""
+
+    __tablename__ = "mental_records"
+    __table_args__ = (
+        UniqueConstraint("user_id", "record_date", name="uq_mental_user_date"),
+        Index("ix_mental_user_date", "user_id", "record_date"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    record_date = Column(Date, nullable=False)
+    mood_score = Column(Integer, nullable=True)
+    mood_label = Column(String(16), nullable=True)
+    stress_tags = Column(Text, nullable=True)
+    sleep_hours = Column(Float, nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+
+    user = relationship("User", backref="mental_records")
+
+
+class ScaleAssessment(Base):
+    """心理量表测评记录（phq9 / gad7）。"""
+
+    __tablename__ = "scale_assessments"
+    __table_args__ = (
+        Index("ix_scale_user_type_time", "user_id", "scale_type", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    scale_type = Column(String(8), nullable=False)
+    answers = Column(Text, nullable=True)
+    score = Column(Integer, nullable=True)
+    risk_level = Column(String(20), nullable=True)
+    crisis_flag = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=_utcnow)
+
+    user = relationship("User", backref="scale_assessments")
