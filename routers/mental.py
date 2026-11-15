@@ -27,8 +27,8 @@ def _mental_service():
     return mental_service
 
 
-def _crisis_resources() -> list[str]:
-    """危机资源（热线等）由安全模块按环境变量提供；未配置时为空列表。"""
+def _crisis_resources() -> list[dict]:
+    """危机支持资源（热线/校心理中心）由安全模块按环境变量提供；未配置时为空列表。"""
     try:
         from services.safety_service import crisis_resources
     except ImportError:

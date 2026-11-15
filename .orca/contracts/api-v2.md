@@ -129,7 +129,22 @@
 
 - `risk_level` ∈ `minimal` | `mild` | `moderate` | `moderately_severe` | `severe`。
 - `crisis_flag`：PHQ-9 第 9 题 >0 **或** 总分 ≥20；GAD-7 总分 ≥15。**后端强制**，前端不得隐藏。
-- `resources`：仅当 `crisis_flag=true` 时返回 `services.safety_service.crisis_resources()` 的结果（`string[]`），否则 `[]`。热线只从环境变量读取，**未配置（或安全模块尚未合入）时为空列表**，属正常状态；前端必须固定展示 120/110 + 学校心理咨询中心文案，不得因空列表隐藏求助入口。
+- `resources`：`CrisisResource[]`，仅当 `crisis_flag=true` 时返回 `services.safety_service.crisis_resources()` 的结果，否则 `[]`：
+
+```json
+[
+  {"name": "心理援助热线", "phone": "0000-000000", "description": "请核实服务地区与开放时间。"},
+  {"name": "学校心理咨询中心", "phone": null, "description": "请联系学校心理咨询中心/当地精神卫生中心"}
+]
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `name` | string | 资源名称，1–100 字 |
+| `phone` | string \| null | 热线号码；仅接受环境变量配置且通过格式校验的号码，**不得编造**；无号码时为 `null` |
+| `description` | string | 说明文案，≤300 字 |
+
+热线只从环境变量读取，**未配置（或安全模块尚未合入）时返回 `[]`**，属正常状态；前端必须固定展示 120/110 + 学校心理咨询中心文案，不得因空数组隐藏求助入口。
 - 落库前由 service 计算并持久化 `score/max_score/risk_level/crisis_flag`，供交叉预警复用。
 
 ### 1.6 `GET /api/mental/scales/history?scale_type=&limit=20`
@@ -285,7 +300,7 @@
 
 ```
 event: safety
-data: {"level":"crisis","crisis":true,"resources":["..."]}
+data: {"level":"high","crisis":true,"resources":[{"name":"心理援助热线","phone":null,"description":"请核实服务地区与开放时间。"}]}
 
 event: delta
 data: {"content":"你"}
@@ -302,7 +317,8 @@ event: error
 data: {"detail":"上游模型超时"}
 ```
 
-- `safety.level` ∈ `normal` | `caution` | `crisis`；`crisis=true` 时前端必须展示资源且隐藏玩梗文案。
+- `safety.level` ∈ `normal` | `elevated` | `high`（与 `services.safety_service.RiskState.level` 一致，不再使用 `caution`/`crisis` 取值）。
+- `crisis`（bool）与 `resources`（`CrisisResource[]`，结构同 §1.5）：`crisis=true` 时前端必须展示资源且隐藏玩梗文案；`resources` 为空数组时仍展示 120/110 + 校心理中心固定文案。
 - 持久化口径（决策 5）：用户消息先落库；assistant **仅**在 `done` 后落库；客户端断开即中止上游并丢弃半截回复，**不新增**「部分消息」字段。
 - 消息内容含非法字符/控制字符时按文本转义，`data` 行必须为单行 JSON（`\n` 转义）。
 - 前端断线重连语义：同一 `session_id` 重新发送上一条用户消息即可，不提供断点续传事件。

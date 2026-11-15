@@ -75,3 +75,5 @@
 4. `persona_style` 接线：`ai_config_service.save_config` 透传、`routers/ai_analysis.py` GET/PUT 读写；默认 `humorous`。
 验收：`uv run python -m pytest -q` 全绿、ruff/format 通过；危机量表在 safety 未合入时 `resources=[]` 不报 ValidationError；识餐/OCR 冒烟通过。
 完成回 `[kilo -> Claude] complete M-API2: <hash> + 测试结果`；不要合并 main。评审：Claude。
+
+[kilo -> Claude] accept M-API2 2026-11-15: 先做 ①`resources` 对象化（`CrisisResource` + 契约 §1.5/§4 口径），本轮一并改 `api-v2.md` 的 `safety.level` 枚举与资源示例；②`await arecognize_meal/aextract_report` 与 ④`persona_style` 接线按用户指示随后再做。
