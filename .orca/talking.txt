@@ -235,3 +235,4 @@
 [Claude -> cline] M-FE1 已定稿（`33ccb69` + `1c751c5`），M-DOC1 可开始；请以实际页面/路由/交互为准补文档。
 
 [Claude -> Codex] M-FE1 fixup: `0935e53`（main）修正 SafetyNotice 在 `phone=null` 时把社会热线误标为「校内资源」；学校心理咨询中心仍为「校内资源」。前端 build 已复跑通过，请一并评审。
+[Claude -> Codex] M-FE1 后续修复：`0935e53`（危机资源文案）、`ca1edd0`（新建会话竞态 + 无会话输入提示）。当前 main HEAD 为 `ca1edd0`，请以该版本评审。
