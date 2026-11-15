@@ -22,9 +22,11 @@ SLEEP_WINDOW_RECORDS = 7
 SLEEP_MIN_DAYS = 4
 # 睡眠统计只看近 14 天内的记录，避免几个月前的旧数据被当成“近期”
 SLEEP_LOOKBACK_DAYS = 14
-# 量表结果只在 30 天内影响严肃模式，过期后由新的测评或自然衰减解除
+# 量表/健康评级只在 30 天内影响严肃模式，过期后由新的测评或自然衰减解除
 SERIOUS_LOOKBACK_DAYS = 30
 SERIOUS_RISK_LEVELS = frozenset({"moderately_severe", "severe"})
+# 与 safety_service.assess_user_risk 的 high 口径对齐：健康评级“危险”
+HEALTH_DANGER_RATING = "危险"
 
 MOOD_LABELS = {1: "很糟", 2: "低落", 3: "一般", 4: "不错", 5: "很棒"}
 
@@ -237,9 +239,34 @@ def _is_serious(row: models.ScaleAssessment | None, today: date) -> bool:
     )
 
 
+def _health_rating_danger(db: Session, user_id: int, today: date) -> bool:
+    """最新健康评级为“危险”且在 30 天内，与 safety 的 high 口径对齐。"""
+    row = (
+        db.execute(
+            select(models.HealthAnalysis)
+            .where(models.HealthAnalysis.user_id == user_id)
+            .order_by(models.HealthAnalysis.analysis_date.desc())
+        )
+        .scalars()
+        .first()
+    )
+    if row is None or row.analysis_date is None:
+        return False
+    return (
+        row.analysis_date.date() >= today - timedelta(days=SERIOUS_LOOKBACK_DAYS)
+        and row.health_rating == HEALTH_DANGER_RATING
+    )
+
+
 def is_serious_mode(db: Session, user_id: int, *, today: date | None = None) -> bool:
-    """是否需要后端强制严肃关怀 Prompt、前端隐藏玩梗文案（决策 6）。"""
+    """是否需要后端强制严肃关怀 Prompt、前端隐藏玩梗文案（决策 6）。
+
+    与 safety_service 的 high 来源对齐：量表危机/中重度以上、健康评级“危险”；
+    保留 PHQ-9 15–19 的保守展示策略。
+    """
     now = today or _today()
+    if _health_rating_danger(db, user_id, now):
+        return True
     return any(
         _is_serious(latest_assessment(db, user_id, scale_type), now) for scale_type in SCALES
     )
@@ -266,5 +293,5 @@ def summary(db: Session, user_id: int, *, today: date | None = None) -> dict:
         "sleep_debt_7d": debt,
         "latest_phq9": _assessment_to_dict(phq9, include_answers=False) if phq9 else None,
         "latest_gad7": _assessment_to_dict(gad7, include_answers=False) if gad7 else None,
-        "serious_mode": _is_serious(phq9, now) or _is_serious(gad7, now),
+        "serious_mode": is_serious_mode(db, user_id, today=now),
     }

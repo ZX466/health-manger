@@ -15,12 +15,12 @@
 | M-SEC1 安全兜底 | Codex | 🟡 实现完成 · 集成 blocked | `6c77022` + `2ec3b98` |
 | M-PERF1 流式对话 | Pi | ✅ 完成 · cline 评审 pass | `ba5eda2`（已合并） |
 | M-PERF2 视觉管线 | Pi | ✅ 完成 · cline 评审 pass | `9e43850`（已合并） |
-| M-LOGIC1 心理服务+交叉预警 | Claude | 🟡 评审要求修改 | `90c69f9`（已合并） |
+| M-LOGIC1 心理服务+交叉预警 | Claude | ✅ A01 已修 · 待 Codex 复核 | `c41a484` |
 | M-FE1 心理前端+年轻化 | Claude | ⏳ 未开始 | — |
 | M-DOC1 文档/配置 | cline | 🟡 第二阶段完成 | `880209d` |
 
 - `main` = `5eddc66`；opencode 已合并，cline/codex/kilo/pi 分支各有未合并提交。
-- 全量基线：main 131 passed；Codex 分支（含安全测试）191 passed / 1 failed（失败项即 M-LOGIC1 `_crisis_hint`）。
+- 全量基线：main **137 passed**（A01 修复后）；Codex 分支（含安全测试）191 passed / 1 failed，待 A02/M-PERF4 接入后复跑。
 
 ## 统一口径（已裁决，不再分叉）
 
@@ -36,17 +36,33 @@
 10. `crisis_resources()` 返回 `list[dict[str, str]]`：`{name, phone?, description}`；消费方按字段格式化，禁止 `join(dict)`。
 11. 测试固定 `uv run python -m pytest -q`。
 
-## 本树任务（M-API1 · 完成待评审）
+## 待办与阻塞
 
-- 提交：`785f354`（联调）+ `41db8f8`（回报）。
-- 交付：`schemas.py` 心理/识餐/OCR/`persona_style` 模型；`routers/mental.py`；`/api/food/recognize`；`/api/food/custom`；`/api/health/reports/ocr`；`main.py` 注册；`routers/_uploads.py`；`.orca/contracts/api-v2.md`。
-- 验证：ruff + format 通过；`python -m pytest -q` 131 passed；冒烟覆盖 401/200/400/503。
-- 待办：
-  1. `resources` 改为对象列表（口径 10），同步 `api-v2.md` 示例。
-  2. `routers/food.py:130`、`routers/health.py:114` 改 `await arecognize_meal` / `aextract_report`。
-  3. `persona_style` 接线：`services/ai_config_service.save_config`、`routers/ai_analysis.py` GET/PUT。
-  4. 等 Claude 评审 M-API1。
-- 注意：`submit_scale` 先 `score()`、service 再评分一次，可选收敛。
+**Claude（协调 + 前端）**
+- [x] 修 M-LOGIC1 评审项（`c41a484`）：`_crisis_hint` 已支持对象资源；`summary.serious_mode` 已纳入健康评级“危险”，保留 PHQ-9 15–19 保守策略。待 Codex 复核。
+- [ ] 评审 M-API1 `785f354`（接口契约/兼容性）。
+- [ ] M-FE1：心理页、量表、人设卡、流式聊天、呼吸环、木鱼等（依赖已具备）。
+- [ ] M-SEC1 合并门：cline 评审 pass + A01/A02 集成完成后再合。
+
+**kilo**
+- [ ] `schemas.ScaleSubmitResponse.resources` 改为对象列表（对齐口径 10）。
+- [ ] `routers/food.py:130`、`routers/health.py:114` 改 `await arecognize_meal` / `aextract_report`。
+- [ ] `api-v2.md` 的 `safety.level` 与资源示例对齐口径 9/10。
+- [ ] `persona_style` 接线：`services/ai_config_service.save_config` + `routers/ai_analysis.py` GET/PUT。
+
+**Codex**
+- [ ] 等 cline 评审 `6c77022`；等 A01（Claude）/A02（kilo）/Pi 接入后同步 main、重跑全量，回 `complete M-SEC1`。
+
+**Pi**
+- [ ] 接入 `assess_user_risk` / `build_system_prompt` 到两条聊天路径，SSE 首帧 `safety`。
+- [ ] 识餐/OCR 输出过滤控制字符、收敛非有限数。
+- [ ] `be3bd61` 待合并（图片解码顺序修复）。
+
+**cline**
+- [ ] 评审 M-SEC1；M-FE1 合并后定稿 M-DOC1（README/.env/CLAUDE/AGENTS）。
+
+**opencode**
+- [ ] 空闲，等新派单。
 
 ## 文件所有权（互斥，冲突即 blocked）
 
@@ -62,18 +78,30 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+---
+
+## 本轮派单（2026-11-15 20:35）
+
+| 任务 | Agent | 内容 | 依赖 |
+|---|---|---|---|
+| M-API2 集成修正 | kilo | resources 对象化、await 识餐/OCR、api-v2 口径、persona_style 接线 | M-API1 |
+| M-SEC1 收尾 | Codex | 等 cline 评审 + A01/A02/M-PERF4，合并后全量验收 | M-SEC1-R、M-API2、M-PERF4 |
+| M-PERF3 输出边界 | Pi | 控制字符/nan 收敛（立即可做） | — |
+| M-PERF4 安全接入 | Pi | 风险评估 + 严肃 Prompt + SSE safety 首帧 | M-SEC1 合入 main |
+| M-SEC1-R 评审 | cline | 只读评审 `6c77022` | — |
+| M-DB2 数据层回归 | opencode | 迁移链/约束/索引只读验证 | — |
+| M-LOGIC1 修 | Claude | `_crisis_hint` 对象化、`serious_mode` 对齐 | Codex findings |
+| M-API1 评审 | Claude | 评审 `785f354` | — |
+| M-FE1 | Claude | 心理前端 + 年轻化 | M-API2/M-PERF4 |
 
 ---
 
-## 2026-11-15 20:35 派单：M-API2 集成修正
+## 2026-11-15 M-API2 回报（第 1/3 项已完成）
 
-[Claude -> kilo] M-API2 2026-11-15: 承接 M-API1，修 4 项集成问题。先追加 `[kilo -> Claude] accept M-API2:`。
-文件：`schemas.py`、`routers/food.py`、`routers/health.py`、`routers/ai_analysis.py`、`services/ai_config_service.py`、`.orca/contracts/api-v2.md`。
-1. `ScaleSubmitResponse.resources` 改为 `list[CrisisResource]`；新增 `CrisisResource {name: str, phone: str | None, description: str}`，与 `safety_service.crisis_resources()` 返回对象对齐。
-2. `routers/food.py:130` → `await arecognize_meal(...)`；`routers/health.py:114` → `await aextract_report(...)`。
-3. `api-v2.md`：`safety.level` 只写 `normal|elevated|high`；资源示例改对象数组；删 `caution/crisis`。
-4. `persona_style` 接线：`ai_config_service.save_config` 透传、`routers/ai_analysis.py` GET/PUT 读写；默认 `humorous`。
-验收：`uv run python -m pytest -q` 全绿、ruff/format 通过；危机量表在 safety 未合入时 `resources=[]` 不报 ValidationError；识餐/OCR 冒烟通过。
-完成回 `[kilo -> Claude] complete M-API2: <hash> + 测试结果`；不要合并 main。评审：Claude。
+[kilo -> Claude] accept + complete M-API2（第 1、3 项）2026-11-15: 分支 `ZX466/kilo` 已 `git merge main`（基线 137 passed），未合并 main；提交见 `git log --oneline -3`。评审：Claude。
+- ① `resources` 对象化：新增 `schemas.CrisisResource {name, phone|null, description}`；`ScaleSubmitResponse.resources: list[CrisisResource]`；`routers/mental.py` 出口改为对象列表，与口径 10 的 `crisis_resources()`（`{name, phone?, description}`）逐字段对齐；安全模块未合入时仍返回 `[]`，不报 ValidationError。
+- ③ 契约：`api-v2.md` 的 `safety.level` 收敛为 `normal|elevated|high`（删除 `caution/crisis`）；§1.5、§4 资源示例改对象数组并补字段表（`phone` 可空、`name` 1–100、`description`≤300）；`persona_style` 取值同步口径 6 改为 `humorous|clinical`（schemas 同步）。
+- 验证（实测）：`ruff check` pass · `ruff format --check`（本任务文件）pass · `python -m pytest -q` = **137 passed**。
+- 冒烟（TestClient + 临时 SQLite，`safety_service` 用桩）：非危机 `resources=[]`；危机（PHQ-9 Q9=2、GAD-7 全 3）返回 `[{name, phone, description}, {name, phone: null, description}]`；去掉 safety 模块仍 200 + `[]`；`persona_style="clinical"` 200、`"warm"` 422、缺省 200。
+- 未做（按用户指示随后再做）：② `await arecognize_meal`/`aextract_report`；④ `persona_style` 接线（`ai_config_service.save_config` + `routers/ai_analysis.py` GET/PUT）。两项均在我的所有权文件内，随时可接。
 
-[kilo -> Claude] accept M-API2 2026-11-15: 先做 ①`resources` 对象化（`CrisisResource` + 契约 §1.5/§4 口径），本轮一并改 `api-v2.md` 的 `safety.level` 枚举与资源示例；②`await arecognize_meal/aextract_report` 与 ④`persona_style` 接线按用户指示随后再做。

@@ -1,11 +1,13 @@
 """M-LOGIC1：心理服务 + 身心交叉预警。"""
 
+import sys
+import types
 from datetime import date, datetime, timedelta
 
 import pytest
 
 import models
-from services import mental_service
+from services import mental_service, warning_service
 from services.warning_service import check_health_warnings
 
 TODAY = date(2026, 11, 15)
@@ -35,6 +37,17 @@ def _assessment(db, user_id, scale_type, risk, crisis=False, days_ago=0, score=1
     db.add(row)
     db.flush()
     return row
+
+
+def _health_analysis(db, user_id, rating, days_ago=0):
+    db.add(
+        models.HealthAnalysis(
+            user_id=user_id,
+            health_rating=rating,
+            analysis_date=datetime.fromisoformat("2026-11-15T12:00:00") - timedelta(days=days_ago),
+        )
+    )
+    db.flush()
 
 
 def test_upsert_mood_same_day_updates_not_inserts(db, test_user):
@@ -202,3 +215,51 @@ def test_cross_warning_is_deduplicated_when_unread(db, test_user):
 
 def test_no_warnings_for_user_without_any_data(db, test_user):
     assert check_health_warnings(test_user.id, db) == []
+
+
+# ── Codex 评审修订：安全资源对象化 + 健康评级“危险”对齐 ──
+
+
+def test_serious_mode_on_danger_health_rating(db, test_user):
+    _health_analysis(db, test_user.id, "危险")
+    assert mental_service.is_serious_mode(db, test_user.id, today=TODAY) is True
+
+
+def test_serious_mode_ignores_non_danger_and_stale_rating(db, test_user):
+    _health_analysis(db, test_user.id, "较差")
+    assert mental_service.is_serious_mode(db, test_user.id, today=TODAY) is False
+    _health_analysis(db, test_user.id, "危险", days_ago=45)
+    assert mental_service.is_serious_mode(db, test_user.id, today=TODAY) is False
+
+
+def test_summary_serious_mode_includes_danger_health_rating(db, test_user):
+    _health_analysis(db, test_user.id, "危险")
+    assert mental_service.summary(db, test_user.id, today=TODAY)["serious_mode"] is True
+
+
+def test_crisis_hint_formats_object_resources(monkeypatch):
+    fake = types.ModuleType("services.safety_service")
+    fake.crisis_resources = lambda: [
+        {"name": "学校心理咨询中心", "phone": "123456", "description": "工作日 9-17 点"},
+        {"name": "当地精神卫生中心"},
+    ]
+    monkeypatch.setitem(sys.modules, "services.safety_service", fake)
+    hint = warning_service._crisis_hint()
+    assert "学校心理咨询中心 123456 工作日 9-17 点" in hint
+    assert "当地精神卫生中心" in hint
+
+
+def test_crisis_hint_keeps_string_resources(monkeypatch):
+    fake = types.ModuleType("services.safety_service")
+    fake.crisis_resources = lambda: ["学校心理咨询中心"]
+    monkeypatch.setitem(sys.modules, "services.safety_service", fake)
+    assert warning_service._crisis_hint() == "可联系：学校心理咨询中心"
+
+
+def test_crisis_hint_without_resources_has_no_fabricated_number(monkeypatch):
+    fake = types.ModuleType("services.safety_service")
+    fake.crisis_resources = list
+    monkeypatch.setitem(sys.modules, "services.safety_service", fake)
+    hint = warning_service._crisis_hint()
+    assert "可联系" not in hint
+    assert not any(ch.isdigit() for ch in hint)

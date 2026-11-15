@@ -325,7 +325,7 @@ data: {"detail":"上游模型超时"}
 
 ## 5. AI 配置扩展（`schemas.AIConfigUpdate` / `AIConfigResponse`）
 
-- `AIConfigUpdate` 新增 **可选** `persona_style`（缺省 `null` = 不修改已存值），取值 `humorous` | `warm` | `professional` | `concise`；超出取值 → `422`。
+- `AIConfigUpdate` 新增 **可选** `persona_style`（缺省 `null` = 不修改已存值），取值 `humorous` | `clinical`（口径 6），超出取值 → `422`。
 - `AIConfigResponse` 新增 `persona_style`，未配置时返回默认 `humorous`。
 - 兼容：v1 客户端不传该字段时行为完全不变；未落库列时响应仍返回默认值，不报 500。
 

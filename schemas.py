@@ -394,7 +394,7 @@ class AIConfigUpdate(BaseModel):
     vision_base_url: str | None = Field(None, max_length=500)
     vision_api_key: str | None = Field(None, min_length=1, max_length=500)
     # 对话风格（可选：缺省 None 表示保持已存值）
-    persona_style: Literal["humorous", "warm", "professional", "concise"] | None = None
+    persona_style: Literal["humorous", "clinical"] | None = None
 
 
 class AIConfigResponse(BaseModel):
