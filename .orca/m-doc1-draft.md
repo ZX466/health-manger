@@ -21,10 +21,12 @@
   必须 `uv venv --python 3.11 --clear`（uv 0.12.3 替换已有 venv 必须 --clear），再 `uv pip install -r requirements.txt`（清华镜像可用）。
   `uv run` 只同步 pyproject 的 dev 组（pip-audit），不装 requirements.txt。
 
-## 3. 待 Claude 裁决的口径分叉（定稿前必须收敛）
+## 3. 已裁决口径（2026-11-15 20:30 统一，不再分叉）
 
-1. `persona_style` 取值：派单与 Codex M-SEC1 契约 = `humorous | clinical`；kilo `.orca/contracts/api-v2.md` §5 = `humorous | warm | professional | concise`。文档跟随最终实现，需统一。
-2. SSE `safety.level`：kilo 契约 §4 = `normal | caution | crisis`；Codex `RiskState.level` = `normal | elevated | high`。同上需统一。
+1. `persona_style` 仅 `humorous | clinical`，默认 `humorous`；高风险/危机后端强制严肃关怀，前端同步隐藏玩梗。
+2. SSE `safety.level` 仅 `normal | elevated | high`（Codex `RiskState`）；`caution/crisis` 作废。
+3. `crisis_resources()` 返回 `list[dict[str, str]]`：`{name, phone?, description}`；消费方按字段格式化，禁止 `join(dict)`。
+4. M-SEC1 评审 **pass**（`6c77022`，61 例独立复测通过）；kilo api-v2.md 旧口径由 M-API2 对齐。
 
 ## 4. README.md 增补骨架（合并后落笔）
 
@@ -34,7 +36,7 @@
 - PHQ-9 / GAD-7 初筛：题目后端下发（`scale_scoring.SCALES`），0–3 计分；分级 minimal/mild/moderate/moderately_severe/severe（GAD-7 无 moderately_severe）；每类每天限 3 次。
 - 危机标记：PHQ-9 Q9>0 或总分 ≥20、GAD-7 ≥15 → `crisis_flag=true`，后端强制，前端必须展示危机资源、不得隐藏。
 - 危机资源：只读环境变量 `MENTAL_HOTLINE` / `CAMPUS_COUNSELING`（默认空，不编造号码）；紧急文案只写 120/110 + 学校心理咨询中心。
-- 双模式聊天人设：`persona_style` 默认 humorous；高风险/危机后端强制严肃关怀 Prompt，前端同步隐藏玩梗文案。
+- 双模式聊天人设：`persona_style` = humorous（轻松懂梗）/ clinical（专业克制），默认 humorous；高风险/危机后端强制严肃关怀 Prompt，前端同步隐藏玩梗文案。
 - 前端减压模块（M-FE1 落地后按实际写）：呼吸训练 / 电子木鱼 / 烦恼粉碎机 / 人设卡。
 - 免责声明：初筛不构成诊断，AI 不能替代医生。
 
@@ -44,6 +46,7 @@
 
 ### 4.3 「流式对话」（依赖 M-PERF1）
 - `POST /api/chat/session/{id}/stream`，`text/event-stream`；事件 `safety → delta* → done|error`；头 `Cache-Control: no-cache`、`X-Accel-Buffering: no`。
+- safety 首帧 `{level: normal|elevated|high, crisis, resources: [{name, phone?, description}]}`（M-PERF4 接入后生效；默认无热线时 resources 为通用求助对象、无号码）。
 - 用户消息先落库；assistant 仅 `done` 后落库；断开即中止上游、丢弃半截回复。
 
 ### 4.4 环境变量表新增（与 .env.example 同步）
@@ -69,7 +72,7 @@ CAMPUS_COUNSELING=
 IMAGE_MAX_EDGE=1024
 IMAGE_JPEG_QUALITY=85
 
-# AI 聊天人设默认风格（取值以最终实现为准，见草稿 §3.1）
+# AI 聊天人设默认风格（humorous | clinical）
 PERSONA_STYLE_DEFAULT=humorous
 ```
 
@@ -81,9 +84,9 @@ PERSONA_STYLE_DEFAULT=humorous
 
 ## 7. 定稿检查单
 
-- [ ] M-DB1/M-API1/M-SEC1/M-PERF1/M-PERF2/M-LOGIC1/M-FE1 全部合并 main
-- [ ] `git merge --ff-only main`（或 rebase）同步本工作树
-- [ ] §3 两处分叉已由 Claude 收敛
+- [ ] M-DB1/M-API1/M-SEC1/M-PERF1/M-PERF2/M-LOGIC1/M-FE1 全部合并 main（已合：M-DB1/M-API1/M-PERF1/2/M-LOGIC1；待：M-SEC1 合并门〔cline pass 已回，等 A01/A02 集成〕、M-FE1）
+- [ ] `git merge main` 同步本工作树（20:40 已同步至 0c5830c，定稿前再同步一次）
+- [x] §3 口径已裁决（humorous/clinical；normal/elevated/high；资源对象列表）
 - [ ] `uv run python -m pytest -q` 实测数字写入 README/CLAUDE/AGENTS
 - [ ] `cd frontend && npm run build` 通过
 - [ ] 依赖复核仍零新增（否则 blocked）
