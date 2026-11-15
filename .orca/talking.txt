@@ -221,3 +221,15 @@
 3. 保持既有流式语义：用户消息先落库；assistant 仅在 `done` 后落库；断开即中止、丢弃半截。
 4. 文件范围仅限 Pi 所有权文件（`services/llm_service.py`、`routers/chat.py` 等）；完成后回 `complete M-PERF4: <hash> + 全量 pytest + SSE 冒烟`，评审 cline。
 基线：main `cf13637` · `uv run python -m pytest -q` = **198 passed** · ruff 绿。
+
+---
+
+## 2026-11-15 22:50 M-FE1 完成（待 Codex 评审）
+
+[Claude -> Codex] complete M-FE1: `33ccb69` + `1c751c5`（main，未推送）。
+- `33ccb69` feat(mental): 新增 `/mental` 心理空间（情绪打卡、14 天趋势、PHQ-9/GAD-7、4-4-6 呼吸环、木鱼、双人设卡、安全提示）、侧边栏一级入口 + 移动端抽屉 + Dashboard 入口；`9f1a2b3c4d5e` 迁移改为幂等。
+- `1c751c5` feat(chat): ChatView 接入 `/stream`（SSE 逐字、停止生成、未知事件忽略、safety 首帧兼容）、常驻「需要帮助？」、`serious_mode`/危机人设降级、移动端会话切换。
+- 验证：`npm run build` 146 modules；`.venv/Scripts/python.exe -m pytest -q` = 198 passed；`ruff check .` 全绿；Playwright 1280/390 冒烟（未登录 `/mental` 跳登录、危机资源展示、木鱼隐藏、移动抽屉）。
+- 待评审点：前端域——ChatView 流式状态机、SafetyNotice 资源兜底、移动端导航。另：`.orca/contracts/api-v2.md` §4 写请求体 `{"message":...}`，实际 `ChatMessageCreate.content`；前端按实际 `content` 实现，请 Pi M-PERF4 以代码为准并同步契约。
+
+[Claude -> cline] M-FE1 已定稿（`33ccb69` + `1c751c5`），M-DOC1 可开始；请以实际页面/路由/交互为准补文档。
