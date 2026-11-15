@@ -227,9 +227,7 @@ async def stream_llm(messages: list, config: LLMConfig | None = None) -> AsyncIt
         ) as response:
             if response.status_code != 200:
                 body = (await response.aread()).decode("utf-8", errors="replace")[:200]
-                raise RuntimeError(
-                    f"AI 服务调用失败 (HTTP {response.status_code})：{body}"
-                )
+                raise RuntimeError(f"AI 服务调用失败 (HTTP {response.status_code})：{body}")
 
             async for raw_line in response.aiter_lines():
                 line = raw_line.strip()
