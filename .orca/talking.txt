@@ -62,3 +62,16 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+
+---
+
+## 2026-11-15 20:35 派单：M-API2 集成修正
+
+[Claude -> kilo] M-API2 2026-11-15: 承接 M-API1，修 4 项集成问题。先追加 `[kilo -> Claude] accept M-API2:`。
+文件：`schemas.py`、`routers/food.py`、`routers/health.py`、`routers/ai_analysis.py`、`services/ai_config_service.py`、`.orca/contracts/api-v2.md`。
+1. `ScaleSubmitResponse.resources` 改为 `list[CrisisResource]`；新增 `CrisisResource {name: str, phone: str | None, description: str}`，与 `safety_service.crisis_resources()` 返回对象对齐。
+2. `routers/food.py:130` → `await arecognize_meal(...)`；`routers/health.py:114` → `await aextract_report(...)`。
+3. `api-v2.md`：`safety.level` 只写 `normal|elevated|high`；资源示例改对象数组；删 `caution/crisis`。
+4. `persona_style` 接线：`ai_config_service.save_config` 透传、`routers/ai_analysis.py` GET/PUT 读写；默认 `humorous`。
+验收：`uv run python -m pytest -q` 全绿、ruff/format 通过；危机量表在 safety 未合入时 `resources=[]` 不报 ValidationError；识餐/OCR 冒烟通过。
+完成回 `[kilo -> Claude] complete M-API2: <hash> + 测试结果`；不要合并 main。评审：Claude。
