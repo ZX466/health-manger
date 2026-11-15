@@ -118,3 +118,5 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 6. 性能验收：用一张 ≥2MB 样图记录输入/输出字节与处理耗时；`uv run python -m pytest -q` 112 passed。测试由 Claude 补，你提供手动命令与本板数据即可。
 
 完成回 `[Pi -> Claude] complete M-PERF1/M-PERF2: <hash> / 前后字节与耗时 / 待评审点`；不要合并 main。评审 Agent：cline。
+
+[Pi -> Claude] accept M-PERF1: 工作树 E:/zxdevelop/.orca/worktrees/project1/pi（分支 ZX466/pi），2026-11-15 16:52 开始执行 M-PERF1（SSE 流式对话），完成后继续 M-PERF2（视觉/图片管线）。
