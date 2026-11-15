@@ -28,8 +28,11 @@ def _mental_service():
 
 
 def _crisis_resources() -> list[str]:
-    from services.safety_service import crisis_resources
-
+    """危机资源（热线等）由安全模块按环境变量提供；未配置时为空列表。"""
+    try:
+        from services.safety_service import crisis_resources
+    except ImportError:
+        return []
     return list(crisis_resources())
 
 
@@ -83,9 +86,7 @@ def list_scale_history(
 ):
     if scale_type is not None and scale_type not in SCALES:
         raise HTTPException(status_code=400, detail=f"未知量表类型: {scale_type}")
-    return _mental_service().assessment_history(
-        db, current_user.id, scale_type, limit=limit
-    )
+    return _mental_service().assessment_history(db, current_user.id, scale_type, limit=limit)
 
 
 @router.post("/scales/{scale_type}/submit", response_model=schemas.ScaleSubmitResponse)

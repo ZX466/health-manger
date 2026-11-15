@@ -63,6 +63,8 @@
 
 语义：同一用户同一天（本地日期）仅一条，重复提交即**更新**该条，不新增行。
 
+字段落地口径：`record_date` 落库为 `Date`，响应按 `datetime` 序列化为当天 `00:00:00`；`updated_at` 当前未持久化，返回 `null` 保留字段位以便后续扩展；`mood_label`（如「一般」）由服务端生成，属于可选新增字段，前端不应依赖。
+
 ### 1.2 `GET /api/mental/mood?days=30`
 
 查询参数：`days` int，默认 30，范围 1–365。响应 `200` `MentalRecord[]`，按 `record_date` 倒序。
@@ -127,7 +129,7 @@
 
 - `risk_level` ∈ `minimal` | `mild` | `moderate` | `moderately_severe` | `severe`。
 - `crisis_flag`：PHQ-9 第 9 题 >0 **或** 总分 ≥20；GAD-7 总分 ≥15。**后端强制**，前端不得隐藏。
-- `resources`：仅当 `crisis_flag=true` 时返回 `services.safety_service.crisis_resources()` 的结果（`string[]`），否则 `[]`。
+- `resources`：仅当 `crisis_flag=true` 时返回 `services.safety_service.crisis_resources()` 的结果（`string[]`），否则 `[]`。热线只从环境变量读取，**未配置（或安全模块尚未合入）时为空列表**，属正常状态；前端必须固定展示 120/110 + 学校心理咨询中心文案，不得因空列表隐藏求助入口。
 - 落库前由 service 计算并持久化 `score/max_score/risk_level/crisis_flag`，供交叉预警复用。
 
 ### 1.6 `GET /api/mental/scales/history?scale_type=&limit=20`
@@ -175,9 +177,9 @@
 
 | 模型 | 字段 | 说明 |
 |---|---|---|
-| `MentalRecord` | `id` PK, `user_id` FK→`users.id`（索引）, `mood_score` int 1–5, `stress_tags` JSON/文本（列表）, `sleep_hours` float nullable, `note` text nullable, `record_date` datetime, `created_at` datetime, `updated_at` datetime | 唯一约束 `(user_id, record_date)` 的**按日**语义由 service upsert 保证；`stress_tags` 允许 JSON 字符串或列表，响应层两种都兼容 |
-| `ScaleAssessment` | `id` PK, `user_id` FK→`users.id`（索引）, `scale_type` str(16), `answers` JSON/文本（整数列表）, `score` int, `max_score` int, `risk_level` str(24), `crisis_flag` bool, `created_at` datetime | 每天每类最多 3 条由路由限流保证；历史查询按 `user_id + scale_type + created_at` |
-| `AIConfig` | 新增 `persona_style` str(20)，默认 `humorous` | 仅新增可空列；迁移需 `server_default='humorous'` 以兼容存量行 |
+| `MentalRecord` | `id` PK, `user_id` FK→`users.id`（索引）, `record_date` `Date`, `mood_score` int 1–5, `mood_label` str(16), `stress_tags` Text（JSON 字符串）, `sleep_hours` float nullable, `note` text nullable, `created_at` datetime | 唯一约束 `(user_id, record_date)`；`stress_tags` 以 JSON 字符串落库，响应层兼容 JSON 文本与列表两种形态 |
+| `ScaleAssessment` | `id` PK, `user_id` FK→`users.id`（索引）, `scale_type` str(8), `answers` Text（JSON 整数列表）, `score` int, `risk_level` str(20), `crisis_flag` bool, `created_at` datetime | 表内**不存** `max_score`/`label`，由 `services.mental_service` 依据 `scale_scoring.SCALES` 在响应层派生，接口字段保持本节定义不变；每天每类最多 3 条由路由限流保证 |
+| `AIConfig` | 新增 `persona_style` str(16)，默认 `humorous` | 仅新增列；迁移 `9f1a2b3c4d5e` 已用 `server_default='humorous'` 兼容存量行 |
 
 ## 2. 拍照识餐（`routers/food.py`）
 
@@ -330,3 +332,10 @@ data: {"detail":"上游模型超时"}
 | `services/safety_service.py` | Codex（M-SEC1） | — |
 | `services/food_recognition_service.py`、`services/report_ocr_service.py` | Pi（M-PERF2） | M-PERF1 |
 | `routers/chat.py` SSE | Pi（M-PERF1） | 本契约第 4 节 |
+
+### 落地状态（2026-11-15 实测，main @ `5eddc66`）
+
+- 已合入并对齐：M-DB1 模型/迁移（`9f1a2b3c4d5e`）、M-PERF1 SSE、M-PERF2 识餐/OCR 服务、M-LOGIC1 心理服务（`mental_service` 返回的 history/summary 字典字段与本契约一致）。
+- 未合入：M-SEC1 `services/safety_service.py` → `resources` 暂返回 `[]`（按本节口径属正常空配置，路由已对缺失模块降级）。
+- 待接线（非 kilo 文件）：`AIConfig.persona_style` 已落库（M-DB1），但 `services/ai_config_service.save_config` 未透传、`routers/ai_analysis.py` PUT/GET 未读写该字段 → 目前请求可接受、响应恒返回默认 `humorous`，需在 M-FE1 前补齐。
+- 新增文件 `routers/_uploads.py`（识餐/OCR 共用上传校验）由 kilo 维护，请纳入所有权清单。
