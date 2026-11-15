@@ -254,7 +254,6 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 - 交付：`services/mental_service.py`（打卡 upsert 含并发 IntegrityError 回退、trend 连续日期补 null、睡眠债、量表落库、history、summary、`is_serious_mode`）；`services/warning_service.py` 抽出 `_persist_warnings` 并追加交叉预警（量表危机/中重度→`心理状态需关注` danger；睡眠债≥10h 且血压/心率偏高→`睡眠不足叠加指标偏高`；近 7 天≥3 条打卡均分≤2→`情绪持续低落`）；无生理记录时也会产生心理预警；`services/scale_scoring.py` 新增 `risk_label`。
 - 口径：睡眠统计只看近 14 天内记录；严肃模式 = 各量表“最新一次”在 30 天内且 crisis_flag 或 risk ∈ {moderately_severe, severe}，更新的低风险测评会解除。
 - 待评审点：① 睡眠债预警阈值 10h、低落均分 ≤2 为经验值，可由评审调整；② `_crisis_hint` 在 `safety_service` 缺失/无配置时降级为通用文案，不编造号码；③ 路由 `submit_scale` 仍自行调用 `score()` 后再 `save_assessment` 重复评分一次（kilo 文件，功能无误，可后续收敛）。
-
 ---
 
 ## 2026-11-15 新派单：M-DOC1 文档 / 配置 / 依赖核对
