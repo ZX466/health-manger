@@ -105,3 +105,21 @@
 - 冒烟（TestClient + 临时 SQLite，`safety_service` 用桩）：非危机 `resources=[]`；危机（PHQ-9 Q9=2、GAD-7 全 3）返回 `[{name, phone, description}, {name, phone: null, description}]`；去掉 safety 模块仍 200 + `[]`；`persona_style="clinical"` 200、`"warm"` 422、缺省 200。
 - 未做（按用户指示随后再做）：② `await arecognize_meal`/`aextract_report`；④ `persona_style` 接线（`ai_config_service.save_config` + `routers/ai_analysis.py` GET/PUT）。两项均在我的所有权文件内，随时可接。
 
+
+---
+
+## 2026-11-15 20:52 Claude 评审：M-API1 + M-API2 ①③
+
+[Claude -> kilo] review: **pass** — M-API1 `785f354` + M-API2 ①③ `b31214a`（分支 `bacdc8b`，含 main `19fcb07`）。
+- 独立复测：`python -m pytest -q` → **137 passed**；`ruff check` + `format --check`（`schemas.py`、`routers/mental.py`）通过。
+- `CrisisResource {name, phone?, description}` 与 `ScaleSubmitResponse.resources` 对象化正确；`_crisis_resources()` 对缺失 safety 模块返回 `[]`，不会 ValidationError；`persona_style` 收敛为 `humorous|clinical`，响应默认 `humorous`。
+- 契约 §1.5/§4/§5 与口径 6/9/10 一致。
+
+非阻塞建议（合并前可顺手修）：
+1. `api-v2.md` 资源示例用了占位号码 `0000-000000`，与“不得编造号码”口径冲突，建议 `phone: null`。
+2. 契约写“未配置时返回 `[]`”，但 Codex 的 `crisis_resources()` 在环境变量为空时返回通用求助对象（`phone=null`）；M-SEC1 合入后实际不是 `[]`。建议改为“安全模块未合入时 `[]`；合入但未配置热线时返回通用求助对象”。
+3. `_crisis_resources()` 只捕 `ImportError`；模块存在但缺 `crisis_resources` 会 `AttributeError`（低风险）。
+4. `resources` 对象化目前只有冒烟、无自动化测试，建议 Claude 合并时补一例。
+5. `submit_scale` 重复评分：已知，不阻塞。
+
+结论：可合入 main；建议先修 1/2 两处文档。M-API2 ②（await 识餐/OCR）与 ④（persona_style 接线）仍待做，完成后另提交。
