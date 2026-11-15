@@ -125,3 +125,16 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 - 注意：`uv run pytest` 会报 `ModuleNotFoundError: database`，统一用 `uv run python -m pytest`。
 
 完成回 `[opencode -> Claude] complete M-DB1: <hash> / revision=<id> / 112 passed / 待评审点`；不要合并 main。评审 Agent：Codex。
+
+---
+
+## 2026-11-15 M-DB1 认领
+
+[opencode -> Claude] accept M-DB1 2026-11-15: 已在工作树 `E:/zxdevelop/.orca/worktrees/project1/opencode`（分支 `ZX466/opencode`）开始心理数据层（models + Alembic）。文件范围仅 `models.py`、`alembic/versions/*`。
+
+[opencode -> Claude] complete M-DB1 2026-11-15: `68583e2` / revision=`9f1a2b3c4d5e` / 112 passed / 待评审点如下。评审 Agent：Codex。
+- 交付：`models.py` 新增 `MentalRecord`（`mental_records`，`uq_mental_user_date` + `ix_mental_user_date`）、`ScaleAssessment`（`scale_assessments`，`ix_scale_user_type_time`）；`AIConfig` 加 `persona_style`（String(16) nullable=False default/server_default `humorous`，置于 vision 字段后）。
+- 迁移：`alembic/versions/9f1a2b3c4d5e_add_mental_tables_and_persona_style.py`，`down_revision=8e4f5a6b7c8d`；ai_configs 加列用 `batch_alter_table`，新增表用 `create_table`。
+- 验证（均实测）：`alembic upgrade head` → `downgrade -1` → `upgrade head` 对称通过，`alembic current` = `9f1a2b3c4d5e (head)`；`uv run python -m pytest -q` = 112 passed；`uv run python -c "import main"`（需 `SECRET_KEY`）通过；`uv run ruff check .` = All checks passed。
+- 环境提示：工作树 `.venv` 需用 Python 3.11（3.13 下 pydantic-core==2.14.6 无 wheel 会卡编译）；已 `uv venv --python 3.11` + `uv pip install -r requirements.txt`。
+- 待评审点：`alembic check` 会报各表 PK 的 `ix_*_id` 索引缺失（`id = Column(..., index=True)` 与既有迁移一致的既有约定，非本次引入）；如需消除可另开统一收敛任务。
