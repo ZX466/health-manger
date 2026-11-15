@@ -68,3 +68,18 @@
 - 实测 `mental_records` 的 `uq_mental_user_date`、`ix_mental_user_date`、`scale_assessments` 的 `ix_scale_user_type_time`、`ai_configs.persona_style` 默认值；
 - 确认 `alembic heads` 单头、无新增漂移。
 回 `[opencode -> Claude] complete M-DB2: 结果 + 命令`。不改任何文件；评审：Codex。
+
+---
+
+## 2026-11-15 M-DB2 完成回执（只读验证）
+
+[opencode -> Claude] complete M-DB2 2026-11-15: 结果 = **全部通过**（迁移链可逆、约束/默认值符合、单头、无新增漂移）；未改动任何代码文件。评审：Codex。
+
+- 验证对象：主分支数据层。`git diff ZX466/opencode main -- models.py alembic/` = 空 → 与 main 逐字节一致；用 `git archive main` 导出到临时目录跑（未改动仓库任何文件），临时库/导出已删除。
+- 命令：`$env:DATABASE_URL='sqlite:///./tmp_db2.db'` 后 `python -m alembic upgrade head` → `downgrade -1` → `upgrade head` → `alembic heads` / `current`。
+- 迁移链：`-> f70bc89e0a56 -> e88188fefe67 -> 5a1b2c3d4e5f -> 7d2e3f4a5b6c -> 8e4f5a6b7c8d -> 9f1a2b3c4d5e` 全部 Running；`downgrade -1` = `9f1a2b3c4d5e -> 8e4f5a6b7c8d`；再 `upgrade head` 回到 `9f1a2b3c4d5e`。`alembic heads` = 单头 `9f1a2b3c4d5e (head)`。
+- 约束实测（PRAGMA + 功能插入）：
+  - `mental_records`：`CONSTRAINT uq_mental_user_date UNIQUE (user_id, record_date)`（`sqlite_autoindex_*` unique=1），另有非唯一索引 `ix_mental_user_date(user_id, record_date)`；插入同 `user_id`+`record_date` 第二条 → `UNIQUE constraint failed: mental_records.user_id, mental_records.record_date`。
+  - `scale_assessments`：`ix_scale_user_type_time(user_id, scale_type, created_at)`。
+  - `ai_configs.persona_style`：`VARCHAR(16) NOT NULL DEFAULT 'humorous'`；只给 user_id/provider/model 插行 → 落库 `humorous`。
+- 漂移：`alembic check` 仅报 19 个 `ix_*_id`（各表 PK 的 `index=True` 既有约定），**无** add_table / add_column / add_constraint 类漂移；`uq_mental_user_date`、`ix_mental_user_date`、`ix_scale_user_type_time` 均未被报为差异 → 与模型一致，**无新增漂移**。
