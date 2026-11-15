@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+import math
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 
 import models
 from services.image_service import ImageValidationError, prepare_image
+from services.text_cleaning import clean_output_text
 from services.vision_service import (
     VisionServiceError,
     analyze_image_json_sync,
@@ -39,18 +41,23 @@ FOOD_PROMPT = """你是营养师助手。请识别这张照片里的所有食物
 6. 只输出 JSON，不要 markdown 代码块。"""
 
 
-def _clamp(value, *, low: float, high: float, digits: int = 1) -> float:
+def _clamp(value, *, low: float, high: float, digits: int = 1, default: float = 0.0) -> float:
+    """把模型给的数值收敛到 [low, high]。
+
+    NaN / ±Inf / 非数值一律回默认值：`max(nan, low)` 仍是 NaN，
+    而 NaN 会被 FastAPI 序列化成非法 JSON 的 `NaN`，前端 `JSON.parse` 直接崩。
+    """
     try:
         number = float(value)
     except (TypeError, ValueError):
-        return 0.0
+        return default
+    if not math.isfinite(number):
+        return default
     return round(min(max(number, low), high), digits)
 
 
 def _clean_name(value) -> str:
-    if not isinstance(value, str):
-        return ""
-    return value.strip()[:MAX_NAME_LENGTH]
+    return clean_output_text(value, max_length=MAX_NAME_LENGTH)
 
 
 def _match_food_id(db: Session, name: str) -> int | None:
@@ -85,7 +92,13 @@ def _normalize_item(db: Session, raw_item) -> dict | None:
         "protein": _clamp(raw_item.get("protein"), low=0, high=1000),
         "fat": _clamp(raw_item.get("fat"), low=0, high=1000),
         "carbs": _clamp(raw_item.get("carbs"), low=0, high=1000),
-        "confidence": _clamp(raw_item.get("confidence", DEFAULT_CONFIDENCE), low=0, high=1, digits=2),
+        "confidence": _clamp(
+            raw_item.get("confidence", DEFAULT_CONFIDENCE),
+            low=0,
+            high=1,
+            digits=2,
+            default=DEFAULT_CONFIDENCE,
+        ),
         "match_food_id": _match_food_id(db, name),
     }
 

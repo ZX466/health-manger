@@ -51,18 +51,21 @@ def prepare_image(
         with Image.open(io.BytesIO(raw)) as probe:
             image_format = probe.format
             width, height = probe.size
+            # 先看文件头和尺寸再解码：size 来自文件头，不进像素缓冲，
+            # 让超大图/非白名单格式在 copy() 之前就被拒掉，避免内存尖峰。
+            if image_format not in ALLOWED_FORMATS:
+                raise ImageValidationError("仅支持 JPG / PNG / WEBP 图片")
+            if width * height > MAX_PIXELS:
+                raise ImageValidationError("图片尺寸过大")
             has_alpha = probe.mode in ("RGBA", "LA", "P")
             # 必须先读完再离开上下文，后续操作在副本上进行
             work = probe.copy()
     except ImageValidationError:
         raise
+    except Image.DecompressionBombError as exc:  # > 2×MAX_IMAGE_PIXELS，PIL 直接拒
+        raise ImageValidationError("图片尺寸过大") from exc
     except Exception as exc:  # PIL 抛的异常类型很多，统一收敛
         raise ImageValidationError("文件不是有效的图片") from exc
-
-    if image_format not in ALLOWED_FORMATS:
-        raise ImageValidationError("仅支持 JPG / PNG / WEBP 图片")
-    if width * height > MAX_PIXELS:
-        raise ImageValidationError("图片尺寸过大")
 
     # 方向纠正：手机竖拍照片的 EXIF Orientation 必须在缩放前应用
     work = ImageOps.exif_transpose(work)

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    layout.css — 布局骨架（重写版）
-   桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端底部 Tab 栏
+   桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端抽屉导航
    类名同时支持旧 `.sidebar/.main/.topbar` 与新 `.app-*` 体系
    ═══════════════════════════════════════════════════════ */
 
@@ -156,36 +156,43 @@ img, svg { display: block; }
   .app-sidebar, .sidebar { width: 68px; padding: 20px 10px 12px; }
   .sidebar-logo { justify-content: center; padding: 4px 0 18px; }
   .sidebar-logo .logo-text, .sidebar-logo .brand-name { display: none; }
-  .app-sidebar .nav-label, .app-sidebar .nav-group-title, .nav-section { display: none; }
+  .app-sidebar .nav-label, .sidebar .nav-label,
+  .app-sidebar .nav-group-title, .sidebar .nav-group-title,
+  .nav-section { display: none; }
   .app-sidebar .nav-item, .sidebar .nav-item { justify-content: center; padding: 0; margin: 2px 6px; }
   .sidebar-footer { justify-content: center; padding: 8px 0; border: 0; }
   .sidebar-footer .user-info, .sidebar-footer .user-name, .sidebar-footer .user-role { display: none; }
   .main { margin-left: 68px; }
 }
 
-/* ── 移动端 ≤768px：侧栏隐藏，底部 Tab 栏 ───────────── */
+/* ── 移动端 ≤768px：侧栏改为抽屉，不再使用底部 Tab 栏 ── */
 @media (max-width: 768px) {
-  .app-sidebar, .sidebar { display: none; }
+  .app-sidebar, .sidebar {
+    position: fixed; inset: 60px auto 0 0; z-index: 30;
+    height: calc(100vh - 60px);
+    width: min(82vw, 300px);
+    padding: 16px;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform var(--duration-base) var(--ease-out);
+    box-shadow: var(--shadow-pop);
+  }
+  .app-sidebar.open, .sidebar.open { transform: none; visibility: visible; }
+
+  /* 抽屉里恢复完整文字，而不是 68px 图标栏 */
+  .sidebar-logo { justify-content: flex-start; padding: 4px 8px 20px; }
+  .sidebar-logo .logo-text, .sidebar-logo .brand-name { display: inline; }
+  .app-sidebar .nav-label, .sidebar .nav-label,
+  .app-sidebar .nav-group-title, .sidebar .nav-group-title,
+  .nav-section { display: inline; }
+  .nav-section { display: block; }
+  .app-sidebar .nav-item, .sidebar .nav-item { justify-content: flex-start; padding: 0 10px; margin: 2px 0; }
+  .sidebar-footer { justify-content: flex-start; padding: 12px; border: 1px solid var(--border); }
+  .sidebar-footer .user-info, .sidebar-footer .user-name, .sidebar-footer .user-role { display: block; }
+
   .app-main, .main { margin-left: 0; }
-  .app-main { padding-bottom: 76px; }
   .content { padding: 16px 16px 40px; }
   .topbar { padding: 0 16px; }
-
-  .tab-bar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-    display: flex;
-    height: 56px;
-    background: var(--surface);
-    border-top: var(--border-hairline);
-  }
-  .tab-bar a, .tab-bar button {
-    flex: 1; min-height: 56px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    border: 0; background: none; cursor: pointer;
-    color: var(--muted); font-size: 11px; text-decoration: none;
-  }
-  .tab-bar a.active, .tab-bar button.active { color: var(--fg); font-weight: 550; }
-  .tab-bar a.active svg, .tab-bar button.active svg { color: var(--accent); }
   .mobile-menu-btn { display: grid !important; }
 }
 
