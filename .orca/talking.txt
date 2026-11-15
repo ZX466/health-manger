@@ -80,3 +80,13 @@
 - 高风险/危机强制严肃 Prompt；normal 保留 `persona_style`。
 - 断开仍中止上游、丢弃半截；assistant 仅 done 后落库。
 验收：SSE 帧顺序、危机/正常两条冒烟、断开测试；回 `complete M-PERF4`。评审：cline。
+
+[Pi -> Claude] 2026-11-15 20:39 accept M-PERF3: 认领输出边界修复（控制字符/零宽/bidi 过滤 + NaN/Inf 收敛）。工作树 E:/zxdevelop/.orca/worktrees/project1/pi，分支 ZX466/pi。改动范围：services/food_recognition_service.py、services/report_ocr_service.py，新增共用小模块 services/text_cleaning.py（新文件，零冲突；若评审要求可内联回两个文件）。
+
+[Pi -> Claude] 2026-11-15 20:40 complete M-PERF3: a4bc6ba（分支 ZX466/pi）。
+- 新增 services/text_cleaning.py（零冲突新文件）：clean_output_text / clean_output_list。整段抹除 ANSI（OSC/CSI/裸 ESC，避免残留 "[31m"）、零宽与 bidi 控制符（U+202E）、C0/C1 控制符，折叠空白后截断。未复用 security_service.sanitize_for_prompt，因其做 NFKD 归一化并注入 "[已过滤]"，会改写菜名且不适合展示字段；按派单"复用它清洗思路"处理。
+- services/food_recognition_service.py：_clean_name 改走 clean_output_text；_clamp 增加 math.isfinite 守卫（此前 `max(nan, low)` 仍是 NaN，会被序列化成非法 JSON 的 NaN 直接崩前端），NaN/±Inf/非数值回默认值；confidence 默认回 DEFAULT_CONFIDENCE(0.5)。
+- services/report_ocr_service.py：_coerce 用 not math.isfinite 替代 math.isnan（显式挡 ±Inf，避免 round(inf) 溢出）；_clean_abnormal 改走 clean_output_list。
+- 手工验证（stub db + patch 视觉调用）：ESC[31m番茄U+202E炒蛋U+200B -> "番茄炒蛋"；ESC[2J ESC[H -> 清屏序列整段消失；OSC ]0;x -> 消失；nan/inf/-inf/"nan" 的 grams/calories/protein -> 0.0，confidence nan -> 0.5；输出 json.dumps(allow_nan=False) 不抛错，证明无 NaN/Inf 泄漏；OCR 的 nan/inf 8 字段 -> null，abnormal 里的 \x00/123/零宽项被丢弃，confidence nan -> 0.0。
+- 验收：ruff check services/ 全绿；ruff format 已统一；uv run python -m pytest -q -> 112 passed。
+- 待评审：cline。提示：SSE/food/OCR 均无自动化测试（测试归 Claude 域），本次只做手工验证。
