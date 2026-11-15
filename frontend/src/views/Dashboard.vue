@@ -28,6 +28,14 @@
       </div>
     </section>
 
+    <section v-if="mentalSerious" class="mental-banner card" data-od-id="mental-banner">
+      <div class="mental-banner-copy">
+        <strong>最近的状态值得被认真对待</strong>
+        <span>不用一个人扛着。去心理空间做一次放松练习，或者预约学校心理咨询。</span>
+      </div>
+      <router-link class="btn btn-ghost" to="/mental">去心理空间</router-link>
+    </section>
+
     <!-- ===== Overview: Score Ring + Metrics/Chart ===== -->
     <section class="overview" data-od-id="overview">
       <div class="card score-card" data-od-id="score-card">
@@ -160,7 +168,7 @@
     </section>
 
     <!-- ===== Fun Section ===== -->
-    <section data-od-id="fun-card">
+    <section v-if="!mentalSerious" data-od-id="fun-card">
       <button class="fun-toggle" @click="toggleFun" :aria-expanded="funOpen" aria-controls="funPanel">
         <span class="btn-w-icon">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.5c1 1.4 2.3 2 3.5 2s2.5-.6 3.5-2"/><path d="M9 10h.01M15 10h.01"/></svg>
@@ -225,18 +233,6 @@
       <AppIcon name="check" :size="16" :stroke="2.2" />
       <span>{{ toastMsg }}</span>
     </div>
-
-    <!-- ===== Mobile Tab Bar ===== -->
-    <nav class="tabbar" aria-label="移动端导航" data-od-id="tabbar">
-      <div class="tabbar-inner">
-        <button v-for="tab in tabList" :key="tab.id"
-          class="tab" :class="{ active: activeTab === tab.id }"
-          @click="onTabClick(tab)">
-          <AppIcon :name="tab.icon" :size="20" aria-hidden="true" />
-          {{ tab.label }}
-        </button>
-      </div>
-    </nav>
   </div>
 </template>
 
@@ -296,19 +292,13 @@ export default {
         { id: 'diet', title: '饮食管理', desc: '三餐 · 热量 · 营养', path: '/diet-management', icon: 'diet' },
         { id: 'sport', title: '运动管理', desc: '训练 · 时长 · 消耗', path: '/sport-management', icon: 'sport' },
         { id: 'ai', title: 'AI 健康分析', desc: '趋势解读 · 建议', path: '/health-analysis', icon: 'ai' },
+        { id: 'mental', title: '心理空间', desc: '情绪 · 量表 · 放松', path: '/mental', icon: 'heart' },
         { id: 'tongue', title: '中医舌诊', desc: '舌象分析 · 体质调理', path: '/tongue-diagnosis', icon: 'tongue' },
         { id: 'warning', title: '健康预警', desc: '异常监测 · 风险提醒', path: '', icon: 'alert' }
       ],
 
-      // tab bar
-      activeTab: 'home',
-      tabList: [
-        { id: 'home', label: '首页', path: '/dashboard', icon: 'home' },
-        { id: 'record', label: '记录', path: '/health-record', icon: 'record' },
-        { id: 'sport', label: '运动', path: '/sport-management', icon: 'sport' },
-        { id: 'tongue', label: '舌诊', path: '/tongue-diagnosis', icon: 'tongue' },
-        { id: 'mine', label: '我的', path: '', icon: 'user' }
-      ],
+      // mental
+      mentalSerious: false,
 
       // fun
       funOpen: false,
@@ -396,11 +386,11 @@ export default {
     const savedRange = this.store.get('hd:range', 'today')
     if (this.rangeLabels[savedRange]) this.activeRange = savedRange
     this.funOpen = this.store.get('hd:fun', '0') === '1'
-    this.activeTab = this.store.get('hd:tab', 'home')
 
     // load API data
     await this.loadUserInfo()
     await this.loadStats()
+    await this.loadMentalSummary()
 
     // render chart and paint ring after data is ready
     this.$nextTick(() => {
@@ -414,6 +404,12 @@ export default {
         const res = await api.getCurrentUser()
         this.userName = res.data.name || ''
       } catch (e) { /* silent */ }
+    },
+    async loadMentalSummary() {
+      try {
+        const res = await api.getMentalSummary()
+        this.mentalSerious = !!res.data?.serious_mode
+      } catch (e) { /* 心理摘要不可用不影响首页 */ }
     },
     async loadStats() {
       try {
@@ -614,17 +610,6 @@ export default {
       this.toastTimer = setTimeout(() => { this.toastVisible = false }, 2600)
     },
 
-    // ---- tab bar ----
-    onTabClick(tab) {
-      this.activeTab = tab.id
-      this.store.set('hd:tab', tab.id)
-      if (tab.path) {
-        this.navigate(tab.path)
-      } else if (tab.id === 'mine') {
-        this.showToast('个人中心即将上线')
-      }
-    },
-
     // ---- navigation ----
     navigate(path) {
       if (!path) {
@@ -649,6 +634,10 @@ export default {
 
 /* ===== hero ===== */
 .hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 4px 8px; }
+.mental-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--warn-soft); }
+.mental-banner-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mental-banner-copy strong { font-size: 14px; }
+.mental-banner-copy span { color: var(--muted); font-size: 12.5px; }
 .eyebrow { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .hero h1 { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.3; margin-top: 2px; }
 .hero-date { font-size: 12.5px; color: var(--muted-strong); margin-top: 2px; }
@@ -787,21 +776,12 @@ export default {
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast svg { color: #4ade80; color: oklch(78% 0.11 155); flex: 0 0 17px; }
 
-/* ===== tab bar ===== */
-.tabbar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 60; background: rgba(255, 255, 255, 0.9); background: color-mix(in oklch, var(--surface) 90%, transparent); border-top: 1px solid var(--border); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
-.tabbar-inner { display: flex; max-width: 560px; margin: 0 auto; }
-.tab { flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--muted); font-size: 11px; font-weight: 500; border-radius: 12px; transition: color 0.15s, background 0.15s; }
-.tab:hover { background: var(--hover); color: var(--muted-strong); }
-.tab.active { color: var(--fg-strong); font-weight: 650; }
-.tab svg { width: 21px; height: 21px; }
-
 /* ===== responsive ===== */
 @media (max-width: 1100px) { .modules { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 820px) { .overview { grid-template-columns: 1fr; } }
 @media (max-width: 767px) {
-  .dash { padding-bottom: 74px; }
-  .tabbar { display: block; }
   .hero { padding: 16px 0 4px; align-items: flex-start; flex-direction: column; gap: 12px; }
+  .mental-banner { flex-direction: column; align-items: flex-start; }
   .hero h1 { font-size: 22px; }
   .mascot { width: 44px; height: 44px; }
   .overview { gap: 16px; }

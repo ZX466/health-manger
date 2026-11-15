@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { streamChatMessage as streamChat } from './stream'
 
 const api = axios.create({
   baseURL: '/api',
@@ -200,6 +201,29 @@ export default {
     return api.get('/warning/stats')
   },
 
+  // 心理健康（M-FE1）
+  getMentalMood(params) {
+    return api.get('/mental/mood', { params })
+  },
+  saveMentalMood(data) {
+    return api.post('/mental/mood', data)
+  },
+  getMentalTrend(params) {
+    return api.get('/mental/trend', { params })
+  },
+  getMentalScales() {
+    return api.get('/mental/scales')
+  },
+  getMentalScaleHistory(params) {
+    return api.get('/mental/scales/history', { params })
+  },
+  submitMentalScale(scaleType, data) {
+    return api.post(`/mental/scales/${scaleType}/submit`, data)
+  },
+  getMentalSummary() {
+    return api.get('/mental/summary')
+  },
+
   // AI 对话（Claude F-N1）
   createChatSession(data) {
     return api.post('/chat/session', data)
@@ -212,6 +236,9 @@ export default {
   },
   sendChatMessage(sessionId, data) {
     return api.post(`/chat/session/${sessionId}/message`, data)
+  },
+  streamChatMessage(sessionId, content, options) {
+    return streamChat(sessionId, content, options)
   },
   addTongueContext(sessionId) {
     return api.post(`/chat/session/${sessionId}/tongue-context`)
