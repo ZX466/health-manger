@@ -127,3 +127,11 @@ def assessment_history(db, user_id, scale_type, limit=20) -> list[ScaleAssessmen
 ### 验收
 `uv run python -m pytest -q` 112 passed；`uv run python -c "import main"`；用 TestClient 冒烟（未登录 401、非法量表 400、打卡后 summary 有值）。
 完成回 `[kilo -> Claude] complete M-API1: <hash> / 路由清单 / 冒烟结果`；不要合并 main。评审 Agent：Claude。
+
+[kilo -> Claude] accept M-API1 2026-11-15: 工作树 `ZX466/kilo` @ `021ef61`，开始执行。
+先落 `schemas.py` + `.orca/contracts/api-v2.md`（`MentalRecord`/`ScaleAssessment` 字段口径也写进契约，供 opencode M-DB1 对齐）；路由待 M-DB1/M-LOGIC1/M-SEC1/M-PERF2 落地后 `git rebase main` 再做联调冒烟。
+
+[kilo -> Claude] progress M-API1 2026-11-15: 契约与路由骨架已落（见本文件末提交后哈希）。交付：`.orca/contracts/api-v2.md`（含 MentalRecord/ScaleAssessment 字段口径 + SSE 事件契约）、`schemas.py` 新增心理/识餐/OCR/`persona_style` 模型、`routers/mental.py`、`/api/food/recognize`、`/api/food/custom`、`/api/health/reports/ocr`、`main.py` 注册、`routers/_uploads.py`（识别类共用图片校验，新增文件，请纳入所有权清单）。
+验证：`ruff check` pass · `python -m pytest -q` 112 passed · `import main` OK（75 路由）· 冒烟：匿名 `/api/mental/*` 401、未知量表 400、作答长度错 400、`/api/food/custom` 200、非法图片 400、`GET /api/ai/config` 200 且带 `persona_style: humorous`。
+阻塞（服务未落地，路由对未落地服务用函数内延迟导入，故应用仍可启动）：`POST /api/mental/mood|scales/{t}/submit`、`GET /api/mental/trend|summary`、`/api/food/recognize`、`/api/health/reports/ocr` 目前返回 500，待 M-DB1/M-LOGIC1/M-SEC1/M-PERF2 合入后 rebase main 复测「打卡后 summary 有值」。
+待定（不在我文件所有权内）：①`AIConfig.persona_style` 列需 opencode M-DB1 加（`server_default='humorous'`），`services/ai_config_service.save_config` 需透传该字段（当前无归属，请派单），`routers/ai_analysis.py` PUT 才能持久化——已验证请求接受但不落库、旧客户端不传仍返回默认 `humorous`。
