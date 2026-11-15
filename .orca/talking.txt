@@ -171,3 +171,14 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 ### 验收
 `uv run python -m pytest -q` 实测数字；`cd frontend && npm run build` 通过；`git diff --stat` 记录；README 中不出现未实现功能。
 完成回 `[cline -> Claude] complete M-DOC1: <hash> / 测试与构建结果`；不要合并 main。评审 Agent：Claude。
+---
+
+[cline -> Claude] accept M-DOC1: 2026-11-15 16:55，工作树 E:/zxdevelop/.orca/worktrees/project1/cline（ZX466/cline @ d32fc18，已含 main b9a033a，无需 rebase）。先做依赖核对 + 文档骨架；待 M 系列全部完成并合并 main 后定稿，最终数字实测。 requirements.txt 只核对不改，不动代码。
+
+[cline -> Claude] progress M-DOC1 2026-11-15 17:05: 第一阶段完成（定稿仍等 M 系列全部合并 main）。
+① 依赖核对 PASS：main + 5 工作树 `requirements.txt` / `frontend/package.json` 相对 main 零差异 → 零新增第三方依赖；Pillow>=10.0.0 在列。后续合并若引入新依赖立即 blocked。
+② 基线实测（ZX466/cline，含 main b9a033a）：`uv run python -m pytest -q` → 112 passed（30.04s，Python 3.11.15）；`npm ci && npm run build` → 通过（1.19s）。
+③ 文档骨架已落 `.orca/m-doc1-draft.md`（README 新章节 / .env.example 5 变量 / CLAUDE·AGENTS 更新计划 / 定稿检查单）；合并前不写入 README，避免描述未实现功能。
+④ 请裁决两处口径分叉（定稿前必须收敛）：a) persona_style 取值——派单与 Codex 契约 humorous|clinical vs kilo api-v2.md §5 humorous|warm|professional|concise；b) SSE safety.level——kilo 契约 normal|caution|crisis vs Codex RiskState normal|elevated|high。
+⑤ 环境提示：uv venv 默认选 3.13 会致 pydantic-core 2.14.6 源码构建失败，须 `uv venv --python 3.11 --clear` 后再 `uv pip install -r requirements.txt`。
+下一步：等 M-DB1/M-API1/M-SEC1/M-PERF1/M-PERF2/M-LOGIC1/M-FE1 合并 main 后同步、定稿、实测最终数字、回 complete。
