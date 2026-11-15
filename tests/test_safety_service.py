@@ -11,7 +11,7 @@ import pytest
 import models
 from services import safety_service as safety
 
-NOW = datetime(2026, 11, 15, 12, 0, 0)
+NOW = datetime.fromisoformat("2026-11-15T12:00:00")
 
 
 @pytest.fixture(autouse=True)
