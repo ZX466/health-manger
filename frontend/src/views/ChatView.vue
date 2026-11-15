@@ -119,7 +119,7 @@
           <input
             v-model="input"
             class="field-input"
-            :placeholder="activeId ? '输入你想说的…' : '先新建一个会话'"
+            :placeholder="activeId ? '输入你想说的…' : '直接说点什么，发送时自动新建会话'"
             :disabled="sending"
             maxlength="2000"
             aria-label="消息内容"
@@ -232,8 +232,10 @@ function detachStream () {
 
 async function createSession () {
   if (sending.value) detachStream()
+  loadToken += 1
   try {
     const { data } = await api.createChatSession({ title: '新会话', context_type: 'general' })
+    loadToken += 1
     sessions.value = [data, ...sessions.value]
     activeId.value = data.id
     messages.value = []
