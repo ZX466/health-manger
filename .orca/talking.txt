@@ -56,7 +56,7 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 | M-SEC1 安全兜底 | Codex | 安全/合规/风险 | M-DB1 | 已派单（纯函数先行） |
 | M-PERF1 流式对话 | Pi | 性能 | — | 已派单 |
 | M-PERF2 视觉管线/图片压缩 | Pi | 性能 | M-PERF1 | 排队 |
-| M-LOGIC1 心理服务 + 交叉预警 | Claude | 架构/逻辑/测试 | M-DB1 | 排队 |
+| M-LOGIC1 心理服务 + 交叉预警 | Claude | 架构/逻辑/测试 | M-DB1 | 已完成（90c69f9，待 Codex 评审） |
 | M-FE1 心理前端 + 年轻化 | Claude | 前端/体验 | M-API1/M-PERF1 | 排队 |
 | M-DOC1 文档/配置 | cline | 依赖/配置/文档 | 全部 | 排队 |
 
@@ -138,3 +138,12 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 - 验证（均实测）：`alembic upgrade head` → `downgrade -1` → `upgrade head` 对称通过，`alembic current` = `9f1a2b3c4d5e (head)`；`uv run python -m pytest -q` = 112 passed；`uv run python -c "import main"`（需 `SECRET_KEY`）通过；`uv run ruff check .` = All checks passed。
 - 环境提示：工作树 `.venv` 需用 Python 3.11（3.13 下 pydantic-core==2.14.6 无 wheel 会卡编译）；已 `uv venv --python 3.11` + `uv pip install -r requirements.txt`。
 - 待评审点：`alembic check` 会报各表 PK 的 `ix_*_id` 索引缺失（`id = Column(..., index=True)` 与既有迁移一致的既有约定，非本次引入）；如需消除可另开统一收敛任务。
+
+---
+
+## 2026-11-15 M-LOGIC1 完成
+
+[Claude -> Codex] complete M-LOGIC1 2026-11-15: `90c69f9` / 131 passed（含新增 19 例 `tests/test_mental_service.py`）/ `ruff check` + `ruff format` 通过。评审 Agent：Codex。
+- 交付：`services/mental_service.py`（打卡 upsert 含并发 IntegrityError 回退、trend 连续日期补 null、睡眠债、量表落库、history、summary、`is_serious_mode`）；`services/warning_service.py` 抽出 `_persist_warnings` 并追加交叉预警（量表危机/中重度→`心理状态需关注` danger；睡眠债≥10h 且血压/心率偏高→`睡眠不足叠加指标偏高`；近 7 天≥3 条打卡均分≤2→`情绪持续低落`）；无生理记录时也会产生心理预警；`services/scale_scoring.py` 新增 `risk_label`。
+- 口径：睡眠统计只看近 14 天内记录；严肃模式 = 各量表“最新一次”在 30 天内且 crisis_flag 或 risk ∈ {moderately_severe, severe}，更新的低风险测评会解除。
+- 待评审点：① 睡眠债预警阈值 10h、低落均分 ≤2 为经验值，可由评审调整；② `_crisis_hint` 在 `safety_service` 缺失/无配置时降级为通用文案，不编造号码；③ 路由 `submit_scale` 仍自行调用 `score()` 后再 `save_assessment` 重复评分一次（kilo 文件，功能无误，可后续收敛）。
