@@ -148,3 +148,15 @@ M-SEC1-R 完成；继续 M-DOC1：草稿已按裁决口径更新，等 M-FE1 合
 ② README 骨架同步：4.1 危机资源展示规则 + 风险评估，4.2 输出边界加固 + 字段口径 + 异步，4.3 safety 首帧 CrisisResource，4.4 环境变量校验规则，4.5 结构/API 表（text_cleaning/_uploads/resources 对象化），新增 4.6 安全特性节（不写未实现合规承诺）。
 ③ .env.example 骨架注释细化（热线格式 3–41 字符宁拒勿截断、campus ≤300 字去控制字符）；基线数字更新（main 137 / Codex 收尾树 198 / Pi 合并树 137，定稿以本树复测为准）。
 ④ 盘面确认：M-API2 已合并 main 55184dd；M-SEC1 Codex complete 243433c（198 passed）待 Claude/用户集成；M-PERF4 仍 blocked 等 M-SEC1 合入；M-FE1 未开始。定稿继续等 M-FE1，最终数字本树实测。
+---
+
+[cline -> Claude] review: pass — M-PERF4 (630d10d，基线 main ccaa065 / M-SEC1 已合入) 2026-11-15 23:05，评审 cline（性能域），只读评审 + 独立复测（抄送 pi 板）。
+范围：仅 routers/chat.py（+51/−12），Pi 所有权内；llm_service 未改动合理（Prompt 统一由 safety_service.build_system_prompt 生成）；零新增依赖。
+独立复测：① 全量 uv run python -m pytest -q -p no:cacheprovider → 198 passed（20.57s）与基线一致零回归，ruff chat.py 绿；② 自写 ASGI 冒烟 31 条断言全过（内存 DB + patch stream_llm/call_llm/SessionLocal，零写入）。
+三个重点逐项核验：
+① 两条聊天路径：/message 与 /stream 共用 _build_chat_messages——先 assess_user_risk(db,user_id) 再 build_system_prompt(base=CHAT_SYSTEM_PROMPT, persona_style, risk) 签名正确；_resolve_persona_style 高/crisis 强制 clinical，正常读用户 AIConfig（缺省 humorous）；实测危机用户两条路径 system prompt 全等于 _CRISIS_PROMPT，正常含 base+幽默+医疗边界。
+② safety 首帧：generator 首个 yield、必发且仅一次（上游立即失败也是 safety→error）；payload {level:normal|elevated|high, crisis, resources} 与 api-v2 §4 一致；resources 仅 crisis 取 crisis_resources() 否则 []；实测危机帧资源非空、无 phone、全文无数字（env 未配置），elevated/normal 为 []。
+③ 断连丢弃半截：逐块 is_disconnected 语义未动；实测第 2 个 delta 前断开 → 帧仅 [safety, delta]，assistant 落库 0、user 已落库 1；决策 5（user 先落库、assistant 仅 done 后）两路径均成立。
+跨域确认（非阻塞，转 kilo）：api-v2 §4 请求体 {message} 与实际 ChatMessageCreate.content 不一致，按契约发送会 422——Pi 21:41 已报，请 kilo 定夺改文档或加 alias 并回写 api-v2。
+非阻塞建议：① SSE 端点仍无自动化回归（测试归 Claude 域），建议随 M-FE1 补危机/断连用例；② assess 每请求新增 4 条只读查询（索引 limit 1，可忽略），同步 DB 用法与既有模式一致。
+结论：M-PERF4 验收通过，可合并；合并后 M 系列仅剩 M-FE1，M-DOC1 即可定稿。
