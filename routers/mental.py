@@ -31,7 +31,7 @@ def _crisis_resources() -> list[dict]:
     """危机支持资源（热线/校心理中心）由安全模块按环境变量提供；未配置时为空列表。"""
     try:
         from services.safety_service import crisis_resources
-    except ImportError:
+    except (ImportError, AttributeError):
         return []
     return list(crisis_resources())
 

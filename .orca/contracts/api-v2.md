@@ -133,7 +133,7 @@
 
 ```json
 [
-  {"name": "心理援助热线", "phone": "0000-000000", "description": "请核实服务地区与开放时间。"},
+  {"name": "心理援助热线", "phone": null, "description": "请核实服务地区与开放时间。"},
   {"name": "学校心理咨询中心", "phone": null, "description": "请联系学校心理咨询中心/当地精神卫生中心"}
 ]
 ```
@@ -141,10 +141,10 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `name` | string | 资源名称，1–100 字 |
-| `phone` | string \| null | 热线号码；仅接受环境变量配置且通过格式校验的号码，**不得编造**；无号码时为 `null` |
+| `phone` | string \| null | 热线号码；**仅**在环境变量 `MENTAL_HOTLINE` 配置且通过格式校验时才有值，否则为 `null`；示例不含真实号码，不得编造 |
 | `description` | string | 说明文案，≤300 字 |
 
-热线只从环境变量读取，**未配置（或安全模块尚未合入）时返回 `[]`**，属正常状态；前端必须固定展示 120/110 + 学校心理咨询中心文案，不得因空数组隐藏求助入口。
+资源来源：`services.safety_service.crisis_resources()`（口径 10）。**安全模块未合入时返回 `[]`；合入但未配置热线时返回通用求助对象（`phone=null`）**；两者都是正常状态。前端必须固定展示 120/110 + 学校心理咨询中心文案，不得因 `resources` 为空或 `phone=null` 隐藏求助入口。
 - 落库前由 service 计算并持久化 `score/max_score/risk_level/crisis_flag`，供交叉预警复用。
 
 ### 1.6 `GET /api/mental/scales/history?scale_type=&limit=20`
@@ -318,7 +318,7 @@ data: {"detail":"上游模型超时"}
 ```
 
 - `safety.level` ∈ `normal` | `elevated` | `high`（与 `services.safety_service.RiskState.level` 一致，不再使用 `caution`/`crisis` 取值）。
-- `crisis`（bool）与 `resources`（`CrisisResource[]`，结构同 §1.5）：`crisis=true` 时前端必须展示资源且隐藏玩梗文案；`resources` 为空数组时仍展示 120/110 + 校心理中心固定文案。
+- `crisis`（bool）与 `resources`（`CrisisResource[]`，结构同 §1.5）：`crisis=true` 时前端必须展示资源且隐藏玩梗文案；`resources` 为空数组（安全模块未合入）或 `phone=null`（未配置热线）时，仍展示 120/110 + 校心理中心固定文案。
 - 持久化口径（决策 5）：用户消息先落库；assistant **仅**在 `done` 后落库；客户端断开即中止上游并丢弃半截回复，**不新增**「部分消息」字段。
 - 消息内容含非法字符/控制字符时按文本转义，`data` 行必须为单行 JSON（`\n` 转义）。
 - 前端断线重连语义：同一 `session_id` 重新发送上一条用户消息即可，不提供断点续传事件。
@@ -327,6 +327,7 @@ data: {"detail":"上游模型超时"}
 
 - `AIConfigUpdate` 新增 **可选** `persona_style`（缺省 `null` = 不修改已存值），取值 `humorous` | `clinical`（口径 6），超出取值 → `422`。
 - `AIConfigResponse` 新增 `persona_style`，未配置时返回默认 `humorous`。
+- 落地：`services.ai_config_service.save_config(persona_style=...)` 已透传（缺省不覆盖已存值），`routers/ai_analysis.py` GET/PUT 已读写该字段。
 - 兼容：v1 客户端不传该字段时行为完全不变；未落库列时响应仍返回默认值，不报 500。
 
 ## 6. 兼容性与回归红线
@@ -353,5 +354,5 @@ data: {"detail":"上游模型超时"}
 
 - 已合入并对齐：M-DB1 模型/迁移（`9f1a2b3c4d5e`）、M-PERF1 SSE、M-PERF2 识餐/OCR 服务、M-LOGIC1 心理服务（`mental_service` 返回的 history/summary 字典字段与本契约一致）。
 - 未合入：M-SEC1 `services/safety_service.py` → `resources` 暂返回 `[]`（按本节口径属正常空配置，路由已对缺失模块降级）。
-- 待接线（非 kilo 文件）：`AIConfig.persona_style` 已落库（M-DB1），但 `services/ai_config_service.save_config` 未透传、`routers/ai_analysis.py` PUT/GET 未读写该字段 → 目前请求可接受、响应恒返回默认 `humorous`，需在 M-FE1 前补齐。
+- 待接线（非 kilo 文件）：~~`AIConfig.persona_style` 已落库（M-DB1），但 `services/ai_config_service.save_config` 未透传、`routers/ai_analysis.py` PUT/GET 未读写该字段~~ → M-API2 已接线（见 §5）。
 - 新增文件 `routers/_uploads.py`（识餐/OCR 共用上传校验）由 kilo 维护，请纳入所有权清单。

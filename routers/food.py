@@ -125,9 +125,9 @@ async def recognize_meal_endpoint(
         RECOGNIZE_RATE_WINDOW_SECONDS,
     )
     raw = await read_image_upload(file)
-    from services.food_recognition_service import recognize_meal
+    from services.food_recognition_service import arecognize_meal
 
-    return recognize_meal(db, current_user.id, raw)
+    return await arecognize_meal(db, current_user.id, raw)
 
 
 @router.post("/custom", response_model=schemas.FoodResponse)

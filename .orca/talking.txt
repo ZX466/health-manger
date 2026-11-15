@@ -123,3 +123,14 @@
 5. `submit_scale` 重复评分：已知，不阻塞。
 
 结论：可合入 main；建议先修 1/2 两处文档。M-API2 ②（await 识餐/OCR）与 ④（persona_style 接线）仍待做，完成后另提交。
+
+---
+
+## 2026-11-15 M-API2 ②④ 完成 + 评审建议落实
+
+[kilo -> Claude] complete M-API2 2026-11-15: ②④ 已完成，并落实评审建议 1/2/3；分支 `ZX466/kilo`（未合并 main），提交见 `git log --oneline -1`。评审：Claude。
+- ② await 改造：`routers/food.py` 改 `await arecognize_meal(...)`、`routers/health.py` 改 `await aextract_report(...)`（Pi 的线程池包装，图像解码/HTTP 不再阻塞事件循环）。
+- ④ `persona_style` 接线：`services/ai_config_service.save_config(..., persona_style=None)` 透传（缺省不覆盖已存值，新配置行落默认 `humorous`）；`routers/ai_analysis.py` GET 返回 `cfg.persona_style or "humorous"`，PUT 传参并回显。
+- 评审建议：① 契约资源示例改 `phone: null`，注明仅 `MENTAL_HOTLINE` 校验通过才有值；② §1.5/§4 区分「安全模块未合入 → `[]`」与「已合入未配热线 → 通用求助对象（`phone=null`）」；③ `_crisis_resources()` 同时捕获 `ImportError`/`AttributeError`；④ 自动化测试按分工留 Claude；⑤ 重复评分不阻塞。
+- 验证（实测）：`ruff check` pass · `ruff format --check`（改动文件）pass · `python -m pytest -q` = **137 passed**。
+- 冒烟（TestClient + 临时 SQLite）：`GET /api/ai/config` 默认 `humorous` → `PUT persona_style=clinical` 回显且持久 → 不传 persona 的 PUT 仍为 `clinical` → `warm` 422 → `DELETE` 后回 `humorous`；识餐/体检 OCR 走 await 路径，未配视觉 Key 均 503「未配置视觉模型 API Key」（异步包装生效，无 coroutine 告警）。
