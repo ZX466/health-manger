@@ -78,3 +78,19 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+---
+
+## 本轮派单（2026-11-15 20:35）
+
+| 任务 | Agent | 内容 | 依赖 |
+|---|---|---|---|
+| M-API2 集成修正 | kilo | resources 对象化、await 识餐/OCR、api-v2 口径、persona_style 接线 | M-API1 |
+| M-SEC1 收尾 | Codex | 等 cline 评审 + A01/A02/M-PERF4，合并后全量验收 | M-SEC1-R、M-API2、M-PERF4 |
+| M-PERF3 输出边界 | Pi | 控制字符/nan 收敛（立即可做） | — |
+| M-PERF4 安全接入 | Pi | 风险评估 + 严肃 Prompt + SSE safety 首帧 | M-SEC1 合入 main |
+| M-SEC1-R 评审 | cline | 只读评审 `6c77022` | — |
+| M-DB2 数据层回归 | opencode | 迁移链/约束/索引只读验证 | — |
+| M-LOGIC1 修 | Claude | `_crisis_hint` 对象化、`serious_mode` 对齐 | Codex findings |
+| M-API1 评审 | Claude | 评审 `785f354` | — |
+| M-FE1 | Claude | 心理前端 + 年轻化 | M-API2/M-PERF4 |
+
