@@ -16,6 +16,7 @@
 - 后端：`uv run python -m pytest -q` → **112 passed, 1 warning（30.04s）**；Python 3.11.15 + pytest 9.2.0。
 - 前端：`npm ci && npm run build` → **通过（vite build 1.19s，产物输出 ../static/，git 无产物扰动）**。
 - 当前规模（M 系列前基线）：10 views / 8 routers / 5 Alembic revisions / 13 services。
+- 合并后复测（2026-11-15 19:20，含 M-DB1/M-API1/M-PERF1/2/M-LOGIC1）：**131 passed**（40.34s）；前端自基线无变更，构建结论沿用。迁移链 head 现为 `9f1a2b3c4d5e`（M-DB1）。
 - 环境踩坑（重要）：uv 默认选最新 Python（本机 3.13/3.15），pydantic-core 2.14.6 无 3.13 wheel 会源码构建失败；
   必须 `uv venv --python 3.11 --clear`（uv 0.12.3 替换已有 venv 必须 --clear），再 `uv pip install -r requirements.txt`（清华镜像可用）。
   `uv run` 只同步 pyproject 的 dev 组（pip-audit），不装 requirements.txt。
