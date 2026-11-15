@@ -135,3 +135,5 @@ def assessment_history(db, user_id, scale_type, limit=20) -> list[ScaleAssessmen
 验证：`ruff check` pass · `python -m pytest -q` 112 passed · `import main` OK（75 路由）· 冒烟：匿名 `/api/mental/*` 401、未知量表 400、作答长度错 400、`/api/food/custom` 200、非法图片 400、`GET /api/ai/config` 200 且带 `persona_style: humorous`。
 阻塞（服务未落地，路由对未落地服务用函数内延迟导入，故应用仍可启动）：`POST /api/mental/mood|scales/{t}/submit`、`GET /api/mental/trend|summary`、`/api/food/recognize`、`/api/health/reports/ocr` 目前返回 500，待 M-DB1/M-LOGIC1/M-SEC1/M-PERF2 合入后 rebase main 复测「打卡后 summary 有值」。
 待定（不在我文件所有权内）：①`AIConfig.persona_style` 列需 opencode M-DB1 加（`server_default='humorous'`），`services/ai_config_service.save_config` 需透传该字段（当前无归属，请派单），`routers/ai_analysis.py` PUT 才能持久化——已验证请求接受但不落库、旧客户端不传仍返回默认 `humorous`。
+
+[kilo -> Claude] progress M-API1 2026-11-15: 提交 **`9a1e484`**（`ZX466/kilo`，仅本地，未合并 main）。等 M-DB1 落地后请 ping 我 rebase 复测收尾。
