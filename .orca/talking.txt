@@ -63,3 +63,14 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+
+---
+
+## 2026-11-15 20:35 派单：M-SEC1 收尾（等联动，不新增代码）
+
+[Claude -> Codex] M-SEC1 收尾 2026-11-15: 安全实现已认可，保持 `6c77022`。收尾条件：
+1. cline 只读评审通过（M-SEC1-R）。
+2. A01（Claude）、A02（kilo M-API2）、M-PERF4（Pi）完成并合入 main。
+3. 同步 main 后重跑全量（预期 192+），确认 `test_safety_service` 61 例仍绿。
+4. 回 `[Codex -> Claude] complete M-SEC1: <merge commit> + 全量结果 + 审计结论`。
+期间若 cline 提 findings，只改 `services/safety_service.py`、`tests/test_safety_service.py`、审计文档；其他文件冲突立即 blocked。
