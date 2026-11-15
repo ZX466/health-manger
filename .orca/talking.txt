@@ -147,3 +147,14 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 - 交付：`services/mental_service.py`（打卡 upsert 含并发 IntegrityError 回退、trend 连续日期补 null、睡眠债、量表落库、history、summary、`is_serious_mode`）；`services/warning_service.py` 抽出 `_persist_warnings` 并追加交叉预警（量表危机/中重度→`心理状态需关注` danger；睡眠债≥10h 且血压/心率偏高→`睡眠不足叠加指标偏高`；近 7 天≥3 条打卡均分≤2→`情绪持续低落`）；无生理记录时也会产生心理预警；`services/scale_scoring.py` 新增 `risk_label`。
 - 口径：睡眠统计只看近 14 天内记录；严肃模式 = 各量表“最新一次”在 30 天内且 crisis_flag 或 risk ∈ {moderately_severe, severe}，更新的低风险测评会解除。
 - 待评审点：① 睡眠债预警阈值 10h、低落均分 ≤2 为经验值，可由评审调整；② `_crisis_hint` 在 `safety_service` 缺失/无配置时降级为通用文案，不编造号码；③ 路由 `submit_scale` 仍自行调用 `score()` 后再 `save_assessment` 重复评分一次（kilo 文件，功能无误，可后续收敛）。
+
+---
+
+## 2026-11-15 M-API1 联调完成
+
+[kilo -> Claude] complete M-API1 2026-11-15: 提交 **`785f354`**（分支 `ZX466/kilo`，已 ff 到 main `5eddc66`，未合并 main）。评审 Agent：Claude。
+- 交付：`schemas.py`（心理/识餐/OCR/`persona_style` 模型）、`routers/mental.py`、`/api/food/recognize`、`/api/food/custom`、`/api/health/reports/ocr`、`main.py` 注册、`routers/_uploads.py`（识餐/OCR 共用上传校验，新增文件）、`.orca/contracts/api-v2.md`（含落地状态与字段口径）。
+- 验证（实测）：`ruff check` = All checks passed · `ruff format --check`（本任务 6 文件）通过 · `python -m pytest -q` = **131 passed**。
+- 冒烟（TestClient + 临时 SQLite）：匿名 `/api/mental/*` 401；`POST /mental/mood` 200 且同日重投**复用同一条**（id 不变）；`GET /mood|trend|summary` 200（打卡后 summary 有 `latest_mood`/睡眠值，trend 三数组等长补 null）；`GET /mental/scales` 200；`phq9` 提交 200（`max_score=27`，Q9=1 → `crisis_flag=true`、`resources=[]`）；`/scales/history` 200 含 `max_score/label`；非法量表 400、作答长度错 400；`POST /food/custom` 200（`description` 前缀 `[AI估算]`）；识餐/体检 OCR 在未配视觉 Key 时 503「未配置视觉模型 API Key」；非图片/伪造图片 400。
+- 待评审点：① `resources` 对 M-SEC1 未合入做了 `ImportError → []` 降级（口径见契约 §1.5：热线默认空，前端必须固定展示 120/110 + 校心理中心，不得隐藏）；② `submit_scale` 先 `score()` 校验、service 再评分一次（M-LOGIC1 已注，可选收敛）；③ `MentalRecord.updated_at` 未持久化，接口返回 `null`（契约已标注）。
+- 需协调（非我文件）：`services/ai_config_service.save_config` 未透传 `persona_style`、`routers/ai_analysis.py` GET/PUT 未读写该字段 → 请求可接受但恒返回默认 `humorous`，M-FE1 用到该字段前需先接线；`routers/_uploads.py` 请纳入文件所有权清单。
