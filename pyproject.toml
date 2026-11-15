@@ -17,12 +17,9 @@ filterwarnings = ["ignore::DeprecationWarning"]
 source = ["."]
 omit = [
     "tests/*",
-    "venv/*",
-    "migrations/*",
+    ".venv/*",
     "frontend/*",
-    "generate_ppt.py",
-    "init_data.py",
-    "create_test_user.py",
+    "scripts/*",
 ]
 
 [tool.coverage.report]

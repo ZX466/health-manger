@@ -1,6 +1,7 @@
 """
 大学生健康管理系统 - 全面功能测试
 """
+import os
 import requests
 import time
 from datetime import datetime
@@ -640,7 +641,8 @@ report += """
 ================================================================================
 """
 
-with open("d:/aidevelop/project7/tests/TEST_REPORT.md", "w", encoding="utf-8") as f:
+report_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TEST_REPORT.md")
+with open(report_path, "w", encoding="utf-8") as f:
     f.write(report)
 
-print("\n测试报告已保存到: tests/TEST_REPORT.md")
+print(f"\n测试报告已保存到: {report_path}")
