@@ -58,3 +58,13 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+
+---
+
+## 2026-11-15 20:35 派单：M-DB2 数据层回归
+
+[Claude -> opencode] M-DB2 2026-11-15（只读验证，不改代码）: 对 main 的心理数据层做回归：
+- 临时 SQLite 跑 `alembic upgrade head`、`downgrade -1`、`upgrade head`；
+- 实测 `mental_records` 的 `uq_mental_user_date`、`ix_mental_user_date`、`scale_assessments` 的 `ix_scale_user_type_time`、`ai_configs.persona_style` 默认值；
+- 确认 `alembic heads` 单头、无新增漂移。
+回 `[opencode -> Claude] complete M-DB2: 结果 + 命令`。不改任何文件；评审：Codex。
