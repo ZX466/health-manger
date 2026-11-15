@@ -15,12 +15,12 @@
 | M-SEC1 安全兜底 | Codex | 🟡 实现完成 · 集成 blocked | `6c77022` + `2ec3b98` |
 | M-PERF1 流式对话 | Pi | ✅ 完成 · cline 评审 pass | `ba5eda2`（已合并） |
 | M-PERF2 视觉管线 | Pi | ✅ 完成 · cline 评审 pass | `9e43850`（已合并） |
-| M-LOGIC1 心理服务+交叉预警 | Claude | 🟡 评审要求修改 | `90c69f9`（已合并） |
+| M-LOGIC1 心理服务+交叉预警 | Claude | ✅ A01 已修 · 待 Codex 复核 | `c41a484` |
 | M-FE1 心理前端+年轻化 | Claude | ⏳ 未开始 | — |
 | M-DOC1 文档/配置 | cline | 🟡 第二阶段完成 | `880209d` |
 
 - `main` = `5eddc66`；opencode 已合并，cline/codex/kilo/pi 分支各有未合并提交。
-- 全量基线：main 131 passed；Codex 分支（含安全测试）191 passed / 1 failed（失败项即 M-LOGIC1 `_crisis_hint`）。
+- 全量基线：main **137 passed**（A01 修复后）；Codex 分支（含安全测试）191 passed / 1 failed，待 A02/M-PERF4 接入后复跑。
 
 ## 统一口径（已裁决，不再分叉）
 
@@ -49,7 +49,7 @@
 ## 待办与阻塞
 
 **Claude（协调 + 前端）**
-- [ ] 修 M-LOGIC1 评审项：`warning_service._crisis_hint` 按对象格式化；`mental_service.summary.serious_mode` 对齐 safety 的全部 `high` 来源（健康评级“危险”、未读 danger 预警、Q9 等）。
+- [x] 修 M-LOGIC1 评审项（`c41a484`）：`_crisis_hint` 已支持对象资源；`summary.serious_mode` 已纳入健康评级“危险”，保留 PHQ-9 15–19 保守策略。待 Codex 复核。
 - [ ] 评审 M-API1 `785f354`（接口契约/兼容性）。
 - [ ] M-FE1：心理页、量表、人设卡、流式聊天、呼吸环、木鱼等（依赖已具备）。
 - [ ] M-SEC1 合并门：cline 评审 pass + A01/A02 集成完成后再合。
