@@ -1,9 +1,10 @@
 # Orca 多 Agent 协作工作流
 
 **核心要点（所有 Agent 行动前必读）：**
+- **Claude 主导，起组织作用**：负责分派任务、汇总进度、收敛文档与收尾合并。
 - 每个能力域有且只有一个推荐 Agent 负责，一个 Agent 对应一个工作树，不重复分配。
 - 评审 Agent 只读取被评审工作树，不修改代码，不越界。
-- ⚠️ 各 Agent 之间严禁直接交流；有必要时，通过本工作树 `.orca/talking.txt` 间接留言。
+- ⚠️ 各 Agent 之间严禁直接交流；有必要时，通过本工作树 `.orca/talking.txt` 间接留言。**暂不使用 orca-cli 直接发消息。**
 - ⚠️ 任何 Agent 行动前必须先读取本工作树的 `.orca/workflow`，找到自己负责的能力域，只做自己域内的事，不越界。
 
 ## 0. 留言板机制（talking.txt）
@@ -58,6 +59,40 @@
 
 机器全局 git 身份已配置：`git config --global user.name=ZX666X / user.email=zx19836980213@outlook.com`；新 clone 仓库无需再单独配置。
 
+- **GitHub 网络不通时**使用代理 `127.0.0.1:7897` 或 `127.0.0.1:7888`。
+- **远程只推送** `main`、`develop/*`、`feature/*` 分支（非 Agent 分支）；Agent 分支（`ZX466/*`）仅本地保留，不推远程。
+- **远程分支命名**：`main`（与上游一致）、`develop/*`（开发仓库）、`feature/*`（功能）。
+
 ## 4. 合并与推送
 
 最后合并成一个 main 分支推送到两个远程仓库——一一照应（origin=Gitee ZX666X，github=GitHub ZX466）。
+
+## 5. Python 环境
+
+- 一律使用 **uv** 构建虚拟环境并在虚拟环境中执行（`uv venv` / `uv pip install -r requirements.txt` / `uv run ...`），不要用全局 Python。
+- **删除 npm 包或 venv 前必须先询问用户**。
+
+## 6. 浏览器自动化（Playwright）
+
+- **仅在用户明确要求时**才使用浏览器自动化/渲染验证。
+- 二进制口径：`--browser chromium`，使用 `C:\Users\zx198\AppData\Local\ms-playwright` 内由 `playwright install` 维护的打包版；**不得使用 `--browser chrome`**。
+- 升级统一用 `playwright install chromium`（带 `PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright`，直连 CDN 会被掐断）；不要在 `mcp.json` 里硬编码 revision。
+- Profile 口径：MCP 使用独立 profile（`AppData\Local\ms-playwright-mcp\`），与用户 Chrome 的 User Data 零共享；**禁止 `--user-data-dir` 指向用户 profile**；不得干扰用户自己使用的浏览器。
+
+## 7. 配置文件与代码索引
+
+- 除 `.orca` 外，其他以 `.` 开头且属于 Agent 配置的文件夹**入 git 但不推送到远程仓库**。
+- `.codegraph`、`.agents` 在**所有工作树本地都必须存在**（进入工作树时随工作树更新）。
+
+## 8. 上下文与 token
+
+- 各 Agent 上下文达到 **50%** 时提醒切换新对话；务必最大程度高效使用用户 token。
+- 合理调用技能；优先使用 codegraph 索引搜索代码。
+
+## 9. 记忆机制
+
+- 各工作树 `.orca/memory.md` 保存本 Agent 的记忆，供新对话继续任务。
+
+## 10. 留言板维护（Claude）
+
+- 每几轮对话检查所有工作树的 `.orca/talking.txt`：清理无用留言、同步精简版，避免干扰后续任务执行。
