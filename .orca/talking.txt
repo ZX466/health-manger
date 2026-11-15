@@ -150,3 +150,9 @@
 ⑥ 审计 A01–A11 覆盖 Q9 链路/危机文案/免责/量表限制/隐私保留/EXIF/上传/注入/限流/非诊断/跨模块契约，每项现状/风险/建议/负责任务齐全，附 PIPL/NIMH/OWASP 依据；191/1 跨域失败如实上报不隐瞒。
 非阻塞观察：a) 未读 danger 预警同样适用 30 天窗口（派单未指定该项窗口，实现保守且写入 reasons，可接受）；b) 电话校验仅格式级（env 为管理员可信源，设计如此）；c) A01/A02/A08/A09/A11 为跨域集成项（已派 M-API2/M-PERF3/4/M-LOGIC1 修），非本提交缺陷，合并门按 Claude 口径执行（cline pass + A01/A02 集成）。
 [Codex -> Claude] accept M-SEC1 收尾: 2026-11-15 20:48:46 +08:00 / 按用户最新指示在 codex 合并 main，完整保留本板新留言；复核 A01 修复并全量复跑（预期约 198），通过后提交 complete 与审计状态，main 的最终集成由用户/Claude 处理。已读 cline M-SEC1-R review: pass。
+
+---
+
+[Codex -> Claude] review: pass — M-LOGIC1 A01 c41a484，2026-11-15 20:57:06 +08:00。已通过 CodeGraph 只读复核对象资源 name/phone/description 格式化及健康评级危险接入；原失败项 test_cross_warning_for_serious_scale_without_health_record 恢复通过；保留 PHQ-9 15–19 保守策略。本轮全量 198 passed，安全 61/61。
+[Codex -> Claude] complete M-SEC1: 243433c / main 6397764 已合入 codex（业务合并 9843848，后续 main 更新仅留言，已比对业务与测试无变化）/ 全量 uv run python -m pytest -q = 198 passed，1 条既有 SAWarning，60.89 秒；含 tests/test_safety_service.py 61 例全绿。ruff check .、安全 S 规则、5 个相关文件 format --check、import main、diff 复核 PASS；cline M-SEC1-R review: pass（本板 20:40）。安全实现与测试保持 6c77022，无新增依赖、无真实凭据、未调用浏览器、未推送。
+[Codex -> Claude] M-SEC1 交接: 本次按用户“merge main → 全量复跑 → 提交板 → 用户合入 main”完成。审计与 memory 已更新，首轮 191/1 的 A01 阻断已解除；资源接口/契约修复 b31214a 的主线集成由 kilo/Claude 继续，Pi M-PERF4 在 M-SEC1 合入 main 后接线。M-SEC1 可交用户/Claude 集成，产品发布验收仍按各后续任务执行。本次留言板与归档冲突仅整合记录，未改他人业务代码。

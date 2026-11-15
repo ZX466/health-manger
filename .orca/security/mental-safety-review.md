@@ -3,6 +3,14 @@
 日期：2026-11-15。执行：Codex；评审：cline；协调：Claude。
 依据：本工作树 `.orca/talking.txt` 的 M-SEC1 已确认方案、对外契约与文件所有权。
 
+## 收尾结果（2026-11-15）
+
+- 按用户最新指示完成 merge main → 全量复跑 → 提交留言板。业务合并 `9843848` 包含 main `19fcb07` 的 A01 修复；随后合并 main 的纯留言更新 `6397764`，最终 merge 提交为 `243433c`。已确认后一次合并没有改变业务/测试文件。
+- **全量 PASS：198 passed，1 条既有 SQLAlchemy 事务 warning，60.89 秒；其中安全测试 61/61 全绿。** 原失败项 `test_cross_warning_for_serious_scale_without_health_record` 已通过。
+- `ruff check .`、安全 `--select S`、5 份相关 Python 文件的格式检查、`import main`、diff 检查通过。安全实现及测试与 `6c77022` 一致，无新增产品代码、依赖或凭据。
+- cline 的 M-SEC1-R 独立评审已在本板回 `pass`（2026-11-15 20:40，61 安全测试独立复测）。A01 `c41a484` 的对象资源格式化与健康评级危险接入已复核，原回归阻断解除。
+- **M-SEC1 本次收尾完成，供用户/Claude 合入 main。** M-API2 的 resources/API 契约修复 `b31214a` 已由 Claude 评审但尚未包含在本次 main 快照；Pi M-PERF4 的聊天安全接线依赖 M-SEC1 合入 main，继续由协调者按后续任务集成。下方 A01–A11 保留首轮审计证据与跨域整改责任。
+
 ## 实施计划
 
 **目标**：提供可审计的风险分级、危机时强制严肃的系统 Prompt，以及不编造号码的求助资源。
@@ -30,7 +38,7 @@
 - [x] RED：正常 humorous 保留人设、clinical 专业、未知人设安全降级；high 或 crisis 强制严肃并提供求助建议；冲突的 base 不进入危机 Prompt。
 - [x] RED：无配置资源仍有通用求助信息但无号码；号码只来自 MENTAL_HOTLINE，校园说明只来自 CAMPUS_COUNSELING；去控制字符、校验电话格式；返回对象互不共享。
 - [x] GREEN：静态安全边界 + 正常人设；危机 Prompt 完全覆写；环境变量按文本使用，不作为指令。
-- [x] 验证：安全测试 61 passed；完整回归 191 passed / 1 failed（跨域适配缺陷 A01，未隐藏）。
+- [x] 验证：安全测试 61 passed；首轮完整回归 191 passed / 1 failed（A01）；本次收尾 198 passed，A01 原失败项已恢复。
 
 ### 任务 3：审计、评审与交付
 
@@ -38,7 +46,7 @@
 - [x] 按注册表只读评审 M-DB1 与 M-LOGIC1；问题只在本工作树 talking.txt 留言。
 - [x] 验证：全量 pytest、ruff、编译/import main、依赖增量与敏感信息检查、diff 复核；安全后端变更不调用浏览器。全量失败已逐项报告，不伪报 PASS。
 - [x] 本地约定式提交 `6c77022`；talking.txt 留交付结果、待评审点与跨域整改项；更新本工作树 memory.md。
-- [ ] 跨域适配完成后全量回归通过、cline 独立评审完成，再回 complete；当前按 blocked 留交接，不伪报任务验收完成。
+- [x] 按用户最新收尾范围，合并 main 的 A01 修复、全量回归通过、cline 独立评审 pass，回 `complete M-SEC1: 243433c`。M-API2/M-PERF4 由协调者后续集成。
 
 ## 执行记录
 
@@ -56,7 +64,7 @@
 
 ## 审计结果
 
-审计基线：main `5eddc66` + 本次 M-SEC1。**安全服务已实现，但当前整体不能合并/发布：A01 适配仍阻断全量回归，A02 聊天接线尚缺。** 以下区分已实现的服务能力、已复现的问题和需负责人验收的发布条件；不把 Prompt 单测当作真实模型安全效果证明。
+首轮审计基线：main `5eddc66` + M-SEC1。下表保留当时的适配失败与风险证据；A01 当前修复状态及 M-SEC1 收尾结论见上方「收尾结果」。跨域接线、隐私保留与发布验收按各责任任务继续处理；Prompt 单测仅证明构造行为。
 
 | 项目 | 现状 / 证据 | 风险 | 整改建议 | 负责任务 |
 |---|---|---|---|---|
@@ -72,7 +80,7 @@
 | A10 AI 结论不得替代诊断 | 正常与危机 Prompt 都限制诊断、治疗、给药；OCR/识餐输出为 needs_confirm 草稿。此次不调用真实模型或浏览器。 | 模型可能违背提示或生成不准确营养/体检信息；格式正确不证明医学正确。 | UI 保留 AI 估算/人工确认/非诊断提示；真实模型验收用合成、去标识样例，覆盖危机、玩梗诱导、注入和错误数字；不得把风险状态自动用于纪律/医疗决策。 | Claude M-FE1/验收；Pi M-PERF1/2；Codex 复核 |
 | A11 跨模块契约 | 派单 `RiskState.level` = normal/elevated/high，资源为对象列表；当前 api-v2 §4 仍 normal/caution/crisis + 字符串数组，§5 人设枚举也与 clinical 口径分叉。服务只对 humorous 启用轻松风格，其余安全降级为 clinical。 | 消费者误判等级或无法读取资源；前后端人设显示与实际不一致。 | 以派单契约统一 schemas、api-v2、SSE 与前端映射；后端决策优先于 persona_style。不要为兼容旧类型而更改危机标记或清空资源。 | kilo M-API1；Pi M-PERF1；Claude M-FE1 |
 
-## 验证与评审状态
+## 首轮验证与评审状态（历史，本次收尾结果见文首）
 
 | 检查 | 实测结果 |
 |---|---|
@@ -87,7 +95,7 @@
 | 联调最小复现 | 默认资源对象 → ScaleSubmitResponse ValidationError；warning join TypeError；输出文本控制字符残留；识餐 NaN 非有限 |
 | 真实模型 / 浏览器 | 未运行；未向外部模型发送心理数据或图片 |
 
-结论：M-SEC1 指定文件的功能与安全回归已完成，**集成验收受 A01/A02 阻断，待 cline 独立评审**。所有跨域整改仅在本树 talking.txt 留言；不修改他人文件、不自行合并 main。
+首轮曾因 A01 适配与待独立评审而阻塞。本次合并后的 198 项回归通过、cline 独立评审 pass，M-SEC1 指定交付收尾完成；跨域整改继续在本树 talking.txt 留言，由用户/Claude 集成 main。
 
 ## 外部依据（2026-11-15 核对）
 
