@@ -5,11 +5,12 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from database import engine, Base
-from routers import auth, health, food, sport, ai_analysis, warning, tongue, chat
+from fastapi.staticfiles import StaticFiles
+
 from async_tasks import start_task_queue, stop_task_queue
+from database import Base, engine
+from routers import ai_analysis, auth, chat, food, health, sport, tongue, warning
 from services.llm_service import close_http_client
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ async def security_headers_middleware(request: Request, call_next):
     )
     return response
 
+
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +75,7 @@ app.include_router(ai_analysis.router)
 app.include_router(warning.router)
 app.include_router(tongue.router)
 app.include_router(chat.router)
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -111,9 +114,16 @@ async def serve_spa(full_path: str):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API endpoint not found")
     static_root = os.path.abspath(static_dir)
-    static_file_path = os.path.abspath(os.path.join(static_root, full_path)) if os.path.exists(static_root) else None
-    if (static_file_path and os.path.commonpath([static_root, static_file_path]) == static_root
-            and os.path.isfile(static_file_path)):
+    static_file_path = (
+        os.path.abspath(os.path.join(static_root, full_path))
+        if os.path.exists(static_root)
+        else None
+    )
+    if (
+        static_file_path
+        and os.path.commonpath([static_root, static_file_path]) == static_root
+        and os.path.isfile(static_file_path)
+    ):
         return FileResponse(static_file_path)
     index_path = os.path.join(static_root, "index.html") if os.path.exists(static_root) else None
     if index_path:

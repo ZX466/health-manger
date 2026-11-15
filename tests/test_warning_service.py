@@ -6,16 +6,16 @@ Bug B: HealthWarningResponse.warning_type was a Literal of English keys while
 the service stores Chinese labels -> /api/warning/list response validation 500.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+import models
 from database import Base
-import models  # noqa: F401
-from services.warning_service import check_health_warnings
 from schemas import HealthWarningResponse
+from services.warning_service import check_health_warnings
 
 
 def _make_engine():
@@ -62,7 +62,7 @@ def test_health_warning_response_accepts_chinese_type():
         warning_level="warning",
         warning_content="x",
         is_read=False,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         resolved_at=None,
     )
     assert m.warning_type == "低血压"

@@ -9,10 +9,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from database import Base
-import models  # noqa: F401 - register model tables with Base.metadata
 import chat_session
-from chat_session import create_session, add_message, delete_session
+import models  # noqa: F401 - register model tables with Base.metadata
+from chat_session import add_message, create_session, delete_session
+from database import Base
 
 
 def _make_engine():
@@ -42,11 +42,7 @@ def test_session_and_messages_survive_session_close():
         assert persisted is not None, "会话未落库：create_session 没有 commit"
         assert persisted.title == "persist-test"
 
-        msgs = (
-            s2.query(chat_session.ChatMessage)
-            .filter_by(session_id=session_id)
-            .all()
-        )
+        msgs = s2.query(chat_session.ChatMessage).filter_by(session_id=session_id).all()
         assert len(msgs) == 1, "消息未落库：add_message 没有 commit"
         assert msgs[0].content == "hello"
     finally:

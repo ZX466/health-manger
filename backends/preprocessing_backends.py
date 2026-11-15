@@ -1,7 +1,7 @@
 """Concrete preprocessing backends."""
 
 import re
-from typing import Any, Dict
+from typing import Any, ClassVar
 
 from interfaces.ai_interfaces import DataPreprocessor
 from services.health_service import calculate_bmi
@@ -14,7 +14,7 @@ class HealthDataPreprocessor(DataPreprocessor):
     BP_DIASTOLIC_MAX = 180
     HEART_RATE_MAX = 250
 
-    def preprocess(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def preprocess(self, raw_data: dict[str, Any]) -> dict[str, Any]:
         self._validate(raw_data)
         result = dict(raw_data)
         height = result.get("height")
@@ -22,7 +22,7 @@ class HealthDataPreprocessor(DataPreprocessor):
         result["bmi"] = self._calc_bmi(height, weight)
         return result
 
-    def _validate(self, data: Dict[str, Any]) -> None:
+    def _validate(self, data: dict[str, Any]) -> None:
         sys_bp = data.get("blood_pressure_systolic")
         dia_bp = data.get("blood_pressure_diastolic")
         if sys_bp is not None and sys_bp > self.BP_SYSTOLIC_MAX:
@@ -44,13 +44,13 @@ class TextPreprocessor(DataPreprocessor):
     """Sanitize and truncate text input for LLM calls."""
 
     MAX_LENGTH = 2000
-    INJECTION_PATTERNS = [
+    INJECTION_PATTERNS: ClassVar[list] = [
         re.compile(r"ignore\s+all\s+previous\s+instructions", re.IGNORECASE),
         re.compile(r"system\s*prompt", re.IGNORECASE),
         re.compile(r"you\s+are\s+now", re.IGNORECASE),
     ]
 
-    def preprocess(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def preprocess(self, raw_data: dict[str, Any]) -> dict[str, Any]:
         result = dict(raw_data)
         text = result.get("text", "")
         text = self._sanitize(text)
@@ -65,5 +65,5 @@ class TextPreprocessor(DataPreprocessor):
 
     def _truncate(self, text: str) -> str:
         if len(text) > self.MAX_LENGTH:
-            return text[:self.MAX_LENGTH]
+            return text[: self.MAX_LENGTH]
         return text

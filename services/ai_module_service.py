@@ -1,6 +1,6 @@
 """Service layer for the AI module pipeline."""
 
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 import models
 from ai_module.factory import AIPipelineFactory
 from ai_module.pipeline import AIPipelineInput
-from services.llm_service import call_llm  # noqa: F401 - re-exported for test patching
+from services.llm_service import call_llm
 
 _factory = AIPipelineFactory()
 
@@ -24,7 +24,7 @@ class AIModuleService:
         user_id: int,
         request_content: str,
         analysis_type: str = "健康咨询",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # 传入模块全局 call_llm（调用时解析，可被 patch("services.ai_module_service.call_llm") 拦截）
         pipeline = _factory.create_pipeline("health_analysis", llm_call=call_llm)
         input_data = AIPipelineInput(
@@ -39,7 +39,7 @@ class AIModuleService:
             "metrics": output.metrics,
         }
 
-    def get_metrics_report(self) -> Dict[str, Any]:
+    def get_metrics_report(self) -> dict[str, Any]:
         metrics = self._db.execute(select(models.AIMetric)).scalars().all()
         total = len(metrics)
         successes = sum(1 for m in metrics if m.success)

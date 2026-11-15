@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import threading
-from typing import Optional
 
 import httpx
 
@@ -52,8 +51,8 @@ class LLMConfig:
         max_tokens: int = 1500,
         timeout: float = DEFAULT_TIMEOUT,
         provider: str = "zhipu",
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ):
         self.model = model
         self.temperature = temperature
@@ -69,10 +68,7 @@ MAX_RETRIES = settings.LLM_MAX_RETRIES
 RETRY_BACKOFF_BASE = settings.LLM_RETRY_BACKOFF_BASE
 
 
-async def call_llm(
-    messages: list,
-    config: Optional[LLMConfig] = None
-) -> tuple:
+async def call_llm(messages: list, config: LLMConfig | None = None) -> tuple:
     """调用智谱 AI LLM 接口，带指数退避重试（最多 MAX_RETRIES 次）。
 
     返回:
@@ -87,34 +83,31 @@ async def call_llm(
     if not config.api_key:
         raise ValueError("未配置 AI API 密钥")
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {config.api_key}"
-    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {config.api_key}"}
 
     payload = {
         "model": config.model,
         "messages": messages,
         "temperature": config.temperature,
         "max_tokens": config.max_tokens,
-        "stream": False
+        "stream": False,
     }
 
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             logger.info(
                 "LLM 请求开始 (attempt=%d/%d, model=%s, timeout=%.1fs)",
-                attempt, MAX_RETRIES, config.model, config.timeout,
+                attempt,
+                MAX_RETRIES,
+                config.model,
+                config.timeout,
             )
 
             client = await _get_client()
             response = await client.post(
-                config.base_url,
-                headers=headers,
-                json=payload,
-                timeout=config.timeout
+                config.base_url, headers=headers, json=payload, timeout=config.timeout
             )
 
             if response.status_code != 200:
@@ -128,7 +121,8 @@ async def call_llm(
 
             logger.info(
                 "LLM 请求成功 (attempt=%d, tokens_used=%d)",
-                attempt, tokens_used,
+                attempt,
+                tokens_used,
             )
             return content, tokens_used
 
@@ -137,27 +131,30 @@ async def call_llm(
             last_exception = exc
             logger.warning(
                 "LLM 请求超时或连接失败 (attempt=%d/%d): %s",
-                attempt, MAX_RETRIES, exc,
+                attempt,
+                MAX_RETRIES,
+                exc,
             )
 
         except RuntimeError as exc:
             # Non-200 status from the API -- retry only on 5xx (server errors)
             error_msg = str(exc)
-            is_server_error = any(
-                f"HTTP {code}" in error_msg
-                for code in (500, 502, 503, 504)
-            )
+            is_server_error = any(f"HTTP {code}" in error_msg for code in (500, 502, 503, 504))
             if is_server_error and attempt < MAX_RETRIES:
                 last_exception = exc
                 logger.warning(
                     "LLM 服务端错误，将重试 (attempt=%d/%d): %s",
-                    attempt, MAX_RETRIES, exc,
+                    attempt,
+                    MAX_RETRIES,
+                    exc,
                 )
             else:
                 # 4xx or final attempt -- do not retry
                 logger.error(
                     "LLM 请求失败 (attempt=%d/%d): %s",
-                    attempt, MAX_RETRIES, exc,
+                    attempt,
+                    MAX_RETRIES,
+                    exc,
                 )
                 raise
 
@@ -165,7 +162,9 @@ async def call_llm(
             # Response parsing error -- likely a malformed API response, no retry
             logger.error(
                 "LLM 响应解析失败 (attempt=%d/%d): %s",
-                attempt, MAX_RETRIES, exc,
+                attempt,
+                MAX_RETRIES,
+                exc,
             )
             raise RuntimeError(f"AI 服务返回数据格式异常：{exc}") from exc
 
@@ -177,7 +176,8 @@ async def call_llm(
 
     # All retries exhausted
     logger.error(
-        "LLM 请求在 %d 次重试后仍然失败", MAX_RETRIES,
+        "LLM 请求在 %d 次重试后仍然失败",
+        MAX_RETRIES,
     )
     raise RuntimeError(
         f"AI 服务在 {MAX_RETRIES} 次重试后仍然失败：{last_exception}"
@@ -198,10 +198,7 @@ def build_health_analysis_prompt(health_data: dict, user_question: str) -> list:
 
 请根据我的健康数据，提供专业的健康分析和建议。"""
 
-    return [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
+    return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
 
 def build_quick_analysis_prompt(health_data: dict) -> list:
@@ -219,10 +216,7 @@ def build_quick_analysis_prompt(health_data: dict) -> list:
 3. 整体健康状况
 4. 具体的改善建议"""
 
-    return [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
+    return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
 
 CHAT_SYSTEM_PROMPT = """你是一位专业的中医健康顾问，擅长根据用户的舌诊结果和健康数据提供个性化的健康建议。
@@ -248,7 +242,4 @@ def build_health_rating_llm_prompt(health_data: dict, rule_score: int, rule_rati
 
 请基于以上数据给出综合健康评价，补充规则评分无法涵盖的分析维度，并给出改善建议。"""
 
-    return [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
+    return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]

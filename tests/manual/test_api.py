@@ -2,14 +2,11 @@ import requests
 
 BASE_URL = "http://localhost:8420"
 
+
 def test_register():
     print("测试用户注册...")
     url = f"{BASE_URL}/api/auth/register"
-    data = {
-        "name": "testuser",
-        "password": "test123",
-        "invite_code": "HEALTH2024"
-    }
+    data = {"name": "testuser", "password": "test123", "invite_code": "HEALTH2024"}
     try:
         response = requests.post(url, json=data)
         print(f"状态码: {response.status_code}")
@@ -19,13 +16,11 @@ def test_register():
         print(f"错误: {e}")
         return False
 
+
 def test_login():
     print("\n测试用户登录...")
     url = f"{BASE_URL}/api/auth/login"
-    data = {
-        "username": "testuser",
-        "password": "test123"
-    }
+    data = {"username": "testuser", "password": "test123"}
     try:
         response = requests.post(url, data=data)
         print(f"状态码: {response.status_code}")
@@ -34,6 +29,7 @@ def test_login():
     except Exception as e:
         print(f"错误: {e}")
         return False, None
+
 
 def test_health_check():
     print("\n测试健康检查...")
@@ -46,6 +42,7 @@ def test_health_check():
     except Exception as e:
         print(f"错误: {e}")
         return False
+
 
 if __name__ == "__main__":
     print("=" * 50)

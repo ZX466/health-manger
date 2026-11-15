@@ -1,12 +1,20 @@
 from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
 import schemas
-from auth import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
+from auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    verify_password,
+)
+from database import get_db
 from services.auth_service import validate_invite_code
 from services.security_service import check_rate_limit
 
@@ -21,9 +29,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
-        name=user.name,
-        password_hash=hashed_password,
-        invite_code=user.invite_code
+        name=user.name, password_hash=hashed_password, invite_code=user.invite_code
     )
     db.add(db_user)
     try:
@@ -37,7 +43,11 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
     client_ip = request.client.host if request.client else "unknown"
     check_rate_limit(
         f"login:{client_ip}:{form_data.username.strip().lower()}",

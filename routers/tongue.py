@@ -1,21 +1,21 @@
-from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
 import schemas
 from auth import get_current_user
-from tongue import get_tongue_color_info, get_coating_color_info
+from database import get_db
 from services.tongue_service import (
-    upload_and_analyze,
+    delete_diagnosis,
     get_diagnoses,
     get_diagnosis,
     get_diagnosis_image_path,
     get_latest_completed,
-    delete_diagnosis,
     get_stats,
+    upload_and_analyze,
 )
+from tongue import get_coating_color_info, get_tongue_color_info
 
 router = APIRouter(prefix="/api/tongue", tags=["舌诊分析"])
 
@@ -29,7 +29,7 @@ async def upload_tongue_image(
     return await upload_and_analyze(file, current_user.id, db)
 
 
-@router.get("/list", response_model=List[schemas.TongueDiagnosisResponse])
+@router.get("/list", response_model=list[schemas.TongueDiagnosisResponse])
 def get_tongue_diagnoses(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),

@@ -1,7 +1,7 @@
 """Concrete inference backends."""
 
 from types import SimpleNamespace
-from typing import Any, Dict, Optional
+from typing import Any
 
 from health_rating import calculate_health_rating
 from interfaces.ai_interfaces import InferenceEngine
@@ -16,10 +16,10 @@ class LLMInferenceBackend(InferenceEngine):
     backends.inference_backends.call_llm 的测试 patch。
     """
 
-    def __init__(self, llm_call: Optional[Any] = None) -> None:
+    def __init__(self, llm_call: Any | None = None) -> None:
         self._llm_call = llm_call
 
-    async def infer(self, preprocessed: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def infer(self, preprocessed: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
         messages = preprocessed.get("messages", [])
         temperature = config.get("temperature", 0.7)
         llm = self._llm_call or call_llm
@@ -34,7 +34,7 @@ class LLMInferenceBackend(InferenceEngine):
 class RuleBasedInferenceBackend(InferenceEngine):
     """Deterministic rule-based health inference using canonical health_rating module."""
 
-    def infer(self, preprocessed: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    def infer(self, preprocessed: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
         record = SimpleNamespace(
             height=preprocessed.get("height"),
             weight=preprocessed.get("weight"),
@@ -59,10 +59,10 @@ class RuleBasedInferenceBackend(InferenceEngine):
 class HybridInferenceBackend(InferenceEngine):
     """Combine rule-based scoring with LLM advice."""
 
-    def __init__(self, llm_call: Optional[Any] = None) -> None:
+    def __init__(self, llm_call: Any | None = None) -> None:
         self._llm_call = llm_call
 
-    async def infer(self, preprocessed: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    async def infer(self, preprocessed: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
         rule_engine = RuleBasedInferenceBackend()
         rule_result = rule_engine.infer(preprocessed, config)
 

@@ -4,16 +4,17 @@
 需要配置 ARK_API_KEY 和 ARK_MODEL_ID 以启用云端分析
 """
 
+import logging
 import os
-from typing import Optional
 
 from tongue.feature_mapping import (
-    TONGUE_COLOR_DETAILS, COATING_COLOR_DETAILS,
-    COATING_THICKNESS_DESCRIPTIONS, TONGUE_SHAPE_DESCRIPTIONS,
-    MOISTURE_LEVEL_DESCRIPTIONS, TCM_SYNDROMES,
+    COATING_COLOR_DETAILS,
+    COATING_THICKNESS_DESCRIPTIONS,
+    MOISTURE_LEVEL_DESCRIPTIONS,
+    TCM_SYNDROMES,
+    TONGUE_COLOR_DETAILS,
+    TONGUE_SHAPE_DESCRIPTIONS,
 )
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +34,20 @@ def _get_cloud_analyzer():
     if _cloud_analyzer is None:
         try:
             from tongue.cloud_analyzer import cloud_analyzer
+
             _cloud_analyzer = cloud_analyzer
             if _cloud_analyzer.is_configured:
                 logger.info(f"云端 ARK 分析器就绪 (模型: {_cloud_analyzer.model_id})")
             else:
-                logger.warning("云端 ARK 未配置，将在 .env 中设置 ARK_API_KEY 和 ARK_MODEL_ID 后启用")
+                logger.warning(
+                    "云端 ARK 未配置，将在 .env 中设置 ARK_API_KEY 和 ARK_MODEL_ID 后启用"
+                )
         except ImportError:
             logger.warning("未安装云端分析模块，请确保 cloud_tongue_analyzer.py 存在")
     return _cloud_analyzer
 
 
-def analyze_tongue_image(image_path: str, vision_config: Optional[dict] = None) -> dict:
+def analyze_tongue_image(image_path: str, vision_config: dict | None = None) -> dict:
     """
     分析舌象图像
 
@@ -82,21 +86,28 @@ def analyze_tongue_image(image_path: str, vision_config: Optional[dict] = None) 
         logger.error(f"云端分析失败：{e}")
         raise RuntimeError(f"分析服务暂不可用：云端分析请求失败 ({e})") from e
 
-    tongue_color = ai_result.get('tongue_color', '淡红')
-    coating_color = ai_result.get('coating_color', '白苔')
-    coating_thickness = ai_result.get('coating_thickness', '薄苔')
-    has_cracks = ai_result.get('has_cracks', False)
-    has_teeth_marks = ai_result.get('has_teeth_marks', False)
-    tongue_shape = ai_result.get('tongue_shape', '正常')
-    moisture_level = ai_result.get('moisture_level', '正常')
-    tongue_spirit = ai_result.get('tongue_spirit', '荣润')
-    confidence = ai_result.get('confidence', 0.85)
+    tongue_color = ai_result.get("tongue_color", "淡红")
+    coating_color = ai_result.get("coating_color", "白苔")
+    coating_thickness = ai_result.get("coating_thickness", "薄苔")
+    has_cracks = ai_result.get("has_cracks", False)
+    has_teeth_marks = ai_result.get("has_teeth_marks", False)
+    tongue_shape = ai_result.get("tongue_shape", "正常")
+    moisture_level = ai_result.get("moisture_level", "正常")
+    tongue_spirit = ai_result.get("tongue_spirit", "荣润")
+    confidence = ai_result.get("confidence", 0.85)
 
-    logger.info(f"云端 ARK 分析结果：舌色={tongue_color}, 苔色={coating_color}, 舌形={tongue_shape}, 置信度={confidence}")
+    logger.info(
+        f"云端 ARK 分析结果：舌色={tongue_color}, 苔色={coating_color}, 舌形={tongue_shape}, 置信度={confidence}"
+    )
 
     overall_type, tcm_syndrome = _determine_overall_type(
-        tongue_color, coating_color, coating_thickness,
-        has_cracks, has_teeth_marks, tongue_shape, moisture_level
+        tongue_color,
+        coating_color,
+        coating_thickness,
+        has_cracks,
+        has_teeth_marks,
+        tongue_shape,
+        moisture_level,
     )
 
     health_advice = _generate_health_advice(tcm_syndrome)
@@ -104,13 +115,29 @@ def analyze_tongue_image(image_path: str, vision_config: Optional[dict] = None) 
     lifestyle_advice = _generate_lifestyle_advice(tcm_syndrome)
 
     details = [
-        {"feature": "舌色", "value": tongue_color, "desc": TONGUE_COLORS.get(tongue_color, {"desc": "未知"})["desc"]},
-        {"feature": "苔色", "value": coating_color, "desc": COATING_COLORS.get(coating_color, {"desc": "未知"})["desc"]},
-        {"feature": "苔质", "value": coating_thickness, "desc": COATING_THICKNESS.get(coating_thickness, "未知")},
+        {
+            "feature": "舌色",
+            "value": tongue_color,
+            "desc": TONGUE_COLORS.get(tongue_color, {"desc": "未知"})["desc"],
+        },
+        {
+            "feature": "苔色",
+            "value": coating_color,
+            "desc": COATING_COLORS.get(coating_color, {"desc": "未知"})["desc"],
+        },
+        {
+            "feature": "苔质",
+            "value": coating_thickness,
+            "desc": COATING_THICKNESS.get(coating_thickness, "未知"),
+        },
         {"feature": "舌形", "value": tongue_shape, "desc": TONGUE_SHAPES.get(tongue_shape, "未知")},
-        {"feature": "润燥", "value": moisture_level, "desc": MOISTURE_LEVELS.get(moisture_level, "未知")},
+        {
+            "feature": "润燥",
+            "value": moisture_level,
+            "desc": MOISTURE_LEVELS.get(moisture_level, "未知"),
+        },
         {"feature": "裂纹", "value": "有" if has_cracks else "无", "desc": ""},
-        {"feature": "齿痕", "value": "有" if has_teeth_marks else "无", "desc": ""}
+        {"feature": "齿痕", "value": "有" if has_teeth_marks else "无", "desc": ""},
     ]
 
     return {
@@ -133,7 +160,9 @@ def analyze_tongue_image(image_path: str, vision_config: Optional[dict] = None) 
     }
 
 
-def _determine_overall_type(tongue_color, coating_color, thickness, cracks, teeth_marks, shape, moisture) -> tuple:
+def _determine_overall_type(
+    tongue_color, coating_color, thickness, cracks, teeth_marks, shape, moisture
+) -> tuple:
     """判断总体类型和中医证型"""
     score = 0
 
@@ -178,15 +207,14 @@ def _determine_overall_type(tongue_color, coating_color, thickness, cracks, teet
             return "痰湿舌象", "phlegm_dampness"
         else:
             return "轻度异常舌象", "qi_deficiency"
+    elif tongue_color == "青紫":
+        return "血瘀舌象", "blood_stasis"
+    elif coating_color == "黄苔" and thickness in ["厚苔", "腻苔"]:
+        return "湿热舌象", "damp_heat"
+    elif tongue_color == "淡白":
+        return "阳虚舌象", "yang_deficiency"
     else:
-        if tongue_color == "青紫":
-            return "血瘀舌象", "blood_stasis"
-        elif coating_color == "黄苔" and thickness in ["厚苔", "腻苔"]:
-            return "湿热舌象", "damp_heat"
-        elif tongue_color == "淡白":
-            return "阳虚舌象", "yang_deficiency"
-        else:
-            return "异常舌象", "qi_deficiency"
+        return "异常舌象", "qi_deficiency"
 
 
 def _generate_health_advice(syndrome: str) -> str:
@@ -198,7 +226,7 @@ def _generate_health_advice(syndrome: str) -> str:
         "phlegm_dampness": "舌象提示痰湿体质，建议健脾祛湿。饮食清淡，少吃油腻甜食，可食用薏米、赤小豆、冬瓜等。",
         "damp_heat": "舌象提示湿热内蕴，建议清热利湿。饮食清淡，忌辛辣油腻，多饮水，可食用绿豆、苦瓜等。",
         "blood_stasis": "舌象提示血瘀倾向，建议活血化瘀。适度运动促进血液循环，可食用山楂、黑木耳、玫瑰花茶等。",
-        "qi_stagnation": "舌象提示气机郁滞，建议疏肝解郁。保持心情舒畅，适度运动，可饮用玫瑰花茶、菊花茶等。"
+        "qi_stagnation": "舌象提示气机郁滞，建议疏肝解郁。保持心情舒畅，适度运动，可饮用玫瑰花茶、菊花茶等。",
     }
     return advices.get(syndrome, advices["normal"])
 
@@ -212,7 +240,7 @@ def _generate_diet_suggestion(syndrome: str) -> str:
         "phlegm_dampness": "推荐：薏米红豆粥、冬瓜排骨汤、陈皮普洱茶。避免：甜食、油炸食品、肥肉。",
         "damp_heat": "推荐：绿豆汤、苦瓜炒蛋、冬瓜海带汤、荷叶茶。避免：辛辣、油腻、甜食、酒类。",
         "blood_stasis": "推荐：山楂红糖水、黑木耳凉拌、三七粉、玫瑰花茶。避免：高脂肪食物。",
-        "qi_stagnation": "推荐：玫瑰花茶、茉莉花茶、柑橘类水果、芹菜炒木耳。避免：过度饮酒、情绪化进食。"
+        "qi_stagnation": "推荐：玫瑰花茶、茉莉花茶、柑橘类水果、芹菜炒木耳。避免：过度饮酒、情绪化进食。",
     }
     return suggestions.get(syndrome, suggestions["normal"])
 
@@ -226,7 +254,7 @@ def _generate_lifestyle_advice(syndrome: str) -> str:
         "phlegm_dampness": "保持环境干燥通风，坚持有氧运动出汗排湿。规律作息，避免久坐不动。",
         "damp_heat": "保持环境清爽，勤洗澡换衣。适度运动但避免暴晒，保持大便通畅。",
         "blood_stasis": "坚持规律运动，特别是有氧运动。注意保暖，避免受寒。保持心情愉快。",
-        "qi_stagnation": "学会释放压力，培养兴趣爱好。多参加社交活动，保持乐观心态。规律作息不熬夜。"
+        "qi_stagnation": "学会释放压力，培养兴趣爱好。多参加社交活动，保持乐观心态。规律作息不熬夜。",
     }
     return suggestions.get(syndrome, suggestions["normal"])
 

@@ -1,6 +1,7 @@
 """Quick script to check registered users."""
-import sqlite3
+
 import os
+import sqlite3
 
 db_path = os.path.join(os.path.dirname(__file__), "..", "health_system.db")
 conn = sqlite3.connect(db_path)

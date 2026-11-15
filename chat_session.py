@@ -4,14 +4,14 @@
 支持多轮对话和上下文保持
 """
 
-from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Session, relationship
 
-from database import Base
 import settings
+from database import Base
 
 DEFAULT_MAX_MESSAGES = settings.CHAT_CONTEXT_MAX_MESSAGES
 DEFAULT_MAX_TOKENS = settings.CHAT_CONTEXT_MAX_TOKENS
@@ -31,8 +31,10 @@ class ChatSession(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(200), nullable=True)
     context_type = Column(String(50), default="general")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
     user = relationship("User", backref="chat_sessions")
     messages = relationship(
@@ -51,7 +53,7 @@ class ChatMessage(Base):
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
     tokens_used = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     session = relationship("ChatSession", back_populates="messages")
 
@@ -59,7 +61,7 @@ class ChatMessage(Base):
 def create_session(
     db: Session,
     user_id: int,
-    title: Optional[str] = None,
+    title: str | None = None,
     context_type: str = "general",
 ) -> ChatSession:
     """Create a new chat session for a user."""
@@ -77,23 +79,33 @@ def get_session(
     db: Session,
     session_id: int,
     user_id: int,
-) -> Optional[ChatSession]:
+) -> ChatSession | None:
     """Get a chat session by ID, scoped to the owning user."""
-    return db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id,
-    ).first()
+    return (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.id == session_id,
+            ChatSession.user_id == user_id,
+        )
+        .first()
+    )
 
 
 def get_user_sessions(
     db: Session,
     user_id: int,
     limit: int = 20,
-) -> List[ChatSession]:
+) -> list[ChatSession]:
     """Get recent chat sessions for a user."""
-    return db.query(ChatSession).filter(
-        ChatSession.user_id == user_id,
-    ).order_by(ChatSession.updated_at.desc()).limit(limit).all()
+    return (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.user_id == user_id,
+        )
+        .order_by(ChatSession.updated_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 def add_message(
@@ -101,7 +113,7 @@ def add_message(
     session_id: int,
     role: str,
     content: str,
-    tokens_used: Optional[int] = None,
+    tokens_used: int | None = None,
 ) -> ChatMessage:
     """Add a message to a chat session."""
     message = ChatMessage(
@@ -119,11 +131,17 @@ def get_session_messages(
     db: Session,
     session_id: int,
     limit: int = 50,
-) -> List[ChatMessage]:
+) -> list[ChatMessage]:
     """Get messages for a chat session in chronological order."""
-    return db.query(ChatMessage).filter(
-        ChatMessage.session_id == session_id,
-    ).order_by(ChatMessage.created_at.asc()).limit(limit).all()
+    return (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.session_id == session_id,
+        )
+        .order_by(ChatMessage.created_at.asc())
+        .limit(limit)
+        .all()
+    )
 
 
 def get_session_context(
@@ -131,7 +149,7 @@ def get_session_context(
     session_id: int,
     max_messages: int = DEFAULT_MAX_MESSAGES,
     max_tokens: int = DEFAULT_MAX_TOKENS,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """获取最近消息作为 LLM 上下文，支持 token 预算感知截断。
 
     策略：从最新消息向前累积，直到达到 token 预算或消息数量上限。
@@ -143,7 +161,7 @@ def get_session_context(
 
     recent = list(reversed(messages))
 
-    selected: List[ChatMessage] = []
+    selected: list[ChatMessage] = []
     used_tokens = 0
 
     for msg in recent:
@@ -165,10 +183,14 @@ def delete_session(
     user_id: int,
 ) -> bool:
     """Delete a chat session and its messages."""
-    session = db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id,
-    ).first()
+    session = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.id == session_id,
+            ChatSession.user_id == user_id,
+        )
+        .first()
+    )
 
     if not session:
         return False
@@ -185,10 +207,14 @@ def update_session_title(
     title: str,
 ) -> bool:
     """Update the title of a chat session."""
-    session = db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id,
-    ).first()
+    session = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.id == session_id,
+            ChatSession.user_id == user_id,
+        )
+        .first()
+    )
 
     if not session:
         return False
@@ -198,7 +224,7 @@ def update_session_title(
     return True
 
 
-def session_to_dict(session: ChatSession) -> Dict[str, Any]:
+def session_to_dict(session: ChatSession) -> dict[str, Any]:
     """Convert a ChatSession to a dictionary."""
     return {
         "id": session.id,
@@ -211,7 +237,7 @@ def session_to_dict(session: ChatSession) -> Dict[str, Any]:
     }
 
 
-def message_to_dict(message: ChatMessage) -> Dict[str, Any]:
+def message_to_dict(message: ChatMessage) -> dict[str, Any]:
     """Convert a ChatMessage to a dictionary."""
     return {
         "id": message.id,

@@ -2,25 +2,25 @@
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
-from interfaces.ai_interfaces import DataPreprocessor, InferenceEngine, ResultPostprocessor
+from ai_module.exceptions import InferenceError, PostprocessingError, PreprocessingError
 from ai_module.metrics import MetricsCollector
-from ai_module.exceptions import PreprocessingError, InferenceError, PostprocessingError
+from interfaces.ai_interfaces import DataPreprocessor, InferenceEngine, ResultPostprocessor
 
 
 @dataclass
 class AIPipelineInput:
     input_type: str
-    data: Dict[str, Any]
-    config: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any]
+    config: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class AIPipelineOutput:
     result_type: str
-    structured: Dict[str, Any]
-    metrics: Dict[str, Any]
+    structured: dict[str, Any]
+    metrics: dict[str, Any]
 
 
 class AIPipeline:

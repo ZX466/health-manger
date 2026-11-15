@@ -8,9 +8,10 @@ import logging
 import queue
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 import settings
 
@@ -25,19 +26,19 @@ class TaskStatus(str, Enum):
 
 
 class TaskResult:
-    def __init__(self, task_id: str, user_id: Optional[int] = None):
+    def __init__(self, task_id: str, user_id: int | None = None):
         self.task_id = task_id
         self.user_id = user_id
         self.status = TaskStatus.PENDING
-        self.result: Optional[Dict[str, Any]] = None
-        self.error: Optional[str] = None
+        self.result: dict[str, Any] | None = None
+        self.error: str | None = None
         self.created_at = datetime.now()
-        self.completed_at: Optional[datetime] = None
+        self.completed_at: datetime | None = None
 
     def set_running(self):
         self.status = TaskStatus.RUNNING
 
-    def set_completed(self, result: Dict[str, Any]):
+    def set_completed(self, result: dict[str, Any]):
         self.status = TaskStatus.COMPLETED
         self.result = result
         self.completed_at = datetime.now()
@@ -47,16 +48,14 @@ class TaskResult:
         self.error = error
         self.completed_at = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "status": self.status.value,
             "result": self.result,
             "error": self.error,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "completed_at": self.completed_at.isoformat()
-            if self.completed_at
-            else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
         }
 
 
@@ -71,8 +70,8 @@ class AsyncTaskQueue:
 
     def __init__(
         self,
-        max_workers: Optional[int] = None,
-        cleanup_interval_seconds: Optional[int] = None,
+        max_workers: int | None = None,
+        cleanup_interval_seconds: int | None = None,
     ):
         # P-N2: 从 settings 读取队列参数（支持环境变量覆盖），而非硬编码默认值
         if max_workers is None:
@@ -83,9 +82,9 @@ class AsyncTaskQueue:
             return
 
         self.task_queue = queue.Queue()
-        self.results: Dict[str, TaskResult] = {}
+        self.results: dict[str, TaskResult] = {}
         self.workers = []
-        self.cleanup_thread: Optional[threading.Thread] = None
+        self.cleanup_thread: threading.Thread | None = None
         self.max_workers = max_workers
         self.cleanup_interval_seconds = max(1, cleanup_interval_seconds)
         self.running = False
@@ -170,9 +169,9 @@ class AsyncTaskQueue:
         task_id: str,
         func: Callable,
         args: tuple = (),
-        kwargs: dict = None,
-        callback: Callable = None,
-        user_id: Optional[int] = None,
+        kwargs: dict | None = None,
+        callback: Callable | None = None,
+        user_id: int | None = None,
     ) -> str:
         if kwargs is None:
             kwargs = {}
@@ -184,7 +183,7 @@ class AsyncTaskQueue:
 
         return task_id
 
-    def get_task_status(self, task_id: str, user_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    def get_task_status(self, task_id: str, user_id: int | None = None) -> dict[str, Any] | None:
         with self.lock:
             if task_id in self.results:
                 if user_id is not None and self.results[task_id].user_id != user_id:
@@ -201,12 +200,9 @@ class AsyncTaskQueue:
                 ]
         return False
 
-    def get_task_result(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def get_task_result(self, task_id: str) -> dict[str, Any] | None:
         with self.lock:
-            if (
-                task_id in self.results
-                and self.results[task_id].status == TaskStatus.COMPLETED
-            ):
+            if task_id in self.results and self.results[task_id].status == TaskStatus.COMPLETED:
                 return self.results[task_id].result
         return None
 
@@ -225,9 +221,7 @@ class AsyncTaskQueue:
                 del self.results[task_id]
 
         if to_remove:
-            logger.info(
-                "清理过期异步任务 %d 个（TTL=%ds）", len(to_remove), max_age_seconds
-            )
+            logger.info("清理过期异步任务 %d 个（TTL=%ds）", len(to_remove), max_age_seconds)
 
 
 task_queue = AsyncTaskQueue()

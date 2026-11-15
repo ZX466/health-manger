@@ -1,6 +1,8 @@
 """Delete test accounts, keep ID=2 (zx) and ID=12 (z)."""
-import sqlite3
+
 import os
+import sqlite3
+import sys
 
 db_path = os.path.join(os.path.dirname(__file__), "..", "health_system.db")
 KEEP_IDS = {2, 12}
@@ -16,7 +18,7 @@ for uid, name in to_delete:
 if not to_delete:
     print("无需删除")
     conn.close()
-    exit()
+    sys.exit()
 
 delete_ids = [r[0] for r in to_delete]
 placeholders = ",".join("?" * len(delete_ids))
@@ -30,9 +32,15 @@ if session_ids:
     print(f"  删除 chat_messages: {c.rowcount} 条")
 
 tables = [
-    "chat_sessions", "health_analyses", "health_warnings", "ai_analyses",
-    "tongue_diagnoses", "user_food_records", "user_sport_records",
-    "user_health_goals", "health_records",
+    "chat_sessions",
+    "health_analyses",
+    "health_warnings",
+    "ai_analyses",
+    "tongue_diagnoses",
+    "user_food_records",
+    "user_sport_records",
+    "user_health_goals",
+    "health_records",
 ]
 
 for table in tables:

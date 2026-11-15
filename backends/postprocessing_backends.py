@@ -1,6 +1,6 @@
 """Concrete postprocessing backends."""
 
-from typing import Any, Dict
+from typing import Any
 
 from interfaces.ai_interfaces import ResultPostprocessor
 
@@ -8,7 +8,7 @@ from interfaces.ai_interfaces import ResultPostprocessor
 class HealthAnalysisPostprocessor(ResultPostprocessor):
     """Structure health analysis inference output."""
 
-    def postprocess(self, inference_result: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess(self, inference_result: dict[str, Any]) -> dict[str, Any]:
         content = inference_result.get("content", {})
         backend_type = inference_result.get("backend_type", "unknown")
 
@@ -33,7 +33,7 @@ class HealthAnalysisPostprocessor(ResultPostprocessor):
 class MetricsExtractor(ResultPostprocessor):
     """Extract performance metrics from inference output."""
 
-    def postprocess(self, inference_result: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess(self, inference_result: dict[str, Any]) -> dict[str, Any]:
         return {
             "result_type": "metrics",
             "structured": {},

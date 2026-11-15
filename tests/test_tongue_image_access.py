@@ -21,7 +21,9 @@ def _create_diagnosis(db, user_id: int, image_path: Path) -> models.TongueDiagno
 
 
 @pytest.mark.asyncio
-async def test_tongue_image_requires_owner_authentication(app, db, client, anon_client, tmp_path, monkeypatch):
+async def test_tongue_image_requires_owner_authentication(
+    app, db, client, anon_client, tmp_path, monkeypatch
+):
     from services import tongue_service
 
     monkeypatch.setattr(tongue_service, "UPLOAD_DIR", str(tmp_path))
@@ -46,7 +48,9 @@ async def test_tongue_image_requires_owner_authentication(app, db, client, anon_
     db.add(other_user)
     db.flush()
     other_token = create_access_token(data={"sub": str(other_user.id)})
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as other_client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as other_client:
         other_client.headers["Authorization"] = f"Bearer {other_token}"
         forbidden = await other_client.get(f"/api/tongue/image/{diagnosis.id}")
 

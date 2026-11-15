@@ -1,7 +1,7 @@
 import re
+import threading
 import time
 import unicodedata
-import threading
 from collections import defaultdict
 
 PROMPT_INJECTION_PATTERNS = [
@@ -39,7 +39,7 @@ _MAX_INPUT_LENGTH = 2000
 DEFAULT_RATE_LIMIT_REQUESTS = 60
 DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60
 
-_ZERO_WIDTH_RE = re.compile(r'[​-‏ - ⁠-⁯﻿­]')
+_ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff\u00ad]")
 
 
 def sanitize_for_prompt(text: str, max_length: int = _MAX_INPUT_LENGTH) -> str:
@@ -48,15 +48,13 @@ def sanitize_for_prompt(text: str, max_length: int = _MAX_INPUT_LENGTH) -> str:
 
     truncated = text[:max_length]
 
-    cleaned = _ZERO_WIDTH_RE.sub('', truncated)
-    cleaned = unicodedata.normalize('NFKD', cleaned)
+    cleaned = _ZERO_WIDTH_RE.sub("", truncated)
+    cleaned = unicodedata.normalize("NFKD", cleaned)
 
     for pattern in PROMPT_INJECTION_PATTERNS:
         cleaned = re.sub(pattern, "[已过滤]", cleaned, flags=re.IGNORECASE)
 
-    control_chars_removed = "".join(
-        ch for ch in cleaned if ch >= " " or ch in "\n\r\t"
-    )
+    control_chars_removed = "".join(ch for ch in cleaned if ch >= " " or ch in "\n\r\t")
 
     return control_chars_removed.strip()
 
@@ -66,15 +64,17 @@ class RateLimiter:
         self._requests: defaultdict[str, list] = defaultdict(list)
         self._lock = threading.Lock()
 
-    def is_allowed(self, key: str, max_requests: int = DEFAULT_RATE_LIMIT_REQUESTS,
-                   window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS) -> tuple:
+    def is_allowed(
+        self,
+        key: str,
+        max_requests: int = DEFAULT_RATE_LIMIT_REQUESTS,
+        window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
+    ) -> tuple:
         now = time.time()
         cutoff = now - window_seconds
 
         with self._lock:
-            self._requests[key] = [
-                t for t in self._requests[key] if t > cutoff
-            ]
+            self._requests[key] = [t for t in self._requests[key] if t > cutoff]
 
             if len(self._requests[key]) >= max_requests:
                 oldest = self._requests[key][0]
@@ -96,14 +96,17 @@ class RateLimiter:
 _rate_limiter = RateLimiter()
 
 
-def check_rate_limit(key: str,
-                     max_requests: int = DEFAULT_RATE_LIMIT_REQUESTS,
-                     window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS):
+def check_rate_limit(
+    key: str,
+    max_requests: int = DEFAULT_RATE_LIMIT_REQUESTS,
+    window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
+):
     allowed, retry_after = _rate_limiter.is_allowed(key, max_requests, window_seconds)
     if not allowed:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=429,
             detail="请求过于频繁，请稍后再试",
-            headers={"Retry-After": str(retry_after)}
+            headers={"Retry-After": str(retry_after)},
         )

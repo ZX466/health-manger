@@ -1,14 +1,15 @@
 import os
+from datetime import UTC, datetime, timedelta
+
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
+from database import get_db
 
 load_dotenv()
 
@@ -16,7 +17,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY 环境变量未设置！请在 .env 文件中配置 SECRET_KEY")
 if len(SECRET_KEY) < 32:
-    raise ValueError(f"SECRET_KEY 长度不足（当前 {len(SECRET_KEY)} 字符，最少 32 字符）。请使用强随机密钥")
+    raise ValueError(
+        f"SECRET_KEY 长度不足（当前 {len(SECRET_KEY)} 字符，最少 32 字符）。请使用强随机密钥"
+    )
 _WEAK_KEYS = {"your-secret-key-here", "change-me", "secret", "password", "test"}
 if SECRET_KEY.lower() in _WEAK_KEYS:
     raise ValueError("SECRET_KEY 使用了已知弱密钥，请生成随机强密钥（如: openssl rand -hex 32）")
@@ -33,8 +36,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if len(plain_password) > 72:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="密码长度不能超过 72 字符"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="密码长度不能超过 72 字符"
         )
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -42,32 +44,35 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     if len(password) > 72:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="密码长度不能超过 72 字符"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="密码长度不能超过 72 字符"
         )
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if expires_delta:
         expire = now + expires_delta
     else:
         expire = now + timedelta(minutes=15)
     # S11: 补充 iat/iss/aud 声明
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "iss": JWT_ISSUER,
-        "aud": JWT_AUDIENCE,
-        "sub": str(to_encode.get("sub", "")),
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "iss": JWT_ISSUER,
+            "aud": JWT_AUDIENCE,
+            "sub": str(to_encode.get("sub", "")),
+        }
+    )
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="无法验证凭据，请重新登录",

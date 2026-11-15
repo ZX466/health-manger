@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -21,9 +20,9 @@ from chat_session import (
     message_to_dict,
 )
 from database import get_db
+from services.ai_config_service import build_llm_config_for_user
 from services.llm_service import CHAT_SYSTEM_PROMPT, LLMConfig, call_llm
 from services.security_service import check_rate_limit, sanitize_for_prompt
-from services.ai_config_service import build_llm_config_for_user
 
 router = APIRouter(prefix="/api/chat", tags=["聊天会话"])
 
@@ -53,7 +52,7 @@ def create_new_session(
     )
 
 
-@router.get("/sessions", response_model=List[schemas.ChatSessionResponse])
+@router.get("/sessions", response_model=list[schemas.ChatSessionResponse])
 def list_sessions(
     limit: int = Query(20, ge=1, le=100),
     current_user: models.User = Depends(get_current_user),
@@ -76,7 +75,7 @@ def list_sessions(
 
 @router.get(
     "/session/{session_id}/messages",
-    response_model=List[schemas.ChatMessageResponse],
+    response_model=list[schemas.ChatMessageResponse],
 )
 def get_messages(
     session_id: int,
@@ -99,7 +98,11 @@ async def send_message(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    check_rate_limit(f"chat:{current_user.id}", max_requests=settings.CHAT_RATE_LIMIT, window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS)
+    check_rate_limit(
+        f"chat:{current_user.id}",
+        max_requests=settings.CHAT_RATE_LIMIT,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
 
     session = get_session(db=db, session_id=session_id, user_id=current_user.id)
     if not session:
@@ -115,7 +118,9 @@ async def send_message(
     messages.append({"role": "user", "content": safe_content})
 
     try:
-        response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _CHAT_CONFIG))
+        response_content, tokens_used = await call_llm(
+            messages, build_llm_config_for_user(db, current_user.id, _CHAT_CONFIG)
+        )
 
         # LLM 成功后再一起落库（用户 + assistant），避免半提交：
         # 失败时两者都不落库、db.rollback() 有效、重试不会重复追加用户消息
@@ -133,9 +138,9 @@ async def send_message(
             "response": response_content,
             "tokens_used": tokens_used,
         }
-    except Exception as e:
+    except Exception:
         db.rollback()
-        logger.error("AI 响应失败: %s", e, exc_info=True)
+        logger.exception("AI 响应失败")
         raise HTTPException(status_code=500, detail="AI 响应失败，请稍后重试")
 
 
@@ -160,9 +165,7 @@ async def create_tongue_context_chat(
     )
 
     if not latest_diagnosis:
-        raise HTTPException(
-            status_code=404, detail="暂无舌诊记录，请先上传舌象图片"
-        )
+        raise HTTPException(status_code=404, detail="暂无舌诊记录，请先上传舌象图片")
 
     context_message = f"""用户的舌诊结果：
 - 舌色：{latest_diagnosis.tongue_color}

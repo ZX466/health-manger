@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, model_validator
-from typing import Optional, Literal
 from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
 
 
 class UserBase(BaseModel):
@@ -30,17 +31,17 @@ class UserResponse(BaseModel):
 
 
 class HealthRecordBase(BaseModel):
-    height: Optional[float] = Field(None, gt=30, lt=300)
-    weight: Optional[float] = Field(None, gt=1, lt=500)
-    blood_pressure_systolic: Optional[int] = Field(None, gt=30, lt=300)
-    blood_pressure_diastolic: Optional[int] = Field(None, gt=20, lt=200)
-    heart_rate: Optional[int] = Field(None, gt=20, lt=300)
-    temperature: Optional[float] = Field(None, gt=30, lt=45)
-    vision_left: Optional[float] = Field(None, gt=0, le=5.0)
-    vision_right: Optional[float] = Field(None, gt=0, le=5.0)
-    exercise_frequency: Optional[Literal["none", "rare", "occasional", "regular", "daily"]] = None
-    sleep_hours: Optional[float] = Field(None, ge=0, le=24)
-    diet_habit: Optional[str] = Field(None, max_length=200)
+    height: float | None = Field(None, gt=30, lt=300)
+    weight: float | None = Field(None, gt=1, lt=500)
+    blood_pressure_systolic: int | None = Field(None, gt=30, lt=300)
+    blood_pressure_diastolic: int | None = Field(None, gt=20, lt=200)
+    heart_rate: int | None = Field(None, gt=20, lt=300)
+    temperature: float | None = Field(None, gt=30, lt=45)
+    vision_left: float | None = Field(None, gt=0, le=5.0)
+    vision_right: float | None = Field(None, gt=0, le=5.0)
+    exercise_frequency: Literal["none", "rare", "occasional", "regular", "daily"] | None = None
+    sleep_hours: float | None = Field(None, ge=0, le=24)
+    diet_habit: str | None = Field(None, max_length=200)
 
 
 class HealthRecordCreate(HealthRecordBase):
@@ -50,7 +51,7 @@ class HealthRecordCreate(HealthRecordBase):
 class HealthRecordResponse(HealthRecordBase):
     id: int
     user_id: int
-    bmi: Optional[float] = None
+    bmi: float | None = None
     record_date: datetime
 
     class Config:
@@ -60,14 +61,14 @@ class HealthRecordResponse(HealthRecordBase):
 class HealthAnalysisResponse(BaseModel):
     id: int
     user_id: int
-    bmi_status: Optional[str] = None
-    bmi_advice: Optional[str] = None
-    blood_pressure_status: Optional[str] = None
-    blood_pressure_advice: Optional[str] = None
-    overall_status: Optional[str] = None
-    overall_advice: Optional[str] = None
-    health_rating: Optional[str] = None
-    health_score: Optional[int] = None
+    bmi_status: str | None = None
+    bmi_advice: str | None = None
+    blood_pressure_status: str | None = None
+    blood_pressure_advice: str | None = None
+    overall_status: str | None = None
+    overall_advice: str | None = None
+    health_rating: str | None = None
+    health_score: int | None = None
     analysis_date: datetime
 
     class Config:
@@ -80,18 +81,18 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    user_id: Optional[int] = None
+    user_id: int | None = None
 
 
 class FoodBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    category: Optional[str] = Field(None, max_length=50)
-    calories_per_100g: Optional[float] = Field(None, ge=0, le=10000)
-    protein_per_100g: Optional[float] = Field(None, ge=0, le=1000)
-    fat_per_100g: Optional[float] = Field(None, ge=0, le=1000)
-    carbs_per_100g: Optional[float] = Field(None, ge=0, le=1000)
-    fiber_per_100g: Optional[float] = Field(None, ge=0, le=1000)
-    description: Optional[str] = Field(None, max_length=500)
+    category: str | None = Field(None, max_length=50)
+    calories_per_100g: float | None = Field(None, ge=0, le=10000)
+    protein_per_100g: float | None = Field(None, ge=0, le=1000)
+    fat_per_100g: float | None = Field(None, ge=0, le=1000)
+    carbs_per_100g: float | None = Field(None, ge=0, le=1000)
+    fiber_per_100g: float | None = Field(None, ge=0, le=1000)
+    description: str | None = Field(None, max_length=500)
 
 
 class FoodCreate(FoodBase):
@@ -108,10 +109,10 @@ class FoodResponse(FoodBase):
 
 class SportBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    category: Optional[str] = Field(None, max_length=50)
-    calories_per_hour: Optional[float] = Field(None, ge=0, le=10000)
-    intensity_level: Optional[Literal["low", "moderate", "high", "extreme"]] = None
-    description: Optional[str] = Field(None, max_length=500)
+    category: str | None = Field(None, max_length=50)
+    calories_per_hour: float | None = Field(None, ge=0, le=10000)
+    intensity_level: Literal["low", "moderate", "high", "extreme"] | None = None
+    description: str | None = Field(None, max_length=500)
 
 
 class SportCreate(SportBase):
@@ -129,7 +130,7 @@ class SportResponse(SportBase):
 class UserFoodRecordBase(BaseModel):
     food_id: int = Field(..., ge=1)
     quantity_grams: float = Field(..., gt=0, le=50000)
-    meal_type: Optional[Literal["breakfast", "lunch", "dinner", "snack"]] = None
+    meal_type: Literal["breakfast", "lunch", "dinner", "snack"] | None = None
 
 
 class UserFoodRecordCreate(UserFoodRecordBase):
@@ -139,9 +140,9 @@ class UserFoodRecordCreate(UserFoodRecordBase):
 class UserFoodRecordResponse(UserFoodRecordBase):
     id: int
     user_id: int
-    calories: Optional[float] = None
+    calories: float | None = None
     record_date: datetime
-    food_name: Optional[str] = None
+    food_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -150,7 +151,7 @@ class UserFoodRecordResponse(UserFoodRecordBase):
 class UserSportRecordBase(BaseModel):
     sport_id: int = Field(..., ge=1)
     duration_minutes: int = Field(..., gt=0, le=1440)
-    notes: Optional[str] = Field(None, max_length=500)
+    notes: str | None = Field(None, max_length=500)
 
 
 class UserSportRecordCreate(UserSportRecordBase):
@@ -160,9 +161,9 @@ class UserSportRecordCreate(UserSportRecordBase):
 class UserSportRecordResponse(UserSportRecordBase):
     id: int
     user_id: int
-    calories_burned: Optional[float] = None
+    calories_burned: float | None = None
     record_date: datetime
-    sport_name: Optional[str] = None
+    sport_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -170,10 +171,10 @@ class UserSportRecordResponse(UserSportRecordBase):
 
 class HealthArticleBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
-    category: Optional[str] = Field(None, max_length=50)
+    category: str | None = Field(None, max_length=50)
     content: str = Field(..., min_length=1, max_length=50000)
-    author: Optional[str] = Field(None, max_length=100)
-    is_recommended: Optional[bool] = False
+    author: str | None = Field(None, max_length=100)
+    is_recommended: bool | None = False
 
 
 class HealthArticleCreate(HealthArticleBase):
@@ -205,7 +206,7 @@ class HealthWarningResponse(HealthWarningBase):
     user_id: int
     is_read: bool
     created_at: datetime
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -213,7 +214,7 @@ class HealthWarningResponse(HealthWarningBase):
 
 class AIAnalysisBase(BaseModel):
     request_content: str = Field(..., min_length=1, max_length=5000)
-    analysis_type: Optional[str] = Field(None, max_length=50)
+    analysis_type: str | None = Field(None, max_length=50)
 
 
 class AIAnalysisCreate(AIAnalysisBase):
@@ -224,7 +225,7 @@ class AIAnalysisResponse(AIAnalysisBase):
     id: int
     user_id: int
     response_content: str
-    tokens_used: Optional[int] = None
+    tokens_used: int | None = None
     created_at: datetime
 
     class Config:
@@ -233,14 +234,14 @@ class AIAnalysisResponse(AIAnalysisBase):
 
 class UserHealthGoalBase(BaseModel):
     goal_type: str = Field(..., min_length=1, max_length=50)
-    target_value: Optional[float] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    target_value: float | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_dates(self):
         if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValueError('start_date must be before end_date')
+            raise ValueError("start_date must be before end_date")
         return self
 
 
@@ -251,7 +252,7 @@ class UserHealthGoalCreate(UserHealthGoalBase):
 class UserHealthGoalResponse(UserHealthGoalBase):
     id: int
     user_id: int
-    current_value: Optional[float] = None
+    current_value: float | None = None
     status: str
     created_at: datetime
 
@@ -263,20 +264,20 @@ class TongueDiagnosisResponse(BaseModel):
     id: int
     user_id: int
     image_path: str
-    tongue_color: Optional[str] = None
-    coating_color: Optional[str] = None
-    coating_thickness: Optional[str] = None
-    has_cracks: Optional[bool] = None
-    has_teeth_marks: Optional[bool] = None
-    tongue_shape: Optional[str] = None
-    moisture_level: Optional[str] = None
-    tongue_spirit: Optional[str] = None
-    overall_type: Optional[str] = None
-    confidence_score: Optional[float] = Field(None, ge=0, le=1)
-    tcm_syndrome: Optional[str] = None
-    health_advice: Optional[str] = None
-    diet_suggestion: Optional[str] = None
-    lifestyle_advice: Optional[str] = None
+    tongue_color: str | None = None
+    coating_color: str | None = None
+    coating_thickness: str | None = None
+    has_cracks: bool | None = None
+    has_teeth_marks: bool | None = None
+    tongue_shape: str | None = None
+    moisture_level: str | None = None
+    tongue_spirit: str | None = None
+    overall_type: str | None = None
+    confidence_score: float | None = Field(None, ge=0, le=1)
+    tcm_syndrome: str | None = None
+    health_advice: str | None = None
+    diet_suggestion: str | None = None
+    lifestyle_advice: str | None = None
     analysis_status: str
     created_at: datetime
 
@@ -285,14 +286,14 @@ class TongueDiagnosisResponse(BaseModel):
 
 
 class ChatSessionCreate(BaseModel):
-    title: Optional[str] = Field(None, max_length=200)
-    context_type: Optional[Literal["general", "tongue", "health"]] = "general"
+    title: str | None = Field(None, max_length=200)
+    context_type: Literal["general", "tongue", "health"] | None = "general"
 
 
 class ChatSessionResponse(BaseModel):
     id: int
     user_id: int
-    title: Optional[str] = None
+    title: str | None = None
     context_type: str
     created_at: datetime
     updated_at: datetime
@@ -311,7 +312,7 @@ class ChatMessageResponse(BaseModel):
     session_id: int
     role: str
     content: str
-    tokens_used: Optional[int] = None
+    tokens_used: int | None = None
     created_at: datetime
 
     class Config:
@@ -321,10 +322,10 @@ class ChatMessageResponse(BaseModel):
 class AsyncTaskStatus(BaseModel):
     task_id: str
     status: str
-    result: Optional[dict] = None
-    error: Optional[str] = None
-    created_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    result: dict | None = None
+    error: str | None = None
+    created_at: str | None = None
+    completed_at: str | None = None
 
 
 # ── Generic response schemas ──
@@ -340,22 +341,22 @@ class DeleteRecordResponse(BaseModel):
 
 
 class HealthRatingResponse(BaseModel):
-    rating: Optional[str] = None
-    score: Optional[int] = None
+    rating: str | None = None
+    score: int | None = None
     emoji: str = "❓"
     color: str = "#999999"
     bg_color: str = "#f5f5f5"
-    bmi_status: Optional[str] = None
-    blood_pressure_status: Optional[str] = None
-    overall_status: Optional[str] = None
-    overall_advice: Optional[str] = None
-    analysis_date: Optional[datetime] = None
+    bmi_status: str | None = None
+    blood_pressure_status: str | None = None
+    overall_status: str | None = None
+    overall_advice: str | None = None
+    analysis_date: datetime | None = None
 
 
 class SendMessageResponse(BaseModel):
     message: str
     response: str
-    tokens_used: Optional[int] = None
+    tokens_used: int | None = None
 
 
 class QuickAnalysisResponse(BaseModel):
@@ -366,10 +367,10 @@ class QuickAnalysisResponse(BaseModel):
 
 class HealthEvaluationResponse(BaseModel):
     message: str
-    rule_score: Optional[int] = None
-    rule_rating: Optional[str] = None
+    rule_score: int | None = None
+    rule_rating: str | None = None
     llm_evaluation: str
-    tokens_used: Optional[int] = None
+    tokens_used: int | None = None
     analysis_id: int
     cached: bool = False
 
@@ -384,25 +385,25 @@ class AIConfigUpdate(BaseModel):
     # 聊天/分析模型
     provider: Literal["zhipu", "openai", "ark"] = "zhipu"
     model: str = Field(..., min_length=1, max_length=100)
-    base_url: Optional[str] = Field(None, max_length=500)
-    api_key: Optional[str] = Field(None, min_length=1, max_length=500)
+    base_url: str | None = Field(None, max_length=500)
+    api_key: str | None = Field(None, min_length=1, max_length=500)
     # 舌诊视觉模型
-    vision_provider: Optional[Literal["zhipu", "openai", "ark"]] = None
-    vision_model: Optional[str] = Field(None, max_length=100)
-    vision_base_url: Optional[str] = Field(None, max_length=500)
-    vision_api_key: Optional[str] = Field(None, min_length=1, max_length=500)
+    vision_provider: Literal["zhipu", "openai", "ark"] | None = None
+    vision_model: str | None = Field(None, max_length=100)
+    vision_base_url: str | None = Field(None, max_length=500)
+    vision_api_key: str | None = Field(None, min_length=1, max_length=500)
 
 
 class AIConfigResponse(BaseModel):
     provider: str
     model: str
-    base_url: Optional[str] = None
+    base_url: str | None = None
     api_key_masked: str = ""
     has_api_key: bool = False
     # 舌诊视觉模型
-    vision_provider: Optional[str] = None
-    vision_model: Optional[str] = None
-    vision_base_url: Optional[str] = None
+    vision_provider: str | None = None
+    vision_model: str | None = None
+    vision_base_url: str | None = None
     vision_api_key_masked: str = ""
     has_vision_api_key: bool = False
 
@@ -410,14 +411,12 @@ class AIConfigResponse(BaseModel):
 class AIConfigTestResponse(BaseModel):
     success: bool
     message: str
-    model: Optional[str] = None
+    model: str | None = None
 
 
 class TongueStatsResponse(BaseModel):
     total_records: int
     completed_records: int
-    latest_syndrome: Optional[str] = None
-    latest_overall_type: Optional[str] = None
+    latest_syndrome: str | None = None
+    latest_overall_type: str | None = None
     syndrome_distribution: dict
-
-

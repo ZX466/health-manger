@@ -6,7 +6,6 @@
 
 import base64
 import hashlib
-from typing import Optional
 
 from cryptography.fernet import Fernet
 from sqlalchemy import select
@@ -19,9 +18,15 @@ from auth import SECRET_KEY
 DEFAULT_PROVIDER = "zhipu"
 DEFAULT_MODEL = "glm-4.5-Air"
 PROVIDERS = {
-    "zhipu": {"label": "智谱 GLM", "default_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions"},
+    "zhipu": {
+        "label": "智谱 GLM",
+        "default_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    },
     "openai": {"label": "OpenAI 兼容", "default_url": "https://api.openai.com/v1/chat/completions"},
-    "ark": {"label": "火山引擎 Ark", "default_url": "https://ark.cn-beijing.volces.com/api/v3/responses"},
+    "ark": {
+        "label": "火山引擎 Ark",
+        "default_url": "https://ark.cn-beijing.volces.com/api/v3/responses",
+    },
 }
 
 
@@ -47,23 +52,25 @@ def mask_api_key(plain_or_encrypted: str) -> str:
     return plain_or_encrypted[:4] + "*" * 8 + plain_or_encrypted[-2:]
 
 
-def get_config(db: Session, user_id: int) -> Optional[models.AIConfig]:
-    return db.execute(
-        select(models.AIConfig).where(models.AIConfig.user_id == user_id)
-    ).scalars().first()
+def get_config(db: Session, user_id: int) -> models.AIConfig | None:
+    return (
+        db.execute(select(models.AIConfig).where(models.AIConfig.user_id == user_id))
+        .scalars()
+        .first()
+    )
 
 
 def save_config(
     db: Session,
     user_id: int,
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
-    base_url: Optional[str] = None,
-    api_key: Optional[str] = None,
-    vision_provider: Optional[str] = None,
-    vision_model: Optional[str] = None,
-    vision_base_url: Optional[str] = None,
-    vision_api_key: Optional[str] = None,
+    provider: str | None = None,
+    model: str | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    vision_provider: str | None = None,
+    vision_model: str | None = None,
+    vision_base_url: str | None = None,
+    vision_api_key: str | None = None,
 ) -> models.AIConfig:
     """保存/更新用户 AI 配置（聊天 + 舌诊视觉两套）。
 
@@ -99,7 +106,7 @@ def save_config(
     return config
 
 
-def build_vision_config_for_user(db: Session, user_id: int) -> Optional[dict]:
+def build_vision_config_for_user(db: Session, user_id: int) -> dict | None:
     """构造用户舌诊视觉模型配置 dict。
 
     返回 {provider, base_url, model, api_key}；未配置视觉模型返回 None（由舌诊回退默认 ARK）。
@@ -111,7 +118,9 @@ def build_vision_config_for_user(db: Session, user_id: int) -> Optional[dict]:
         "provider": cfg.vision_provider or "ark",
         "base_url": cfg.vision_base_url,
         "model": cfg.vision_model,
-        "api_key": decrypt_api_key(cfg.vision_api_key_encrypted) if cfg.vision_api_key_encrypted else None,
+        "api_key": decrypt_api_key(cfg.vision_api_key_encrypted)
+        if cfg.vision_api_key_encrypted
+        else None,
     }
 
 

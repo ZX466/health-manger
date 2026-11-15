@@ -1,5 +1,4 @@
 from datetime import date
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -32,10 +31,10 @@ def create_sport_endpoint(
     return create_sport(sport, db)
 
 
-@router.get("/sports", response_model=List[schemas.SportResponse])
+@router.get("/sports", response_model=list[schemas.SportResponse])
 def get_sports_endpoint(
-    category: Optional[str] = Query(None, max_length=50),
-    search: Optional[str] = Query(None, min_length=0, max_length=100),
+    category: str | None = Query(None, max_length=50),
+    search: str | None = Query(None, min_length=0, max_length=100),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -79,10 +78,10 @@ def create_sport_record_endpoint(
     return create_sport_record(record, current_user.id, db)
 
 
-@router.get("/records", response_model=List[schemas.UserSportRecordResponse])
+@router.get("/records", response_model=list[schemas.UserSportRecordResponse])
 def get_sport_records_endpoint(
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -91,8 +90,8 @@ def get_sport_records_endpoint(
 
 @router.get("/records/stats", response_model=dict)
 def get_sport_stats_endpoint(
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

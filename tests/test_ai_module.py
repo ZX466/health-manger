@@ -3,15 +3,13 @@ AI 模块测试套件
 TDD: 先写测试，后实现代码。覆盖 interfaces, backends, pipeline, metrics, service, router。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 import models
 
-
 # ── Interfaces ──────────────────────────────────────────
-
 from interfaces.ai_interfaces import DataPreprocessor, InferenceEngine, ResultPostprocessor
 
 
@@ -102,7 +100,11 @@ class TestTextPreprocessor:
 
 # ── Backends / Inference ────────────────────────────────
 
-from backends.inference_backends import LLMInferenceBackend, RuleBasedInferenceBackend, HybridInferenceBackend
+from backends.inference_backends import (
+    HybridInferenceBackend,
+    LLMInferenceBackend,
+    RuleBasedInferenceBackend,
+)
 
 
 class TestLLMInferenceBackend:
@@ -113,7 +115,7 @@ class TestLLMInferenceBackend:
             mock_llm.return_value = ("分析结果", 150)
             result = await backend.infer(
                 {"text": "测试", "messages": [{"role": "user", "content": "测试"}]},
-                {"temperature": 0.7}
+                {"temperature": 0.7},
             )
         assert result["content"] == "分析结果"
         assert result["tokens_used"] == 150
@@ -125,10 +127,7 @@ class TestLLMInferenceBackend:
         with patch("backends.inference_backends.call_llm", new_callable=AsyncMock) as mock_llm:
             mock_llm.side_effect = RuntimeError("LLM 服务不可用")
             with pytest.raises(RuntimeError, match="LLM 服务不可用"):
-                await backend.infer(
-                    {"messages": [{"role": "user", "content": "测试"}]},
-                    {}
-                )
+                await backend.infer({"messages": [{"role": "user", "content": "测试"}]}, {})
 
 
 class TestRuleBasedInferenceBackend:
@@ -225,8 +224,8 @@ class TestMetricsExtractor:
 
 # ── Pipeline ────────────────────────────────────────────
 
-from ai_module.pipeline import AIPipeline
 from ai_module.metrics import MetricsCollector
+from ai_module.pipeline import AIPipeline
 
 
 class TestAIPipeline:
@@ -245,6 +244,7 @@ class TestAIPipeline:
         pipeline = AIPipeline(mock_preprocessor, mock_engine, mock_postprocessor, metrics)
 
         from ai_module.pipeline import AIPipelineInput
+
         input_data = AIPipelineInput(input_type="test", data={"raw": True})
         output = await pipeline.run(input_data)
 
@@ -268,6 +268,7 @@ class TestAIPipeline:
         pipeline = AIPipeline(mock_preprocessor, mock_engine, mock_postprocessor, metrics)
 
         from ai_module.pipeline import AIPipelineInput
+
         input_data = AIPipelineInput(input_type="test", data={})
         await pipeline.run(input_data)
 
@@ -289,6 +290,7 @@ class TestAIPipeline:
         pipeline = AIPipeline(mock_preprocessor, mock_engine, mock_postprocessor, metrics)
 
         from ai_module.pipeline import AIPipelineInput
+
         input_data = AIPipelineInput(input_type="test", data={})
 
         with pytest.raises(ValueError, match="预处理失败"):
@@ -299,7 +301,6 @@ class TestAIPipeline:
 
 
 # ── Metrics ─────────────────────────────────────────────
-
 
 
 class TestMetricsCollector:
@@ -350,12 +351,14 @@ class TestAIPipelineFactory:
         factory = AIPipelineFactory()
         pipeline = factory.create_pipeline("health_analysis")
         from ai_module.pipeline import AIPipeline
+
         assert isinstance(pipeline, AIPipeline)
 
     def test_create_text_pipeline(self):
         factory = AIPipelineFactory()
         pipeline = factory.create_pipeline("text_analysis")
         from ai_module.pipeline import AIPipeline
+
         assert isinstance(pipeline, AIPipeline)
 
     def test_invalid_pipeline_type(self):
@@ -420,7 +423,12 @@ class TestAIModuleService:
 
 # ── Exceptions ──────────────────────────────────────────
 
-from ai_module.exceptions import AIPipelineError, PreprocessingError, InferenceError, PostprocessingError
+from ai_module.exceptions import (
+    AIPipelineError,
+    InferenceError,
+    PostprocessingError,
+    PreprocessingError,
+)
 
 
 class TestAIExceptions:
@@ -446,6 +454,7 @@ class TestAIExceptions:
 
 
 # ── C2 回归：call_llm 注入（patch 点必须生效） ────────────────
+
 
 class TestLLMCallInjection:
     """C2 回归：ai_module_service 注入的 call_llm 必须真正到达后端，

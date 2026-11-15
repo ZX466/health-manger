@@ -1,18 +1,18 @@
-from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from database import get_db
+
 import models
 import schemas
 from auth import get_current_user
-from health_rating import get_rating_emoji, get_rating_color, get_rating_bg_color
+from database import get_db
+from health_rating import get_rating_bg_color, get_rating_color, get_rating_emoji
 from services.health_record_service import (
     create_record,
-    get_records,
-    get_record,
     delete_record,
-    get_latest_analysis,
     get_analysis_history,
+    get_latest_analysis,
+    get_record,
+    get_records,
 )
 
 router = APIRouter(prefix="/api/health", tags=["健康数据"])
@@ -27,7 +27,7 @@ def create_health_record(
     return create_record(record, current_user.id, db)
 
 
-@router.get("/records", response_model=List[schemas.HealthRecordResponse])
+@router.get("/records", response_model=list[schemas.HealthRecordResponse])
 def get_health_records(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -61,7 +61,7 @@ def get_latest_analysis_endpoint(
     return get_latest_analysis(current_user.id, db)
 
 
-@router.get("/analysis/history", response_model=List[schemas.HealthAnalysisResponse])
+@router.get("/analysis/history", response_model=list[schemas.HealthAnalysisResponse])
 def get_analysis_history_endpoint(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -80,7 +80,9 @@ def get_latest_rating(
         "score": analysis.health_score,
         "emoji": get_rating_emoji(analysis.health_rating) if analysis.health_rating else "❓",
         "color": get_rating_color(analysis.health_rating) if analysis.health_rating else "#999999",
-        "bg_color": get_rating_bg_color(analysis.health_rating) if analysis.health_rating else "#f5f5f5",
+        "bg_color": get_rating_bg_color(analysis.health_rating)
+        if analysis.health_rating
+        else "#f5f5f5",
         "bmi_status": analysis.bmi_status,
         "blood_pressure_status": analysis.blood_pressure_status,
         "overall_status": analysis.overall_status,

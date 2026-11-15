@@ -1,13 +1,16 @@
 """
 大学生健康管理系统 - 全面功能测试
 """
+
 import os
-import requests
 import time
 from datetime import datetime
 
+import requests
+
 BASE_URL = "http://localhost:8420"
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 class TestResults:
     def __init__(self):
@@ -27,29 +30,34 @@ class TestResults:
         self.errors.append((name, reason))
         print(f"  ❌ {name} - {reason}")
 
+
 results = TestResults()
 
+
 def print_header(title):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f" {title}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
+
 
 def print_subheader(title):
     print(f"\n--- {title} ---")
+
 
 print("\n大学生健康管理系统 - 全面功能测试")
 print(f"测试时间: {TIMESTAMP}")
 print(f"测试地址: {BASE_URL}")
 
+
 # 获取Token
 def get_auth():
-    response = requests.post(f"{BASE_URL}/api/auth/login", data={
-        "username": "testuser",
-        "password": "test123"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/login", data={"username": "testuser", "password": "test123"}
+    )
     if response.status_code == 200:
         return response.json()["access_token"]
     return None
+
 
 token = get_auth()
 headers = {"Authorization": f"Bearer {token}"}
@@ -70,10 +78,9 @@ except Exception as e:
 # 1.2 用户登录
 print_subheader("1.2 用户登录")
 try:
-    response = requests.post(f"{BASE_URL}/api/auth/login", data={
-        "username": "testuser",
-        "password": "test123"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/login", data={"username": "testuser", "password": "test123"}
+    )
     if response.status_code == 200 and "access_token" in response.json():
         results.add_pass("有效用户登录")
     else:
@@ -82,10 +89,9 @@ except Exception as e:
     results.add_fail("有效用户登录", str(e))
 
 try:
-    response = requests.post(f"{BASE_URL}/api/auth/login", data={
-        "username": "testuser",
-        "password": "wrongpassword"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/login", data={"username": "testuser", "password": "wrongpassword"}
+    )
     if response.status_code == 401:
         results.add_pass("无效密码登录拒绝")
     else:
@@ -94,10 +100,9 @@ except Exception as e:
     results.add_fail("无效密码登录拒绝", str(e))
 
 try:
-    response = requests.post(f"{BASE_URL}/api/auth/login", data={
-        "username": "nonexistent",
-        "password": "test123"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/login", data={"username": "nonexistent", "password": "test123"}
+    )
     if response.status_code == 401:
         results.add_pass("不存在用户登录拒绝")
     else:
@@ -130,11 +135,14 @@ except Exception as e:
 print_subheader("1.4 用户注册")
 timestamp = int(time.time())
 try:
-    response = requests.post(f"{BASE_URL}/api/auth/register", json={
-        "name": f"newuser_{timestamp}",
-        "password": "newpass123",
-        "invite_code": "HEALTH2024"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/register",
+        json={
+            "name": f"newuser_{timestamp}",
+            "password": "newpass123",
+            "invite_code": "HEALTH2024",
+        },
+    )
     if response.status_code == 200:
         results.add_pass("新用户注册")
     else:
@@ -143,11 +151,14 @@ except Exception as e:
     results.add_fail("新用户注册", str(e))
 
 try:
-    response = requests.post(f"{BASE_URL}/api/auth/register", json={
-        "name": f"newuser_{timestamp}",
-        "password": "newpass123",
-        "invite_code": "HEALTH2024"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/register",
+        json={
+            "name": f"newuser_{timestamp}",
+            "password": "newpass123",
+            "invite_code": "HEALTH2024",
+        },
+    )
     if response.status_code == 400 or response.status_code == 409:
         results.add_pass("重复用户名拒绝")
     else:
@@ -156,11 +167,10 @@ except Exception as e:
     results.add_fail("重复用户名拒绝", str(e))
 
 try:
-    response = requests.post(f"{BASE_URL}/api/auth/register", json={
-        "name": "baduser",
-        "password": "short",
-        "invite_code": "WRONG"
-    })
+    response = requests.post(
+        f"{BASE_URL}/api/auth/register",
+        json={"name": "baduser", "password": "short", "invite_code": "WRONG"},
+    )
     if response.status_code == 400:
         results.add_pass("无效邀请码拒绝")
     else:
@@ -173,17 +183,21 @@ print_header("2. 健康记录管理测试")
 # 2.1 创建健康记录
 print_subheader("2.1 创建健康记录")
 try:
-    response = requests.post(f"{BASE_URL}/api/health/records", json={
-        "height": 175,
-        "weight": 70,
-        "blood_pressure_systolic": 120,
-        "blood_pressure_diastolic": 80,
-        "heart_rate": 75,
-        "temperature": 36.5,
-        "sleep_hours": 7.5,
-        "exercise_frequency": "每周3次",
-        "diet_habit": "均衡饮食"
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/health/records",
+        json={
+            "height": 175,
+            "weight": 70,
+            "blood_pressure_systolic": 120,
+            "blood_pressure_diastolic": 80,
+            "heart_rate": 75,
+            "temperature": 36.5,
+            "sleep_hours": 7.5,
+            "exercise_frequency": "每周3次",
+            "diet_habit": "均衡饮食",
+        },
+        headers=headers,
+    )
     if response.status_code == 200 and "bmi" in response.json():
         results.add_pass("创建健康记录")
         health_record_id = response.json()["id"]
@@ -193,10 +207,9 @@ except Exception as e:
     results.add_fail("创建健康记录", str(e))
 
 try:
-    response = requests.post(f"{BASE_URL}/api/health/records", json={
-        "height": 175,
-        "weight": 70
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/health/records", json={"height": 175, "weight": 70}, headers=headers
+    )
     if response.status_code == 200:
         results.add_pass("创建最小化健康记录")
     else:
@@ -310,11 +323,11 @@ except Exception as e:
 print_subheader("3.2 饮食记录")
 try:
     food_id = foods[0]["id"] if foods else 1
-    response = requests.post(f"{BASE_URL}/api/food/records", json={
-        "food_id": food_id,
-        "quantity_grams": 200,
-        "meal_type": "breakfast"
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/food/records",
+        json={"food_id": food_id, "quantity_grams": 200, "meal_type": "breakfast"},
+        headers=headers,
+    )
     if response.status_code == 200:
         results.add_pass("创建饮食记录")
     else:
@@ -360,10 +373,11 @@ except Exception as e:
 print_subheader("4.2 运动记录")
 try:
     sport_id = sports[0]["id"] if sports else 1
-    response = requests.post(f"{BASE_URL}/api/sport/records", json={
-        "sport_id": sport_id,
-        "duration_minutes": 30
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/sport/records",
+        json={"sport_id": sport_id, "duration_minutes": 30},
+        headers=headers,
+    )
     if response.status_code == 200:
         results.add_pass("创建运动记录")
     else:
@@ -438,10 +452,14 @@ print_header("6. AI健康分析测试")
 # 6.1 创建AI分析
 print_subheader("6.1 AI分析")
 try:
-    response = requests.post(f"{BASE_URL}/api/ai/analysis", json={
-        "request_content": "我最近感觉有点疲劳，请给我一些健康建议",
-        "analysis_type": "健康咨询"
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/ai/analysis",
+        json={
+            "request_content": "我最近感觉有点疲劳，请给我一些健康建议",
+            "analysis_type": "健康咨询",
+        },
+        headers=headers,
+    )
     if response.status_code == 200:
         results.add_pass("AI健康分析")
         ai_result = response.json()
@@ -481,10 +499,9 @@ print_header("7. 边界情况和错误处理测试")
 # 7.1 无效输入
 print_subheader("7.1 输入验证")
 try:
-    response = requests.post(f"{BASE_URL}/api/health/records", json={
-        "height": -100,
-        "weight": -50
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/health/records", json={"height": -100, "weight": -50}, headers=headers
+    )
     if response.status_code == 200 or response.status_code == 422:
         results.add_pass("负数身高体重处理")
     else:
@@ -493,10 +510,11 @@ except Exception as e:
     results.add_fail("负数身高体重处理", str(e))
 
 try:
-    response = requests.post(f"{BASE_URL}/api/sport/records", json={
-        "sport_id": 1,
-        "duration_minutes": 0
-    }, headers=headers)
+    response = requests.post(
+        f"{BASE_URL}/api/sport/records",
+        json={"sport_id": 1, "duration_minutes": 0},
+        headers=headers,
+    )
     if response.status_code == 200 or response.status_code == 400:
         results.add_pass("零时长运动处理")
     else:
@@ -507,9 +525,9 @@ except Exception as e:
 # 7.2 认证边界
 print_subheader("7.2 认证边界")
 try:
-    response = requests.get(f"{BASE_URL}/api/health/records", headers={
-        "Authorization": "Bearer invalid_token"
-    })
+    response = requests.get(
+        f"{BASE_URL}/api/health/records", headers={"Authorization": "Bearer invalid_token"}
+    )
     if response.status_code == 401:
         results.add_pass("无效Token拒绝")
     else:
@@ -518,9 +536,9 @@ except Exception as e:
     results.add_fail("无效Token拒绝", str(e))
 
 try:
-    response = requests.get(f"{BASE_URL}/api/food/records", headers={
-        "Authorization": "Bearer expired_or_invalid_token"
-    })
+    response = requests.get(
+        f"{BASE_URL}/api/food/records", headers={"Authorization": "Bearer expired_or_invalid_token"}
+    )
     if response.status_code == 401:
         results.add_pass("过期Token拒绝")
     else:
@@ -550,16 +568,19 @@ bmi_test_cases = [
 ]
 for height, weight, expected_bmi in bmi_test_cases:
     try:
-        response = requests.post(f"{BASE_URL}/api/health/records", json={
-            "height": height,
-            "weight": weight
-        }, headers=headers)
+        response = requests.post(
+            f"{BASE_URL}/api/health/records",
+            json={"height": height, "weight": weight},
+            headers=headers,
+        )
         if response.status_code == 200:
             actual_bmi = response.json().get("bmi", 0)
             if abs(actual_bmi - expected_bmi) < 0.1:
                 results.add_pass(f"BMI计算({height}cm/{weight}kg={expected_bmi})")
             else:
-                results.add_fail(f"BMI计算({height}cm/{weight}kg)", f"期望:{expected_bmi},实际:{actual_bmi}")
+                results.add_fail(
+                    f"BMI计算({height}cm/{weight}kg)", f"期望:{expected_bmi},实际:{actual_bmi}"
+                )
         else:
             results.add_fail(f"BMI计算({height}cm/{weight}kg)", f"状态码:{response.status_code}")
     except Exception as e:
@@ -570,7 +591,7 @@ print_header("测试结果汇总")
 print(f"\n总计: {results.total}")
 print(f"通过: {results.passed} ✅")
 print(f"失败: {results.failed} ❌")
-print(f"通过率: {results.passed/results.total*100:.1f}%")
+print(f"通过率: {results.passed / results.total * 100:.1f}%")
 
 if results.errors:
     print("\n失败详情:")
@@ -592,7 +613,7 @@ report = f"""
 总计测试用例: {results.total}
 通过: {results.passed}
 失败: {results.failed}
-通过率: {results.passed/results.total*100:.1f}%
+通过率: {results.passed / results.total * 100:.1f}%
 
 --------------------------------------------------------------------------------
 二、测试覆盖模块
@@ -612,7 +633,7 @@ report = f"""
 """
 
 # 打印最终统计
-pass_rate = results.passed/results.total*100
+pass_rate = results.passed / results.total * 100
 report += f"""
 通过率: {pass_rate:.1f}%
 状态: {"✅ 全部通过" if results.failed == 0 else "⚠️ 存在失败项"}

@@ -9,9 +9,9 @@ from contextlib import asynccontextmanager
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from httpx import ASGITransport, AsyncClient
 
 from database import Base, get_db
 
@@ -19,11 +19,12 @@ from database import Base, get_db
 @pytest.fixture(scope="session")
 def engine():
     """Create an in-memory SQLite engine for all tests."""
-    import models  # noqa: F401 - register model tables with Base.metadata
     import chat_session  # noqa: F401
+    import models  # noqa: F401 - register model tables with Base.metadata
 
     eng = create_engine(
-        "sqlite:///:memory:", echo=False,
+        "sqlite:///:memory:",
+        echo=False,
         connect_args={"check_same_thread": False},
     )
     Base.metadata.create_all(bind=eng)
@@ -39,6 +40,7 @@ def db(engine):
     session = Session(bind=connection)
 
     from main import app
+
     app.dependency_overrides[get_db] = lambda: session
 
     yield session
@@ -94,9 +96,7 @@ def auth_token(test_user):
 @pytest_asyncio.fixture()
 async def client(app, db, auth_token):
     """Provide an authenticated async HTTP test client (token attached here)."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         ac.headers["Authorization"] = f"Bearer {auth_token}"
         yield ac
 
@@ -104,7 +104,5 @@ async def client(app, db, auth_token):
 @pytest_asyncio.fixture()
 async def anon_client(app, db):
     """Provide an unauthenticated async HTTP test client."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac

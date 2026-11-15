@@ -1,15 +1,13 @@
 """Business logic for health record CRUD and analysis generation."""
 
-from typing import List
-
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
 import models
 import schemas
-from services.health_service import calculate_bmi, analyze_bmi, analyze_blood_pressure
 from health_rating import calculate_health_rating
+from services.health_service import analyze_blood_pressure, analyze_bmi, calculate_bmi
 
 
 def create_record(
@@ -46,23 +44,29 @@ def create_record(
     return db_record
 
 
-def get_records(user_id: int, db: Session) -> List[models.HealthRecord]:
+def get_records(user_id: int, db: Session) -> list[models.HealthRecord]:
     return (
         db.execute(
             select(models.HealthRecord)
             .where(models.HealthRecord.user_id == user_id)
             .order_by(models.HealthRecord.record_date.desc())
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
 
 
 def get_record(record_id: int, user_id: int, db: Session) -> models.HealthRecord:
-    record = db.execute(
-        select(models.HealthRecord).where(
-            models.HealthRecord.id == record_id,
-            models.HealthRecord.user_id == user_id,
+    record = (
+        db.execute(
+            select(models.HealthRecord).where(
+                models.HealthRecord.id == record_id,
+                models.HealthRecord.user_id == user_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not record:
         raise HTTPException(status_code=404, detail="记录不存在")
     return record
@@ -71,11 +75,13 @@ def get_record(record_id: int, user_id: int, db: Session) -> models.HealthRecord
 def delete_record(record_id: int, user_id: int, db: Session) -> dict:
     record = get_record(record_id, user_id, db)
 
-    analyses = db.execute(
-        select(models.HealthAnalysis).where(
-            models.HealthAnalysis.health_record_id == record_id
+    analyses = (
+        db.execute(
+            select(models.HealthAnalysis).where(models.HealthAnalysis.health_record_id == record_id)
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for analysis in analyses:
         db.delete(analysis)
 
@@ -85,23 +91,29 @@ def delete_record(record_id: int, user_id: int, db: Session) -> dict:
 
 
 def get_latest_analysis(user_id: int, db: Session) -> models.HealthAnalysis:
-    analysis = db.execute(
-        select(models.HealthAnalysis)
-        .where(models.HealthAnalysis.user_id == user_id)
-        .order_by(models.HealthAnalysis.analysis_date.desc())
-    ).scalars().first()
+    analysis = (
+        db.execute(
+            select(models.HealthAnalysis)
+            .where(models.HealthAnalysis.user_id == user_id)
+            .order_by(models.HealthAnalysis.analysis_date.desc())
+        )
+        .scalars()
+        .first()
+    )
     if not analysis:
         raise HTTPException(status_code=404, detail="暂无分析记录，请先添加健康数据")
     return analysis
 
 
-def get_analysis_history(user_id: int, db: Session) -> List[models.HealthAnalysis]:
+def get_analysis_history(user_id: int, db: Session) -> list[models.HealthAnalysis]:
     return (
         db.execute(
             select(models.HealthAnalysis)
             .where(models.HealthAnalysis.user_id == user_id)
             .order_by(models.HealthAnalysis.analysis_date.desc())
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
 
 
@@ -114,9 +126,7 @@ def _generate_analysis(record: models.HealthRecord, user_id: int, db: Session) -
             record.blood_pressure_systolic, record.blood_pressure_diastolic
         )
 
-    overall_statuses = [
-        s for s in [bmi_status, blood_pressure_status] if s not in ["未知", "正常"]
-    ]
+    overall_statuses = [s for s in [bmi_status, blood_pressure_status] if s not in ["未知", "正常"]]
     overall_status = "正常" if not overall_statuses else overall_statuses[0]
     overall_advice = (
         "您的整体健康状况良好，请继续保持！"

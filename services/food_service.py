@@ -1,11 +1,10 @@
 """Business logic for food CRUD, consumption records, and statistics."""
 
-from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, date, datetime, timedelta
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
 import models
 import schemas
@@ -19,9 +18,7 @@ def create_food(food: schemas.FoodCreate, db: Session) -> models.Food:
     return db_food
 
 
-def get_foods(
-    category: Optional[str], search: Optional[str], db: Session
-) -> List[models.Food]:
+def get_foods(category: str | None, search: str | None, db: Session) -> list[models.Food]:
     stmt = select(models.Food)
     if category:
         stmt = stmt.where(models.Food.category == category)
@@ -37,9 +34,7 @@ def get_food(food_id: int, db: Session) -> models.Food:
     return food
 
 
-def update_food(
-    food_id: int, food: schemas.FoodCreate, db: Session
-) -> models.Food:
+def update_food(food_id: int, food: schemas.FoodCreate, db: Session) -> models.Food:
     db_food = db.execute(select(models.Food).where(models.Food.id == food_id)).scalars().first()
     if not db_food:
         raise HTTPException(status_code=404, detail="食物不存在")
@@ -80,14 +75,23 @@ def create_food_record(
     db.commit()
     db.refresh(db_record)
 
-    return {"id": db_record.id, "user_id": db_record.user_id, "food_id": db_record.food_id, "quantity_grams": db_record.quantity_grams, "calories": db_record.calories, "record_date": db_record.record_date, "meal_type": db_record.meal_type, "food_name": food.name}
+    return {
+        "id": db_record.id,
+        "user_id": db_record.user_id,
+        "food_id": db_record.food_id,
+        "quantity_grams": db_record.quantity_grams,
+        "calories": db_record.calories,
+        "record_date": db_record.record_date,
+        "meal_type": db_record.meal_type,
+        "food_name": food.name,
+    }
 
 
 def get_food_records(
     user_id: int,
     db: Session,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> list:
     query = (
         select(models.UserFoodRecord, models.Food.name)
@@ -122,12 +126,16 @@ def get_food_records(
 
 
 def delete_food_record(record_id: int, user_id: int, db: Session) -> dict:
-    record = db.execute(
-        select(models.UserFoodRecord).where(
-            models.UserFoodRecord.id == record_id,
-            models.UserFoodRecord.user_id == user_id,
+    record = (
+        db.execute(
+            select(models.UserFoodRecord).where(
+                models.UserFoodRecord.id == record_id,
+                models.UserFoodRecord.user_id == user_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not record:
         raise HTTPException(status_code=404, detail="饮食记录不存在")
     db.delete(record)
@@ -138,24 +146,28 @@ def delete_food_record(record_id: int, user_id: int, db: Session) -> dict:
 def get_food_stats(
     user_id: int,
     db: Session,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> dict:
     if not start_date:
-        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
+        start_date = (datetime.now(UTC) - timedelta(days=7)).date()
     if not end_date:
-        end_date = datetime.now(timezone.utc).date()
+        end_date = datetime.now(UTC).date()
 
     start = datetime.combine(start_date, datetime.min.time())
     end = datetime.combine(end_date, datetime.max.time())
 
-    records = db.execute(
-        select(models.UserFoodRecord).where(
-            models.UserFoodRecord.user_id == user_id,
-            models.UserFoodRecord.record_date >= start,
-            models.UserFoodRecord.record_date <= end,
+    records = (
+        db.execute(
+            select(models.UserFoodRecord).where(
+                models.UserFoodRecord.user_id == user_id,
+                models.UserFoodRecord.record_date >= start,
+                models.UserFoodRecord.record_date <= end,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     total_calories = sum(r.calories or 0 for r in records)
     total_records = len(records)

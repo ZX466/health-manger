@@ -18,10 +18,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from database import Base
 import models  # noqa: F401 - register model tables with Base.metadata
-import chat_session
 from chat_session import ChatMessage, create_session
+from database import Base
 from routers.chat import send_message
 from schemas import ChatMessageCreate
 
@@ -49,8 +48,10 @@ async def test_send_message_llm_failure_leaves_no_partial_message():
     user = SimpleNamespace(id=1)
     msg = ChatMessageCreate(content="hello")
 
-    with patch("routers.chat.check_rate_limit"), \
-         patch("routers.chat.call_llm", new=AsyncMock(side_effect=RuntimeError("LLM down"))):
+    with (
+        patch("routers.chat.check_rate_limit"),
+        patch("routers.chat.call_llm", new=AsyncMock(side_effect=RuntimeError("LLM down"))),
+    ):
         with pytest.raises(HTTPException) as exc:
             await send_message(
                 session_id=session_id,
@@ -62,7 +63,9 @@ async def test_send_message_llm_failure_leaves_no_partial_message():
 
     db2 = Session(eng)
     msgs = db2.query(ChatMessage).filter_by(session_id=session_id).all()
-    assert len(msgs) == 0, f"LLM 失败不应落库用户消息，实际 {len(msgs)} 条: {[m.role for m in msgs]}"
+    assert len(msgs) == 0, (
+        f"LLM 失败不应落库用户消息，实际 {len(msgs)} 条: {[m.role for m in msgs]}"
+    )
 
 
 @pytest.mark.asyncio
@@ -72,8 +75,10 @@ async def test_send_message_llm_success_persists_user_and_assistant():
     user = SimpleNamespace(id=1)
     msg = ChatMessageCreate(content="hello")
 
-    with patch("routers.chat.check_rate_limit"), \
-         patch("routers.chat.call_llm", new=AsyncMock(return_value=("hi back", 10))):
+    with (
+        patch("routers.chat.check_rate_limit"),
+        patch("routers.chat.call_llm", new=AsyncMock(return_value=("hi back", 10))),
+    ):
         result = await send_message(
             session_id=session_id,
             message_data=msg,
@@ -83,11 +88,6 @@ async def test_send_message_llm_success_persists_user_and_assistant():
 
     assert result["response"] == "hi back"
     db2 = Session(eng)
-    msgs = (
-        db2.query(ChatMessage)
-        .filter_by(session_id=session_id)
-        .order_by(ChatMessage.id)
-        .all()
-    )
+    msgs = db2.query(ChatMessage).filter_by(session_id=session_id).order_by(ChatMessage.id).all()
     roles = [m.role for m in msgs]
     assert roles == ["user", "assistant"], f"应落库 user+assistant，实际 {roles}"

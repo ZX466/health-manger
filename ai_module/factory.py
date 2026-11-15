@@ -1,6 +1,6 @@
 """Factory for creating configured AI pipelines."""
 
-from typing import Any, Optional
+from typing import Any
 
 from ai_module.metrics import MetricsCollector
 from ai_module.pipeline import AIPipeline
@@ -12,7 +12,7 @@ from backends.preprocessing_backends import HealthDataPreprocessor, TextPreproce
 class AIPipelineFactory:
     """Create pre-configured AI pipelines by type."""
 
-    def create_pipeline(self, pipeline_type: str, llm_call: Optional[Any] = None) -> AIPipeline:
+    def create_pipeline(self, pipeline_type: str, llm_call: Any | None = None) -> AIPipeline:
         if pipeline_type == "health_analysis":
             return AIPipeline(
                 preprocessor=HealthDataPreprocessor(),

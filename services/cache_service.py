@@ -7,7 +7,7 @@ import hashlib
 import logging
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 import settings
 
@@ -24,7 +24,7 @@ class TTLCache:
         self._ttl = ttl
         self._max_size = max_size
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         with self._lock:
             if key not in self._cache:
                 return None

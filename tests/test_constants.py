@@ -8,7 +8,12 @@ import constants
 @pytest.mark.unit
 def test_bmi_threshold_ordering():
     """BMI thresholds must be in ascending order."""
-    assert constants.BMI_THIN < constants.BMI_UNDERWEIGHT < constants.BMI_NORMAL_UPPER < constants.BMI_OVERWEIGHT_UPPER
+    assert (
+        constants.BMI_THIN
+        < constants.BMI_UNDERWEIGHT
+        < constants.BMI_NORMAL_UPPER
+        < constants.BMI_OVERWEIGHT_UPPER
+    )
 
 
 @pytest.mark.unit
@@ -22,8 +27,18 @@ def test_bmi_chinese_standard_values():
 @pytest.mark.unit
 def test_bp_threshold_ordering():
     """Blood pressure thresholds must be in ascending order for each arm."""
-    assert constants.BP_SYSTOLIC_LOW < constants.BP_SYSTOLIC_NORMAL < constants.BP_SYSTOLIC_ELEVATED < constants.BP_SYSTOLIC_HIGH
-    assert constants.BP_DIASTOLIC_LOW < constants.BP_DIASTOLIC_NORMAL < constants.BP_DIASTOLIC_ELEVATED < constants.BP_DIASTOLIC_HIGH
+    assert (
+        constants.BP_SYSTOLIC_LOW
+        < constants.BP_SYSTOLIC_NORMAL
+        < constants.BP_SYSTOLIC_ELEVATED
+        < constants.BP_SYSTOLIC_HIGH
+    )
+    assert (
+        constants.BP_DIASTOLIC_LOW
+        < constants.BP_DIASTOLIC_NORMAL
+        < constants.BP_DIASTOLIC_ELEVATED
+        < constants.BP_DIASTOLIC_HIGH
+    )
 
 
 @pytest.mark.unit
@@ -42,7 +57,14 @@ def test_bp_chinese_standard_values():
 @pytest.mark.unit
 def test_hr_threshold_ordering():
     """Heart rate thresholds must be in ascending order."""
-    assert constants.HR_EXTREME_LOW < constants.HR_VERY_LOW < constants.HR_LOW < constants.HR_HIGH < constants.HR_VERY_HIGH < constants.HR_EXTREME_HIGH
+    assert (
+        constants.HR_EXTREME_LOW
+        < constants.HR_VERY_LOW
+        < constants.HR_LOW
+        < constants.HR_HIGH
+        < constants.HR_VERY_HIGH
+        < constants.HR_EXTREME_HIGH
+    )
 
 
 @pytest.mark.unit
@@ -55,7 +77,13 @@ def test_hr_standard_values():
 @pytest.mark.unit
 def test_temp_threshold_ordering():
     """Temperature thresholds must be in ascending order."""
-    assert constants.TEMP_LOW < constants.TEMP_NORMAL_LOW < constants.TEMP_NORMAL_HIGH < constants.TEMP_FEVER < constants.TEMP_HIGH_FEVER
+    assert (
+        constants.TEMP_LOW
+        < constants.TEMP_NORMAL_LOW
+        < constants.TEMP_NORMAL_HIGH
+        < constants.TEMP_FEVER
+        < constants.TEMP_HIGH_FEVER
+    )
 
 
 @pytest.mark.unit

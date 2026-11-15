@@ -11,6 +11,14 @@ import schemas
 import settings
 from auth import get_current_user
 from database import get_db
+from services.ai_config_service import (
+    build_llm_config_for_user,
+    decrypt_api_key,
+    delete_config,
+    get_config,
+    mask_api_key,
+    save_config,
+)
 from services.cache_service import llm_response_cache, make_cache_key
 from services.llm_service import (
     LLMConfig,
@@ -20,20 +28,18 @@ from services.llm_service import (
     call_llm,
 )
 from services.security_service import check_rate_limit
-from services.ai_config_service import (
-    build_llm_config_for_user,
-    get_config,
-    save_config,
-    delete_config,
-    decrypt_api_key,
-    mask_api_key,
-)
 
 router = APIRouter(prefix="/api/ai", tags=["AI 健康分析"])
 
-_ANALYSIS_CONFIG = LLMConfig(temperature=settings.AI_ANALYSIS_TEMPERATURE, max_tokens=settings.AI_ANALYSIS_MAX_TOKENS)
-_QUICK_CONFIG = LLMConfig(temperature=settings.AI_QUICK_TEMPERATURE, max_tokens=settings.AI_QUICK_MAX_TOKENS)
-_EVALUATION_CONFIG = LLMConfig(temperature=settings.AI_EVAL_TEMPERATURE, max_tokens=settings.AI_EVAL_MAX_TOKENS)
+_ANALYSIS_CONFIG = LLMConfig(
+    temperature=settings.AI_ANALYSIS_TEMPERATURE, max_tokens=settings.AI_ANALYSIS_MAX_TOKENS
+)
+_QUICK_CONFIG = LLMConfig(
+    temperature=settings.AI_QUICK_TEMPERATURE, max_tokens=settings.AI_QUICK_MAX_TOKENS
+)
+_EVALUATION_CONFIG = LLMConfig(
+    temperature=settings.AI_EVAL_TEMPERATURE, max_tokens=settings.AI_EVAL_MAX_TOKENS
+)
 
 
 def _extract_health_data(record: models.HealthRecord) -> dict:
@@ -41,12 +47,14 @@ def _extract_health_data(record: models.HealthRecord) -> dict:
         "身高": f"{record.height}cm" if record.height else "未知",
         "体重": f"{record.weight}kg" if record.weight else "未知",
         "BMI": f"{record.bmi}" if record.bmi else "未知",
-        "血压": f"{record.blood_pressure_systolic}/{record.blood_pressure_diastolic}" if record.blood_pressure_systolic else "未知",
+        "血压": f"{record.blood_pressure_systolic}/{record.blood_pressure_diastolic}"
+        if record.blood_pressure_systolic
+        else "未知",
         "心率": f"{record.heart_rate}次/分钟" if record.heart_rate else "未知",
         "体温": f"{record.temperature}°C" if record.temperature else "未知",
         "睡眠": f"{record.sleep_hours}小时/天" if record.sleep_hours else "未知",
         "运动频率": record.exercise_frequency or "未知",
-        "饮食习惯": record.diet_habit or "未知"
+        "饮食习惯": record.diet_habit or "未知",
     }
 
 
@@ -54,12 +62,20 @@ def _extract_health_data(record: models.HealthRecord) -> dict:
 async def create_ai_analysis(
     analysis: schemas.AIAnalysisCreate,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    check_rate_limit(f"ai_analysis:{current_user.id}", max_requests=settings.AI_ANALYSIS_RATE_LIMIT, window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS)
-    health_records = db.query(models.HealthRecord).filter(
-        models.HealthRecord.user_id == current_user.id
-    ).order_by(models.HealthRecord.record_date.desc()).limit(5).all()
+    check_rate_limit(
+        f"ai_analysis:{current_user.id}",
+        max_requests=settings.AI_ANALYSIS_RATE_LIMIT,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
+    health_records = (
+        db.query(models.HealthRecord)
+        .filter(models.HealthRecord.user_id == current_user.id)
+        .order_by(models.HealthRecord.record_date.desc())
+        .limit(5)
+        .all()
+    )
 
     if not health_records:
         raise HTTPException(status_code=400, detail="暂无健康数据，请先添加健康记录")
@@ -68,14 +84,16 @@ async def create_ai_analysis(
     messages = build_health_analysis_prompt(health_data, analysis.request_content)
 
     try:
-        response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _ANALYSIS_CONFIG))
+        response_content, tokens_used = await call_llm(
+            messages, build_llm_config_for_user(db, current_user.id, _ANALYSIS_CONFIG)
+        )
 
         db_analysis = models.AIAnalysis(
             user_id=current_user.id,
             request_content=analysis.request_content,
             response_content=response_content,
             analysis_type=analysis.analysis_type or "健康咨询",
-            tokens_used=tokens_used
+            tokens_used=tokens_used,
         )
         db.add(db_analysis)
         db.commit()
@@ -84,8 +102,8 @@ async def create_ai_analysis(
         return db_analysis
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error("AI 分析失败: %s", e, exc_info=True)
+    except Exception:
+        logger.exception("AI 分析失败")
         raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
 
 
@@ -93,11 +111,15 @@ async def create_ai_analysis(
 def get_analysis_history(
     limit: int = Query(10, ge=1, le=100),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    analyses = db.query(models.AIAnalysis).filter(
-        models.AIAnalysis.user_id == current_user.id
-    ).order_by(models.AIAnalysis.created_at.desc()).limit(limit).all()
+    analyses = (
+        db.query(models.AIAnalysis)
+        .filter(models.AIAnalysis.user_id == current_user.id)
+        .order_by(models.AIAnalysis.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
     return analyses
 
@@ -106,12 +128,13 @@ def get_analysis_history(
 def get_analysis(
     analysis_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    analysis = db.query(models.AIAnalysis).filter(
-        models.AIAnalysis.id == analysis_id,
-        models.AIAnalysis.user_id == current_user.id
-    ).first()
+    analysis = (
+        db.query(models.AIAnalysis)
+        .filter(models.AIAnalysis.id == analysis_id, models.AIAnalysis.user_id == current_user.id)
+        .first()
+    )
 
     if not analysis:
         raise HTTPException(status_code=404, detail="分析记录不存在")
@@ -123,12 +146,13 @@ def get_analysis(
 def delete_analysis(
     analysis_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    analysis = db.query(models.AIAnalysis).filter(
-        models.AIAnalysis.id == analysis_id,
-        models.AIAnalysis.user_id == current_user.id
-    ).first()
+    analysis = (
+        db.query(models.AIAnalysis)
+        .filter(models.AIAnalysis.id == analysis_id, models.AIAnalysis.user_id == current_user.id)
+        .first()
+    )
 
     if not analysis:
         raise HTTPException(status_code=404, detail="分析记录不存在")
@@ -141,13 +165,19 @@ def delete_analysis(
 
 @router.post("/quick-analysis", response_model=schemas.QuickAnalysisResponse)
 async def quick_health_analysis(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    check_rate_limit(f"ai_quick:{current_user.id}", max_requests=settings.AI_QUICK_RATE_LIMIT, window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS)
-    latest_record = db.query(models.HealthRecord).filter(
-        models.HealthRecord.user_id == current_user.id
-    ).order_by(models.HealthRecord.record_date.desc()).first()
+    check_rate_limit(
+        f"ai_quick:{current_user.id}",
+        max_requests=settings.AI_QUICK_RATE_LIMIT,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
+    latest_record = (
+        db.query(models.HealthRecord)
+        .filter(models.HealthRecord.user_id == current_user.id)
+        .order_by(models.HealthRecord.record_date.desc())
+        .first()
+    )
 
     if not latest_record:
         raise HTTPException(status_code=400, detail="暂无健康数据")
@@ -161,10 +191,12 @@ async def quick_health_analysis(
     else:
         messages = build_quick_analysis_prompt(health_data)
         try:
-            response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _QUICK_CONFIG))
+            response_content, tokens_used = await call_llm(
+                messages, build_llm_config_for_user(db, current_user.id, _QUICK_CONFIG)
+            )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
-        except Exception as e:
-            logger.error("AI 快速分析失败: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("AI 快速分析失败")
             raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
 
     db_analysis = models.AIAnalysis(
@@ -183,28 +215,39 @@ async def quick_health_analysis(
 
 @router.post("/health-evaluation", response_model=schemas.HealthEvaluationResponse)
 async def llm_health_evaluation(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """LLM 增强健康评价：基于规则评分结果，调用 LLM 进行综合健康评价"""
-    check_rate_limit(f"ai_eval:{current_user.id}", max_requests=settings.AI_EVAL_RATE_LIMIT, window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS)
+    check_rate_limit(
+        f"ai_eval:{current_user.id}",
+        max_requests=settings.AI_EVAL_RATE_LIMIT,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
 
-    latest_record = db.query(models.HealthRecord).filter(
-        models.HealthRecord.user_id == current_user.id
-    ).order_by(models.HealthRecord.record_date.desc()).first()
+    latest_record = (
+        db.query(models.HealthRecord)
+        .filter(models.HealthRecord.user_id == current_user.id)
+        .order_by(models.HealthRecord.record_date.desc())
+        .first()
+    )
 
     if not latest_record:
         raise HTTPException(status_code=400, detail="暂无健康数据，请先添加健康记录")
 
-    latest_analysis = db.query(models.HealthAnalysis).filter(
-        models.HealthAnalysis.user_id == current_user.id
-    ).order_by(models.HealthAnalysis.analysis_date.desc()).first()
+    latest_analysis = (
+        db.query(models.HealthAnalysis)
+        .filter(models.HealthAnalysis.user_id == current_user.id)
+        .order_by(models.HealthAnalysis.analysis_date.desc())
+        .first()
+    )
 
     if not latest_analysis or latest_analysis.health_score is None:
         raise HTTPException(status_code=400, detail="暂无规则评分数据，请先添加含 BMI 的健康记录")
 
     health_data = _extract_health_data(latest_record)
-    cache_key = make_cache_key("eval", str(current_user.id), str(latest_record.id), str(latest_analysis.id))
+    cache_key = make_cache_key(
+        "eval", str(current_user.id), str(latest_record.id), str(latest_analysis.id)
+    )
     cached = llm_response_cache.get(cache_key)
 
     if cached:
@@ -216,10 +259,12 @@ async def llm_health_evaluation(
             rule_rating=latest_analysis.health_rating or "未知",
         )
         try:
-            response_content, tokens_used = await call_llm(messages, build_llm_config_for_user(db, current_user.id, _EVALUATION_CONFIG))
+            response_content, tokens_used = await call_llm(
+                messages, build_llm_config_for_user(db, current_user.id, _EVALUATION_CONFIG)
+            )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
-        except Exception as e:
-            logger.error("LLM 健康评价失败: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("LLM 健康评价失败")
             raise HTTPException(status_code=500, detail="健康评价失败，请稍后重试")
 
     db_eval = models.AIAnalysis(
@@ -247,6 +292,7 @@ async def llm_health_evaluation(
 def _run_llm_sync(messages: list, config: LLMConfig) -> tuple:
     """同步包装：在工作线程中运行异步 LLM 调用"""
     import asyncio
+
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(call_llm(messages, config))
@@ -263,9 +309,13 @@ async def async_ai_analysis(
     """异步 AI 分析：提交到后台队列，通过 task_id 轮询结果"""
     check_rate_limit(f"ai_async:{current_user.id}", max_requests=5, window_seconds=60)
 
-    health_records = db.query(models.HealthRecord).filter(
-        models.HealthRecord.user_id == current_user.id
-    ).order_by(models.HealthRecord.record_date.desc()).limit(5).all()
+    health_records = (
+        db.query(models.HealthRecord)
+        .filter(models.HealthRecord.user_id == current_user.id)
+        .order_by(models.HealthRecord.record_date.desc())
+        .limit(5)
+        .all()
+    )
 
     if not health_records:
         raise HTTPException(status_code=400, detail="暂无健康数据，请先添加健康记录")
@@ -276,6 +326,7 @@ async def async_ai_analysis(
     task_id = uuid.uuid4().hex[:12]
 
     from async_tasks import task_queue
+
     task_queue.submit_task(
         task_id,
         _run_llm_sync,
@@ -296,6 +347,7 @@ async def get_task_status(
 ):
     """查询异步任务状态"""
     from async_tasks import task_queue
+
     status = task_queue.get_task_status(task_id, user_id=current_user.id)
     if not status:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
@@ -303,6 +355,7 @@ async def get_task_status(
 
 
 # ── AI 配置（每用户自定义供应商/模型） ──────────────
+
 
 @router.get("/config", response_model=schemas.AIConfigResponse)
 def get_ai_config(
@@ -313,8 +366,11 @@ def get_ai_config(
     cfg = get_config(db, current_user.id)
     if not cfg:
         return schemas.AIConfigResponse(
-            provider="zhipu", model="glm-4.5-Air", base_url=None,
-            api_key_masked="", has_api_key=False,
+            provider="zhipu",
+            model="glm-4.5-Air",
+            base_url=None,
+            api_key_masked="",
+            has_api_key=False,
         )
     masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
     vision_masked = ""
@@ -342,7 +398,8 @@ def update_ai_config(
 ):
     """保存用户 AI 配置（聊天 + 视觉；api_key 为空则保留原值）。"""
     cfg = save_config(
-        db, current_user.id,
+        db,
+        current_user.id,
         provider=payload.provider,
         model=payload.model,
         base_url=payload.base_url,
@@ -353,12 +410,21 @@ def update_ai_config(
         vision_api_key=payload.vision_api_key,
     )
     masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
-    vision_masked = mask_api_key(decrypt_api_key(cfg.vision_api_key_encrypted)) if cfg.vision_api_key_encrypted else ""
+    vision_masked = (
+        mask_api_key(decrypt_api_key(cfg.vision_api_key_encrypted))
+        if cfg.vision_api_key_encrypted
+        else ""
+    )
     return schemas.AIConfigResponse(
-        provider=cfg.provider, model=cfg.model, base_url=cfg.base_url,
-        api_key_masked=masked, has_api_key=bool(cfg.api_key_encrypted),
-        vision_provider=cfg.vision_provider, vision_model=cfg.vision_model,
-        vision_base_url=cfg.vision_base_url, vision_api_key_masked=vision_masked,
+        provider=cfg.provider,
+        model=cfg.model,
+        base_url=cfg.base_url,
+        api_key_masked=masked,
+        has_api_key=bool(cfg.api_key_encrypted),
+        vision_provider=cfg.vision_provider,
+        vision_model=cfg.vision_model,
+        vision_base_url=cfg.vision_base_url,
+        vision_api_key_masked=vision_masked,
         has_vision_api_key=bool(cfg.vision_api_key_encrypted),
     )
 
@@ -395,11 +461,13 @@ async def test_ai_config(
         max_tokens=8,
     )
     try:
-        content, _ = await call_llm(
+        _content, _ = await call_llm(
             [{"role": "user", "content": "ping"}],
             config,
         )
         return schemas.AIConfigTestResponse(success=True, message="连接成功", model=payload.model)
     except Exception as e:
         logger.info("AI 配置测试失败: %s", e)
-        return schemas.AIConfigTestResponse(success=False, message=f"连接失败：请检查 Base URL/API Key/模型名")
+        return schemas.AIConfigTestResponse(
+            success=False, message="连接失败：请检查 Base URL/API Key/模型名"
+        )

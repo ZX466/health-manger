@@ -4,20 +4,38 @@
 """
 
 from constants import (
-    BMI_UNDERWEIGHT, BMI_NORMAL_UPPER, BMI_OVERWEIGHT_UPPER, BMI_THIN,
-    BP_SYSTOLIC_LOW, BP_SYSTOLIC_NORMAL, BP_SYSTOLIC_ELEVATED, BP_SYSTOLIC_HIGH,
-    BP_DIASTOLIC_LOW, BP_DIASTOLIC_NORMAL, BP_DIASTOLIC_ELEVATED, BP_DIASTOLIC_HIGH,
-    HR_LOW, HR_HIGH, HR_VERY_LOW, HR_VERY_HIGH, HR_EXTREME_LOW, HR_EXTREME_HIGH,
-    TEMP_LOW, TEMP_NORMAL_LOW, TEMP_NORMAL_HIGH, TEMP_FEVER, TEMP_HIGH_FEVER,
+    BMI_NORMAL_UPPER,
+    BMI_OVERWEIGHT_UPPER,
+    BMI_THIN,
+    BMI_UNDERWEIGHT,
+    BP_DIASTOLIC_ELEVATED,
+    BP_DIASTOLIC_HIGH,
+    BP_DIASTOLIC_LOW,
+    BP_DIASTOLIC_NORMAL,
+    BP_SYSTOLIC_ELEVATED,
+    BP_SYSTOLIC_HIGH,
+    BP_SYSTOLIC_LOW,
+    BP_SYSTOLIC_NORMAL,
+    HR_EXTREME_HIGH,
+    HR_EXTREME_LOW,
+    HR_HIGH,
+    HR_LOW,
+    HR_VERY_HIGH,
+    HR_VERY_LOW,
+    TEMP_FEVER,
+    TEMP_HIGH_FEVER,
+    TEMP_LOW,
+    TEMP_NORMAL_HIGH,
+    TEMP_NORMAL_LOW,
 )
 
 
 def calculate_health_rating(record) -> tuple[str, int, str]:
     """
     计算健康综合评级
-    
+
     返回: (评级名称, 分数, 详细说明)
-    
+
     评级体系：
     - 优秀 (95-100分): 所有指标正常
     - 良好 (80-94分): 大部分指标正常
@@ -25,33 +43,33 @@ def calculate_health_rating(record) -> tuple[str, int, str]:
     - 较差 (40-59分): 多项指标异常
     - 危险 (0-39分): 健康状况较差
     """
-    
+
     scores = []
     details = []
-    
+
     # BMI 评分 (25分满分)
     bmi_score, bmi_detail = _calculate_bmi_score(record)
     scores.append(bmi_score)
     details.append(f"BMI{bmi_detail}")
-    
+
     # 血压评分 (25分满分)
     bp_score, bp_detail = _calculate_blood_pressure_score(record)
     scores.append(bp_score)
     details.append(f"血压{bp_detail}")
-    
+
     # 心率评分 (25分满分)
     hr_score, hr_detail = _calculate_heart_rate_score(record)
     scores.append(hr_score)
     details.append(f"心率{hr_detail}")
-    
+
     # 体温评分 (25分满分)
     temp_score, temp_detail = _calculate_temperature_score(record)
     scores.append(temp_score)
     details.append(f"体温{temp_detail}")
-    
+
     # 计算总分
     total_score = sum(scores)
-    
+
     # 确定评级
     if total_score >= 95:
         rating = "优秀"
@@ -63,7 +81,7 @@ def calculate_health_rating(record) -> tuple[str, int, str]:
         rating = "较差"
     else:
         rating = "危险"
-    
+
     return rating, total_score, f"综合评分{total_score}分 ({'/'.join(details)})"
 
 
@@ -71,9 +89,9 @@ def _calculate_bmi_score(record) -> tuple[int, str]:
     """计算BMI得分"""
     if not record.bmi:
         return 0, "未检测(0分)"
-    
+
     bmi = record.bmi
-    
+
     if BMI_UNDERWEIGHT <= bmi < BMI_NORMAL_UPPER:
         return 25, f"{bmi:.1f}满分(25分)"
     elif BMI_NORMAL_UPPER <= bmi < BMI_OVERWEIGHT_UPPER:
@@ -90,10 +108,10 @@ def _calculate_blood_pressure_score(record) -> tuple[int, str]:
     """计算血压得分"""
     systolic = record.blood_pressure_systolic
     diastolic = record.blood_pressure_diastolic
-    
+
     if not systolic or not diastolic:
         return 0, "未检测(0分)"
-    
+
     # 高血压必须优先于低血压判定：混合读数（如 170/55 严重高血压+低舒张压，
     # 或 85/90 低收缩压+高血压1级舒张压）应按更危险的高血压分级，而非遮蔽为偏低
     # 高血压2级：收缩压 >= 160 或 舒张压 >= 100
@@ -116,9 +134,9 @@ def _calculate_heart_rate_score(record) -> tuple[int, str]:
     """计算心率得分"""
     if not record.heart_rate:
         return 0, "未检测(0分)"
-    
+
     hr = record.heart_rate
-    
+
     if HR_LOW <= hr <= HR_HIGH:
         return 25, f"{hr}正常(25分)"
     elif HR_VERY_LOW <= hr < HR_LOW or HR_HIGH < hr <= HR_VERY_HIGH:
@@ -133,9 +151,9 @@ def _calculate_temperature_score(record) -> tuple[int, str]:
     """计算体温得分"""
     if not record.temperature:
         return 0, "未检测(0分)"
-    
+
     temp = record.temperature
-    
+
     if TEMP_NORMAL_LOW <= temp <= TEMP_NORMAL_HIGH:
         return 25, f"{temp}°C正常(25分)"
     elif TEMP_NORMAL_HIGH < temp <= TEMP_FEVER:
@@ -152,24 +170,18 @@ def _calculate_temperature_score(record) -> tuple[int, str]:
 
 def get_rating_emoji(rating: str) -> str:
     """获取评级表情"""
-    emojis = {
-        "优秀": "🏆",
-        "良好": "🥇",
-        "中等": "👤",
-        "较差": "😐",
-        "危险": "❌"
-    }
+    emojis = {"优秀": "🏆", "良好": "🥇", "中等": "👤", "较差": "😐", "危险": "❌"}
     return emojis.get(rating, "❓")
 
 
 def get_rating_color(rating: str) -> str:
     """获取评级颜色"""
     colors = {
-        "优秀": "#52c41a",      # 绿色
-        "良好": "#1890ff",    # 蓝色
+        "优秀": "#52c41a",  # 绿色
+        "良好": "#1890ff",  # 蓝色
         "中等": "#faad14",  # 橙色
-        "较差": "#fa8c16",    # 深橙色
-        "危险": "#f5222d"   # 红色
+        "较差": "#fa8c16",  # 深橙色
+        "危险": "#f5222d",  # 红色
     }
     return colors.get(rating, "#999999")
 
@@ -177,10 +189,10 @@ def get_rating_color(rating: str) -> str:
 def get_rating_bg_color(rating: str) -> str:
     """获取评级背景颜色"""
     colors = {
-        "优秀": "#f6ffed",      # 浅绿
-        "良好": "#e6f7ff",    # 浅蓝
+        "优秀": "#f6ffed",  # 浅绿
+        "良好": "#e6f7ff",  # 浅蓝
         "中等": "#fffbe6",  # 浅黄
-        "较差": "#fff7e6",     # 浅橙
-        "危险": "#fff1f0"   # 浅红
+        "较差": "#fff7e6",  # 浅橙
+        "危险": "#fff1f0",  # 浅红
     }
     return colors.get(rating, "#f5f5f5")

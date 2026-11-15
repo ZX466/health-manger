@@ -2,8 +2,8 @@
 
 import pytest
 
-import tongue.feature_mapping as feature_mapping
 import tongue.diagnosis as tongue_diagnosis
+from tongue import feature_mapping
 
 
 @pytest.mark.unit
@@ -46,18 +46,24 @@ def test_tcm_syndromes_match():
 def test_feature_mapping_has_all_tongue_colors():
     """All tongue color keys from the index map have detail entries."""
     for key in feature_mapping.TONGUE_COLOR_MAP["cn"].values():
-        assert key in feature_mapping.TONGUE_COLOR_DETAILS, f"Missing detail for tongue color: {key}"
+        assert key in feature_mapping.TONGUE_COLOR_DETAILS, (
+            f"Missing detail for tongue color: {key}"
+        )
 
 
 @pytest.mark.unit
 def test_feature_mapping_has_all_coating_colors():
     """All coating color keys from the index map have detail entries."""
     for key in feature_mapping.COATING_COLOR_MAP["cn"].values():
-        assert key in feature_mapping.COATING_COLOR_DETAILS, f"Missing detail for coating color: {key}"
+        assert key in feature_mapping.COATING_COLOR_DETAILS, (
+            f"Missing detail for coating color: {key}"
+        )
 
 
 @pytest.mark.unit
 def test_feature_mapping_has_all_thickness():
     """All coating thickness keys from the index map have description entries."""
     for key in feature_mapping.COATING_THICKNESS_MAP["cn"].values():
-        assert key in feature_mapping.COATING_THICKNESS_DESCRIPTIONS, f"Missing description for thickness: {key}"
+        assert key in feature_mapping.COATING_THICKNESS_DESCRIPTIONS, (
+            f"Missing description for thickness: {key}"
+        )

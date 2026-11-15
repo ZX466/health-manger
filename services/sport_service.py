@@ -1,11 +1,10 @@
 """Business logic for sport CRUD, exercise records, and statistics."""
 
-from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, date, datetime, timedelta
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
 import models
 import schemas
@@ -19,9 +18,7 @@ def create_sport(sport: schemas.SportCreate, db: Session) -> models.Sport:
     return db_sport
 
 
-def get_sports(
-    category: Optional[str], search: Optional[str], db: Session
-) -> List[models.Sport]:
+def get_sports(category: str | None, search: str | None, db: Session) -> list[models.Sport]:
     stmt = select(models.Sport)
     if category:
         stmt = stmt.where(models.Sport.category == category)
@@ -37,9 +34,7 @@ def get_sport(sport_id: int, db: Session) -> models.Sport:
     return sport
 
 
-def update_sport(
-    sport_id: int, sport: schemas.SportCreate, db: Session
-) -> models.Sport:
+def update_sport(sport_id: int, sport: schemas.SportCreate, db: Session) -> models.Sport:
     db_sport = db.execute(select(models.Sport).where(models.Sport.id == sport_id)).scalars().first()
     if not db_sport:
         raise HTTPException(status_code=404, detail="运动项目不存在")
@@ -63,7 +58,9 @@ def delete_sport(sport_id: int, db: Session) -> dict:
 def create_sport_record(
     record: schemas.UserSportRecordCreate, user_id: int, db: Session
 ) -> models.UserSportRecord:
-    sport = db.execute(select(models.Sport).where(models.Sport.id == record.sport_id)).scalars().first()
+    sport = (
+        db.execute(select(models.Sport).where(models.Sport.id == record.sport_id)).scalars().first()
+    )
     if not sport:
         raise HTTPException(status_code=404, detail="运动项目不存在")
 
@@ -80,14 +77,23 @@ def create_sport_record(
     db.commit()
     db.refresh(db_record)
 
-    return {"id": db_record.id, "user_id": db_record.user_id, "sport_id": db_record.sport_id, "duration_minutes": db_record.duration_minutes, "calories_burned": db_record.calories_burned, "record_date": db_record.record_date, "notes": db_record.notes, "sport_name": sport.name}
+    return {
+        "id": db_record.id,
+        "user_id": db_record.user_id,
+        "sport_id": db_record.sport_id,
+        "duration_minutes": db_record.duration_minutes,
+        "calories_burned": db_record.calories_burned,
+        "record_date": db_record.record_date,
+        "notes": db_record.notes,
+        "sport_name": sport.name,
+    }
 
 
 def get_sport_records(
     user_id: int,
     db: Session,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> list:
     query = (
         select(models.UserSportRecord, models.Sport.name)
@@ -122,12 +128,16 @@ def get_sport_records(
 
 
 def delete_sport_record(record_id: int, user_id: int, db: Session) -> dict:
-    record = db.execute(
-        select(models.UserSportRecord).where(
-            models.UserSportRecord.id == record_id,
-            models.UserSportRecord.user_id == user_id,
+    record = (
+        db.execute(
+            select(models.UserSportRecord).where(
+                models.UserSportRecord.id == record_id,
+                models.UserSportRecord.user_id == user_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not record:
         raise HTTPException(status_code=404, detail="运动记录不存在")
     db.delete(record)
@@ -138,34 +148,44 @@ def delete_sport_record(record_id: int, user_id: int, db: Session) -> dict:
 def get_sport_stats(
     user_id: int,
     db: Session,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> dict:
     if not start_date:
-        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
+        start_date = (datetime.now(UTC) - timedelta(days=7)).date()
     if not end_date:
-        end_date = datetime.now(timezone.utc).date()
+        end_date = datetime.now(UTC).date()
 
     start = datetime.combine(start_date, datetime.min.time())
     end = datetime.combine(end_date, datetime.max.time())
 
-    records = db.execute(
-        select(models.UserSportRecord).where(
-            models.UserSportRecord.user_id == user_id,
-            models.UserSportRecord.record_date >= start,
-            models.UserSportRecord.record_date <= end,
+    records = (
+        db.execute(
+            select(models.UserSportRecord).where(
+                models.UserSportRecord.user_id == user_id,
+                models.UserSportRecord.record_date >= start,
+                models.UserSportRecord.record_date <= end,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     total_calories = sum(r.calories_burned or 0 for r in records)
     total_duration = sum(r.duration_minutes or 0 for r in records)
     total_records = len(records)
 
     sport_ids = list({r.sport_id for r in records if r.sport_id})
-    sports_map = {
-        s.id: s.name
-        for s in db.execute(select(models.Sport).where(models.Sport.id.in_(sport_ids))).scalars().all()
-    } if sport_ids else {}
+    sports_map = (
+        {
+            s.id: s.name
+            for s in db.execute(select(models.Sport).where(models.Sport.id.in_(sport_ids)))
+            .scalars()
+            .all()
+        }
+        if sport_ids
+        else {}
+    )
 
     sport_type_stats: dict[str, dict] = {}
     for record in records:

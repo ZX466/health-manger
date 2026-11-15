@@ -23,9 +23,7 @@ def _seed_completed(q, task_id, completed_ago_seconds):
     with q.lock:
         result = TaskResult(task_id)
         result.status = TaskStatus.COMPLETED
-        result.created_at = datetime.now() - timedelta(
-            seconds=completed_ago_seconds + 60
-        )
+        result.created_at = datetime.now() - timedelta(seconds=completed_ago_seconds + 60)
         result.completed_at = datetime.now() - timedelta(seconds=completed_ago_seconds)
         result.result = {"content": "x" * 1000}  # 模拟大段 LLM 文本
         q.results[task_id] = result

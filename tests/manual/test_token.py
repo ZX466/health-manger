@@ -1,25 +1,24 @@
 """
 调试 Token 问题
 """
+
 import requests
 from jose import jwt
 
 BASE_URL = "http://localhost:8420"
 import os
+
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 ALGORITHM = "HS256"
 
 # 登录获取 token
-login_data = {
-    "username": "testuser",
-    "password": "test123"
-}
+login_data = {"username": "testuser", "password": "test123"}
 response = requests.post(f"{BASE_URL}/api/auth/login", data=login_data)
 print(f"登录响应：{response.status_code}")
 print(f"Token: {response.json()['access_token']}")
 
 # 解码 token 查看内容
-token = response.json()['access_token']
+token = response.json()["access_token"]
 try:
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     print(f"Token 解码成功：{payload}")

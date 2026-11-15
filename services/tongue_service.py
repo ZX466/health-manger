@@ -6,7 +6,6 @@ import logging
 import os
 import uuid
 from pathlib import Path
-from typing import List
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import func, select
@@ -24,9 +23,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
-async def upload_and_analyze(
-    file: UploadFile, user_id: int, db: Session
-) -> models.TongueDiagnosis:
+async def upload_and_analyze(file: UploadFile, user_id: int, db: Session) -> models.TongueDiagnosis:
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="请上传图片文件")
 
@@ -56,8 +53,7 @@ async def upload_and_analyze(
     filepath = os.path.join(UPLOAD_DIR, filename)
     image_hash = hashlib.sha256(content).hexdigest()
 
-    with open(filepath, "wb") as f:
-        f.write(content)
+    await asyncio.to_thread(Path(filepath).write_bytes, content)
 
     db_diagnosis = models.TongueDiagnosis(
         user_id=user_id,
@@ -70,10 +66,10 @@ async def upload_and_analyze(
     db.refresh(db_diagnosis)
 
     try:
-        from tongue import analyze_tongue_image
-
         # 使用用户自定义视觉模型配置（未配置回退默认 ARK）
         from services.ai_config_service import build_vision_config_for_user
+        from tongue import analyze_tongue_image
+
         vision_config = build_vision_config_for_user(db, user_id)
 
         cached_result = tongue_result_cache.get(image_hash)
@@ -101,12 +97,12 @@ async def upload_and_analyze(
 
         db.commit()
         db.refresh(db_diagnosis)
-    except RuntimeError as e:
-        logger.error("舌诊云端分析失败: %s", e, exc_info=True)
+    except RuntimeError:
+        logger.exception("舌诊云端分析失败")
         _cleanup_failed_diagnosis(db_diagnosis, filepath, db)
         raise HTTPException(status_code=503, detail="分析服务暂不可用，请稍后重试")
-    except Exception as e:
-        logger.error("舌诊分析失败: %s", e, exc_info=True)
+    except Exception:
+        logger.exception("舌诊分析失败")
         _cleanup_failed_diagnosis(db_diagnosis, filepath, db)
         raise HTTPException(status_code=500, detail="分析失败，请稍后重试")
 
@@ -120,7 +116,7 @@ def _cleanup_failed_diagnosis(
     if os.path.exists(filepath):
         try:
             os.remove(filepath)
-        except (OSError, IOError):
+        except OSError:
             pass
 
     db.delete(diagnosis)
@@ -129,7 +125,7 @@ def _cleanup_failed_diagnosis(
 
 def get_diagnoses(
     user_id: int, db: Session, limit: int = 20, offset: int = 0
-) -> List[models.TongueDiagnosis]:
+) -> list[models.TongueDiagnosis]:
     return (
         db.execute(
             select(models.TongueDiagnosis)
@@ -137,17 +133,23 @@ def get_diagnoses(
             .order_by(models.TongueDiagnosis.created_at.desc())
             .offset(offset)
             .limit(limit)
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
 
 
 def get_diagnosis(diagnosis_id: int, user_id: int, db: Session) -> models.TongueDiagnosis:
-    diagnosis = db.execute(
-        select(models.TongueDiagnosis).where(
-            models.TongueDiagnosis.id == diagnosis_id,
-            models.TongueDiagnosis.user_id == user_id,
+    diagnosis = (
+        db.execute(
+            select(models.TongueDiagnosis).where(
+                models.TongueDiagnosis.id == diagnosis_id,
+                models.TongueDiagnosis.user_id == user_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not diagnosis:
         raise HTTPException(status_code=404, detail="舌诊记录不存在")
     return diagnosis
@@ -169,14 +171,18 @@ def get_diagnosis_image_path(diagnosis: models.TongueDiagnosis) -> str:
 
 
 def get_latest_completed(user_id: int, db: Session) -> models.TongueDiagnosis:
-    diagnosis = db.execute(
-        select(models.TongueDiagnosis)
-        .where(
-            models.TongueDiagnosis.user_id == user_id,
-            models.TongueDiagnosis.analysis_status == "completed",
+    diagnosis = (
+        db.execute(
+            select(models.TongueDiagnosis)
+            .where(
+                models.TongueDiagnosis.user_id == user_id,
+                models.TongueDiagnosis.analysis_status == "completed",
+            )
+            .order_by(models.TongueDiagnosis.created_at.desc())
         )
-        .order_by(models.TongueDiagnosis.created_at.desc())
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not diagnosis:
         raise HTTPException(status_code=404, detail="暂无舌诊记录，请先上传舌象图片")
     return diagnosis
@@ -188,7 +194,7 @@ def delete_diagnosis(diagnosis_id: int, user_id: int, db: Session) -> dict:
     if diagnosis.image_path and os.path.exists(diagnosis.image_path):
         try:
             os.remove(diagnosis.image_path)
-        except (OSError, IOError):
+        except OSError:
             pass
 
     db.delete(diagnosis)
@@ -198,26 +204,32 @@ def delete_diagnosis(diagnosis_id: int, user_id: int, db: Session) -> dict:
 
 def get_stats(user_id: int, db: Session) -> dict:
     total = db.scalar(
-        select(func.count()).select_from(models.TongueDiagnosis).where(
-            models.TongueDiagnosis.user_id == user_id
-        )
+        select(func.count())
+        .select_from(models.TongueDiagnosis)
+        .where(models.TongueDiagnosis.user_id == user_id)
     )
 
     completed = db.scalar(
-        select(func.count()).select_from(models.TongueDiagnosis).where(
-            models.TongueDiagnosis.user_id == user_id,
-            models.TongueDiagnosis.analysis_status == "completed",
-        )
-    )
-
-    latest = db.execute(
-        select(models.TongueDiagnosis)
+        select(func.count())
+        .select_from(models.TongueDiagnosis)
         .where(
             models.TongueDiagnosis.user_id == user_id,
             models.TongueDiagnosis.analysis_status == "completed",
         )
-        .order_by(models.TongueDiagnosis.created_at.desc())
-    ).scalars().first()
+    )
+
+    latest = (
+        db.execute(
+            select(models.TongueDiagnosis)
+            .where(
+                models.TongueDiagnosis.user_id == user_id,
+                models.TongueDiagnosis.analysis_status == "completed",
+            )
+            .order_by(models.TongueDiagnosis.created_at.desc())
+        )
+        .scalars()
+        .first()
+    )
 
     syndrome_distribution: dict[str, int] = {}
     if completed > 0:

@@ -10,8 +10,21 @@ markers = [
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+ignore = [
+    "B008",   # FastAPI 依赖注入使用函数调用作为默认值
+    "BLE001", # 边界层统一捕获异常后再回滚/返回错误
+    "DTZ005", # 项目统一使用本地 naive datetime（SQLite）
+]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E402"]
+
 
 [tool.coverage.run]
 source = ["."]
