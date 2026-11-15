@@ -22,8 +22,14 @@ from chat_session import (
     message_to_dict,
 )
 from database import SessionLocal, get_db
-from services.ai_config_service import build_llm_config_for_user
+from services.ai_config_service import build_llm_config_for_user, get_config
 from services.llm_service import CHAT_SYSTEM_PROMPT, LLMConfig, call_llm, stream_llm
+from services.safety_service import (
+    RiskState,
+    assess_user_risk,
+    build_system_prompt,
+    crisis_resources,
+)
 from services.security_service import check_rate_limit, sanitize_for_prompt
 
 router = APIRouter(prefix="/api/chat", tags=["聊天会话"])
@@ -46,6 +52,43 @@ def _estimate_tokens(text: str) -> int:
     if not text:
         return 0
     return max(1, len(text) // settings.CHARS_PER_TOKEN_ZH)
+
+
+def _resolve_persona_style(db: Session, user_id: int, risk: RiskState) -> str:
+    """高风险/危机强制 clinical：与前端隐藏玩梗同步，不让后端继续输出调侃语气。"""
+    if risk.level == "high" or risk.crisis:
+        return "clinical"
+    config = get_config(db=db, user_id=user_id)
+    return getattr(config, "persona_style", None) or "humorous"
+
+
+def _safety_payload(risk: RiskState) -> dict:
+    """api-v2 §4：safety {level, crisis, resources}；resources 仅 crisis 时才有内容。"""
+    return {
+        "level": risk.level,
+        "crisis": risk.crisis,
+        "resources": crisis_resources() if risk.crisis else [],
+    }
+
+
+def _build_chat_messages(
+    db: Session, user_id: int, context: list[dict], content: str
+) -> tuple[list[dict], RiskState]:
+    """按用户风险等级生成 system prompt，返回 (messages, risk)。
+
+    `assess_user_risk` 只读不写；`build_system_prompt` 在高风险/危机时
+    整体替换人设指令为严肃关怀版本（决策 6）。
+    """
+    risk = assess_user_risk(db=db, user_id=user_id)
+    system_prompt = build_system_prompt(
+        base=CHAT_SYSTEM_PROMPT,
+        persona_style=_resolve_persona_style(db, user_id, risk),
+        risk=risk,
+    )
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(context)
+    messages.append({"role": "user", "content": content})
+    return messages, risk
 
 
 @router.post("/session", response_model=schemas.ChatSessionResponse)
@@ -132,9 +175,7 @@ async def send_message(
     # 先取历史上下文（不含本次用户消息，因为尚未落库），再把本次用户消息追加给 LLM
     context = get_session_context(db=db, session_id=session_id, max_messages=10)
 
-    messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
-    messages.extend(context)
-    messages.append({"role": "user", "content": safe_content})
+    messages, _risk = _build_chat_messages(db, current_user.id, context, safe_content)
 
     try:
         response_content, tokens_used = await call_llm(
@@ -171,7 +212,7 @@ async def stream_message(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """SSE 流式对话（M-PERF1）。事件顺序：safety（待 M-SEC1）→ delta* → done|error。"""
+    """SSE 流式对话（M-PERF1/M-PERF4）。事件顺序：safety → delta* → done|error。"""
     check_rate_limit(
         f"chat:{current_user.id}",
         max_requests=settings.CHAT_RATE_LIMIT,
@@ -191,10 +232,8 @@ async def stream_message(
         max_messages=settings.CHAT_CONTEXT_MAX_MESSAGES,
     )
     config = build_llm_config_for_user(db, current_user.id, _CHAT_CONFIG)
-
-    messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
-    messages.extend(context)
-    messages.append({"role": "user", "content": safe_content})
+    messages, risk = _build_chat_messages(db, current_user.id, context, safe_content)
+    safety_payload = _safety_payload(risk)
 
     # 决策 5：用户消息先落库；assistant 仅在完整结束后落库，断开即丢弃半截回复
     add_message(db=db, session_id=session_id, role="user", content=safe_content)
@@ -203,9 +242,9 @@ async def stream_message(
         chunks: list[str] = []
         stream_db = SessionLocal()
         try:
-            # TODO(M-SEC1): services.safety_service 落地后，在首个 delta 之前
-            # 按契约发 event: safety {level, crisis, resources}，并在此处覆写
-            # system prompt 为严肃关怀版本（决策 6）。当前模块未就绪，按派单约定不发。
+            # 契约：safety 至多 1 次且必发首个；crisis 时附求助资源
+            yield _sse("safety", safety_payload)
+
             try:
                 async for piece in stream_llm(messages, config):
                     if await request.is_disconnected():
