@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from async_tasks import start_task_queue, stop_task_queue
 from database import Base, engine
-from routers import ai_analysis, auth, chat, food, health, sport, tongue, warning
+from routers import ai_analysis, auth, chat, food, health, mental, sport, tongue, warning
 from services.llm_service import close_http_client
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,7 @@ app.include_router(ai_analysis.router)
 app.include_router(warning.router)
 app.include_router(tongue.router)
 app.include_router(chat.router)
+app.include_router(mental.router)
 
 
 @app.exception_handler(Exception)

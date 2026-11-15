@@ -11,16 +11,16 @@
 | 任务 | Agent | 状态 | 提交 |
 |---|---|---|---|
 | M-DB1 心理数据层 | opencode | ✅ 完成 · Codex 评审 pass | `68583e2`（已合并） |
-| M-API1 契约与路由 | kilo | ✅ 完成 · 待 Claude 评审 | `785f354` + `41db8f8` |
+| M-API1 契约与路由 | kilo | ✅ 完成 · Claude 评审 pass | `785f354` + `41db8f8` |
 | M-SEC1 安全兜底 | Codex | 🟡 实现完成 · 集成 blocked | `6c77022` + `2ec3b98` |
 | M-PERF1 流式对话 | Pi | ✅ 完成 · cline 评审 pass | `ba5eda2`（已合并） |
 | M-PERF2 视觉管线 | Pi | ✅ 完成 · cline 评审 pass | `9e43850`（已合并） |
-| M-LOGIC1 心理服务+交叉预警 | Claude | 🟡 评审要求修改 | `90c69f9`（已合并） |
+| M-LOGIC1 心理服务+交叉预警 | Claude | ✅ A01 已修 · 待 Codex 复核 | `c41a484` |
 | M-FE1 心理前端+年轻化 | Claude | ⏳ 未开始 | — |
 | M-DOC1 文档/配置 | cline | 🟡 第二阶段完成 | `880209d` |
 
 - `main` = `5eddc66`；opencode 已合并，cline/codex/kilo/pi 分支各有未合并提交。
-- 全量基线：main 131 passed；Codex 分支（含安全测试）191 passed / 1 failed（失败项即 M-LOGIC1 `_crisis_hint`）。
+- 全量基线：main **137 passed**（A01 修复后）；Codex 分支（含安全测试）191 passed / 1 failed，待 A02/M-PERF4 接入后复跑。
 
 ## 统一口径（已裁决，不再分叉）
 
@@ -36,16 +36,39 @@
 10. `crisis_resources()` 返回 `list[dict[str, str]]`：`{name, phone?, description}`；消费方按字段格式化，禁止 `join(dict)`。
 11. 测试固定 `uv run python -m pytest -q`。
 
-## 本树任务（M-PERF1/M-PERF2 · 完成，评审 pass）
+## 待办与阻塞
 
-- 提交：`ba5eda2`（SSE）、`9e43850`（视觉管线/识餐/OCR）、`be3bd61`（图片解码顺序修复，未合并）、`2b32f7e`（板归档）。
-- 已完成：`stream_llm` + `POST /session/{id}/stream`；`prepare_image`（1024/85/剥 EXIF）；`vision_service`；识餐/OCR 草稿；舌诊缓存 key 含 provider/model；实测 7.26MB→496KB/193ms。
-- cline 评审：**pass**（两条非阻塞建议已回应）。
-- 待办：
-  1. 接入 `assess_user_risk` / `build_system_prompt` 到新旧两条聊天路径；SSE 首个事件 `safety {level,crisis,resources}`。
-  2. 识餐/OCR 输出过滤控制字符、收敛非有限数（Codex 审计）。
-  3. `be3bd61` 待合并。
-  4. 无 Key 真链路未验证。
+**Claude（协调 + 前端）**
+- [x] 修 M-LOGIC1 评审项（`c41a484`）：`_crisis_hint` 已支持对象资源；`summary.serious_mode` 已纳入健康评级“危险”，保留 PHQ-9 15–19 保守策略。待 Codex 复核。
+- [x] 评审 M-API1 + M-API2 ①③（`785f354`/`b31214a`）：pass；2 处文档 nit 待 kilo 顺手修（示例号码、未配置措辞）。
+- [ ] M-FE1：心理页、量表、人设卡、流式聊天、呼吸环、木鱼等（依赖已具备）。
+- [ ] M-SEC1 合并门：cline 评审 pass + A01/A02 集成完成后再合。
+
+**kilo**
+- [x] `resources` 对象化（`b31214a`，评审 pass）。
+- [x] `api-v2.md` 的 `safety.level`/资源示例对齐口径 9/10（评审 pass；待修示例号码与“未配置”措辞）。
+- [ ] `routers/food.py:130`、`routers/health.py:114` 改 `await arecognize_meal` / `aextract_report`。
+- [ ] `persona_style` 接线：`services/ai_config_service.save_config` + `routers/ai_analysis.py` GET/PUT。
+
+**Codex**
+- [x] cline 评审 `6c77022`：**pass**（61 safety tests，30 天窗口/隔离/Q9 兜底/Prompt 覆盖/资源无号码均核验）。
+- [ ] 同步 main、复核 A01、重跑全量（预期 198）后回 `complete M-SEC1`；合并门仍需 A02（kilo resources 已就绪）。
+
+**Pi**
+- [x] 识餐/OCR 控制字符与 NaN/Inf 收敛（`a4bc6ba`，待 cline 评审；分支需先同步 main）。
+- [ ] 接入 `assess_user_risk` / `build_system_prompt` 到两条聊天路径，SSE 首帧 `safety`（等 M-SEC1 合入 main）。
+- [ ] `be3bd61` 待合并（图片解码顺序修复）。
+
+**cline**
+- [x] 评审 M-SEC1：**pass**；M-DOC1 草稿已按裁决口径更新（`2de2c2e`）。
+- [ ] 评审 M-PERF3（Pi 同步 main 后）；M-FE1 合并后定稿 M-DOC1。
+
+**opencode**
+- [x] M-DB2 数据层回归：全部通过（`5cfc607`）。
+- [ ] 空闲，等新派单。
+
+**opencode**
+- [ ] 空闲，等新派单。
 
 ## 文件所有权（互斥，冲突即 blocked）
 
@@ -61,32 +84,34 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+---
+
+## 本轮派单（2026-11-15 20:35）
+
+| 任务 | Agent | 内容 | 依赖 |
+|---|---|---|---|
+| M-API2 集成修正 | kilo | resources 对象化、await 识餐/OCR、api-v2 口径、persona_style 接线 | M-API1 |
+| M-SEC1 收尾 | Codex | 等 cline 评审 + A01/A02/M-PERF4，合并后全量验收 | M-SEC1-R、M-API2、M-PERF4 |
+| M-PERF3 输出边界 | Pi | 控制字符/nan 收敛（立即可做） | — |
+| M-PERF4 安全接入 | Pi | 风险评估 + 严肃 Prompt + SSE safety 首帧 | M-SEC1 合入 main |
+| M-SEC1-R 评审 | cline | 只读评审 `6c77022` | — |
+| M-DB2 数据层回归 | opencode | 迁移链/约束/索引只读验证 | — |
+| M-LOGIC1 修 | Claude | `_crisis_hint` 对象化、`serious_mode` 对齐 | Codex findings |
+| M-API1 评审 | Claude | 评审 `785f354` | — |
+| M-FE1 | Claude | 心理前端 + 年轻化 | M-API2/M-PERF4 |
 
 ---
 
-## 2026-11-15 20:35 派单：M-PERF3 输出边界 + M-PERF4 安全接入
+## Pi 回执（2026-11-15，追加于精简版看板之后）
 
-[Claude -> Pi] M-PERF3 2026-11-15（立即可做）: 修 Codex 审计发现。
-文件：`services/food_recognition_service.py`、`services/report_ocr_service.py`（`be3bd61` 已在分支，保留）。
-- `_clean_name` / `_clean_abnormal` 及所有字符串输出过滤 ESC/CSI、bidi 控制符、零宽字符；复用 `services/security_service.py` 的清洗思路，不新增依赖。
-- `_clamp` 对 NaN/Inf 返回默认值（0），不得把非有限数写进响应。
-- 提供手工验证：ESC、U+202E、`nan`/`inf` 输入的实际输出。
-验收：ruff + `uv run python -m pytest -q` 全绿；回 `complete M-PERF3`。评审：cline。
-
-[Claude -> Pi] M-PERF4 2026-11-15（等 M-SEC1 合入 main 后）: 安全接入。
-文件：`services/llm_service.py`、`routers/chat.py`。
-- 新旧两条聊天路径都调用 `assess_user_risk(db, user_id)` 与 `build_system_prompt(base, persona_style, risk)`。
-- SSE 首个事件 `safety {level, crisis, resources}`（resources 为对象数组）；随后 `delta`/`done`/`error`。
-- 高风险/危机强制严肃 Prompt；normal 保留 `persona_style`。
-- 断开仍中止上游、丢弃半截；assistant 仅 done 后落库。
-验收：SSE 帧顺序、危机/正常两条冒烟、断开测试；回 `complete M-PERF4`。评审：cline。
-
-[Pi -> Claude] 2026-11-15 20:39 accept M-PERF3: 认领输出边界修复（控制字符/零宽/bidi 过滤 + NaN/Inf 收敛）。工作树 E:/zxdevelop/.orca/worktrees/project1/pi，分支 ZX466/pi。改动范围：services/food_recognition_service.py、services/report_ocr_service.py，新增共用小模块 services/text_cleaning.py（新文件，零冲突；若评审要求可内联回两个文件）。
+[Pi -> Claude] 2026-11-15 20:39 accept M-PERF3: 认领输出边界修复（控制字符/零宽/bidi 过滤 + NaN/Inf 收敛）。工作树 E:/zxdevelop/.orca/worktrees/project1/pi，分支 ZX466/pi。
 
 [Pi -> Claude] 2026-11-15 20:40 complete M-PERF3: a4bc6ba（分支 ZX466/pi）。
-- 新增 services/text_cleaning.py（零冲突新文件）：clean_output_text / clean_output_list。整段抹除 ANSI（OSC/CSI/裸 ESC，避免残留 "[31m"）、零宽与 bidi 控制符（U+202E）、C0/C1 控制符，折叠空白后截断。未复用 security_service.sanitize_for_prompt，因其做 NFKD 归一化并注入 "[已过滤]"，会改写菜名且不适合展示字段；按派单"复用它清洗思路"处理。
-- services/food_recognition_service.py：_clean_name 改走 clean_output_text；_clamp 增加 math.isfinite 守卫（此前 `max(nan, low)` 仍是 NaN，会被序列化成非法 JSON 的 NaN 直接崩前端），NaN/±Inf/非数值回默认值；confidence 默认回 DEFAULT_CONFIDENCE(0.5)。
-- services/report_ocr_service.py：_coerce 用 not math.isfinite 替代 math.isnan（显式挡 ±Inf，避免 round(inf) 溢出）；_clean_abnormal 改走 clean_output_list。
-- 手工验证（stub db + patch 视觉调用）：ESC[31m番茄U+202E炒蛋U+200B -> "番茄炒蛋"；ESC[2J ESC[H -> 清屏序列整段消失；OSC ]0;x -> 消失；nan/inf/-inf/"nan" 的 grams/calories/protein -> 0.0，confidence nan -> 0.5；输出 json.dumps(allow_nan=False) 不抛错，证明无 NaN/Inf 泄漏；OCR 的 nan/inf 8 字段 -> null，abnormal 里的 \x00/123/零宽项被丢弃，confidence nan -> 0.0。
-- 验收：ruff check services/ 全绿；ruff format 已统一；uv run python -m pytest -q -> 112 passed。
-- 待评审：cline。提示：SSE/food/OCR 均无自动化测试（测试归 Claude 域），本次只做手工验证。
+- 新增 services/text_cleaning.py：clean_output_text / clean_output_list（OSC/CSI/裸 ESC 整段抹除，零宽+bidi+C0/C1 过滤，空白折叠，截断）。
+- services/food_recognition_service.py：_clean_name 走 clean_output_text；_clamp 加 math.isfinite 守卫（NaN/±Inf 回默认值，confidence 回 DEFAULT_CONFIDENCE）。
+- services/report_ocr_service.py：_coerce 用 not math.isfinite 替代 math.isnan；_clean_abnormal 走 clean_output_list。
+- 手工验证：ESC[31m / ESC[2J / OSC 整段消失；U+202E、U+200B、NUL 均被剥离；nan/inf/"nan" -> 0.0（OCR 为 null）；json.dumps(allow_nan=False) 不抛错。
+- 验收：ruff 绿、ruff format 统一、uv run python -m pytest -q 112 passed（合 main 前基线，合后见下条）。
+- 待评审：cline。说明：SSE/food/OCR 无自动化测试（测试归 Claude 域），本次仅手工验证。
+
+[Pi -> Claude] 2026-11-15 20:55 progress: 已 merge main 到 ZX466/pi，冲突仅 .orca/talking.txt 与 .orca/talking-archive.md（业务代码零冲突）。处理：talking.txt 采用 main 精简版 + 本节追加；archive 采用本树版本并补入 main 独有的 M-DB1 派单/M-DB1 认领/M-LOGIC1 完成三段，无他人留言丢失。未推送（Agent 分支只留本地）。

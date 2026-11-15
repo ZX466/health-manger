@@ -30,7 +30,10 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
     )
 
     if not latest_record:
-        return []
+        # 没有生理记录时仍可能有心理维度的预警（量表危机/情绪低落）
+        cross = _cross_warnings(user_id, db, None)
+        _persist_warnings(user_id, db, cross)
+        return cross
 
     warnings = []
 
@@ -127,6 +130,22 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
                 }
             )
 
+    warnings.extend(_cross_warnings(user_id, db, latest_record))
+    _persist_warnings(user_id, db, warnings)
+    return warnings
+
+
+# ── 身心交叉预警（M-LOGIC1） ──
+# 睡眠债阈值：近 7 个有记录日累计少睡 10 小时以上（约每天少睡 1.5 小时）
+SLEEP_DEBT_WARN_HOURS = 10.0
+# 连续低落：近 7 天内至少 3 条打卡且均分 <= 2
+LOW_MOOD_AVG = 2.0
+LOW_MOOD_MIN_DAYS = 3
+LOW_MOOD_WINDOW_DAYS = 7
+
+
+def _persist_warnings(user_id: int, db, warnings: list[dict]) -> None:
+    """未读同类型预警去重后落库。"""
     for warning_data in warnings:
         existing_warning = (
             db.execute(
@@ -141,13 +160,101 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
         )
 
         if not existing_warning:
-            db_warning = models.HealthWarning(
-                user_id=user_id,
-                warning_type=warning_data["type"],
-                warning_level=warning_data["level"],
-                warning_content=warning_data["content"],
+            db.add(
+                models.HealthWarning(
+                    user_id=user_id,
+                    warning_type=warning_data["type"],
+                    warning_level=warning_data["level"],
+                    warning_content=warning_data["content"],
+                )
             )
-            db.add(db_warning)
 
     db.commit()
+
+
+def _format_crisis_resource(resource) -> str:
+    """把 `crisis_resources()` 的对象/字符串统一成可读文本。"""
+    if isinstance(resource, dict):
+        parts = [
+            str(resource[key]).strip()
+            for key in ("name", "phone", "description")
+            if resource.get(key)
+        ]
+        return " ".join(parts)
+    return str(resource).strip()
+
+
+def _crisis_hint() -> str:
+    """危机资源提示；safety_service 未就绪时降级为通用文案，保证预警不因缺依赖而丢失。"""
+    try:
+        from services.safety_service import crisis_resources
+
+        raw_resources = list(crisis_resources())
+    except ImportError:
+        raw_resources = []
+    resources = [text for text in map(_format_crisis_resource, raw_resources) if text]
+    if resources:
+        return "可联系：" + "；".join(resources)
+    return "请尽快联系身边可信任的人或专业心理援助热线 / 医疗机构。"
+
+
+def _bp_or_hr_elevated(record) -> list[str]:
+    reasons = []
+    systolic = record.blood_pressure_systolic
+    diastolic = record.blood_pressure_diastolic
+    if (systolic and systolic >= BP_SYSTOLIC_ELEVATED) or (
+        diastolic and diastolic >= BP_DIASTOLIC_ELEVATED
+    ):
+        reasons.append(f"血压 {systolic}/{diastolic}")
+    if record.heart_rate and record.heart_rate > HR_HIGH:
+        reasons.append(f"心率 {record.heart_rate}")
+    return reasons
+
+
+def _cross_warnings(user_id: int, db, latest_record) -> list[dict]:
+    """身心交叉预警：把心理维度（睡眠债/情绪/量表）与生理指标联动。"""
+    from services import mental_service
+
+    warnings: list[dict] = []
+    _, sleep_debt, _ = mental_service.sleep_stats(db, user_id)
+
+    # 1) 量表严肃模式：PHQ-9/GAD-7 危机或中重度以上 -> danger
+    if mental_service.is_serious_mode(db, user_id):
+        warnings.append(
+            {
+                "type": "心理状态需关注",
+                "level": "danger",
+                "content": "您近期的心理量表结果提示需要重点关注。"
+                "这不是诊断，但您不必独自承担，" + _crisis_hint(),
+            }
+        )
+
+    # 2) 睡眠债 + 血压/心率偏高：睡眠不足会推高血压和心率
+    if sleep_debt is not None and sleep_debt >= SLEEP_DEBT_WARN_HOURS and latest_record:
+        reasons = _bp_or_hr_elevated(latest_record)
+        if reasons:
+            warnings.append(
+                {
+                    "type": "睡眠不足叠加指标偏高",
+                    "level": "warning",
+                    "content": f"近 7 个记录日累计睡眠债约 {sleep_debt} 小时，"
+                    f"同时 {'、'.join(reasons)} 偏高。长期睡眠不足会加重心血管负担，"
+                    "建议优先补觉、规律作息，必要时咨询医生。",
+                }
+            )
+
+    # 3) 连续情绪低落
+    recent = mental_service.list_moods(db, user_id, LOW_MOOD_WINDOW_DAYS)
+    scores = [r.mood_score for r in recent if r.mood_score is not None]
+    if len(scores) >= LOW_MOOD_MIN_DAYS and sum(scores) / len(scores) <= LOW_MOOD_AVG:
+        warnings.append(
+            {
+                "type": "情绪持续低落",
+                "level": "warning",
+                "content": f"近 {LOW_MOOD_WINDOW_DAYS} 天内的情绪打卡均分偏低"
+                f"（{round(sum(scores) / len(scores), 1)}/5）。"
+                "可以试试做一次 PHQ-9 / GAD-7 自测，或和信任的人聊聊。",
+            }
+        )
+
     return warnings
