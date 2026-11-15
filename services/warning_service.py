@@ -172,14 +172,27 @@ def _persist_warnings(user_id: int, db, warnings: list[dict]) -> None:
     db.commit()
 
 
+def _format_crisis_resource(resource) -> str:
+    """把 `crisis_resources()` 的对象/字符串统一成可读文本。"""
+    if isinstance(resource, dict):
+        parts = [
+            str(resource[key]).strip()
+            for key in ("name", "phone", "description")
+            if resource.get(key)
+        ]
+        return " ".join(parts)
+    return str(resource).strip()
+
+
 def _crisis_hint() -> str:
     """危机资源提示；safety_service 未就绪时降级为通用文案，保证预警不因缺依赖而丢失。"""
     try:
         from services.safety_service import crisis_resources
 
-        resources = list(crisis_resources())
+        raw_resources = list(crisis_resources())
     except ImportError:
-        resources = []
+        raw_resources = []
+    resources = [text for text in map(_format_crisis_resource, raw_resources) if text]
     if resources:
         return "可联系：" + "；".join(resources)
     return "请尽快联系身边可信任的人或专业心理援助热线 / 医疗机构。"
