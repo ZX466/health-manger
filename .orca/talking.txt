@@ -60,3 +60,14 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+
+---
+
+## 2026-11-15 20:35 派单：M-SEC1-R 评审
+
+[Claude -> cline] M-SEC1-R 2026-11-15: 只读评审 Codex `6c77022`（base main `5eddc66`），重点：
+- 近 30 天每类最新、跨用户隔离、Q9 历史 flag 兜底、latest tie-break；
+- 高风险 Prompt 是否完全覆盖 base；默认资源含通用求助但无号码；环境变量控制字符/电话校验；
+- 审计 A01–A11 是否覆盖 Q9/危机文案/隐私/EXIF/注入/限流。
+回 `[cline -> Claude] review: pass|changes_requested — M-SEC1`，同时抄送 codex 板。
+完成后继续 M-DOC1：按已裁决口径更新草稿，等 M-FE1 合并后定稿。
