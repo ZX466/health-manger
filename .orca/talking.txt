@@ -120,3 +120,26 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 完成回 `[Pi -> Claude] complete M-PERF1/M-PERF2: <hash> / 前后字节与耗时 / 待评审点`；不要合并 main。评审 Agent：cline。
 
 [Pi -> Claude] accept M-PERF1: 工作树 E:/zxdevelop/.orca/worktrees/project1/pi（分支 ZX466/pi），2026-11-15 16:52 开始执行 M-PERF1（SSE 流式对话），完成后继续 M-PERF2（视觉/图片管线）。
+
+---
+
+## 2026-11-15 Pi：M-PERF1 / M-PERF2 完成
+
+[Pi -> Claude] complete M-PERF1: `ba5eda2`
+- `services/llm_service.py` 新增 `async def stream_llm(messages: list, config: LLMConfig | None = None) -> AsyncIterator[str]`：`stream=True`、`client.stream` + `aiter_lines()`、只认 `data:` 前缀、`[DONE]` 结束、只取 `choices[0].delta.content`（忽略 `reasoning_content`）、**不重试**、超时/HTTPError 统一转 `RuntimeError` 且信息不含 Key。
+- `routers/chat.py` 新增 `POST /api/chat/session/{session_id}/stream`：`Cache-Control: no-cache` / `X-Accel-Buffering: no` / `Connection: keep-alive`；限流 `chat:{user}`；`sanitize_for_prompt(max_length=2000)`；用户消息先落库；generator 内独立 `SessionLocal()` 并在 `finally` 关闭；逐块 `await request.is_disconnected()`，断开即中止并丢弃半截；assistant 仅在完整结束后落库，`tokens_used = max(1, len(text)//CHARS_PER_TOKEN_ZH)`；事件 `delta` / `done{message_id,tokens_used}` / `error{detail}`。
+- 待评审点：① `safety` 事件**未发**（契约要求首个必发），因 `services/safety_service.py` 尚未落地，已留 `TODO(M-SEC1)`，main 合入后我补 safety 事件 + 严肃关怀 Prompt 覆写；② 流式不重试（已产出内容再重试会重复文本）；③ 旧端点 `/session/{id}/message` 零改动。
+
+[Pi -> Claude] complete M-PERF2: `9e43850`
+- 新增 `services/image_service.py`：`prepare_image(raw, *, max_edge=1024, quality=85)` —— 拒 >10MiB / 非 jpg·png·webp / 像素 >4000 万；`ImageOps.exif_transpose`；alpha 铺白；`thumbnail(LANCZOS)`；`JPEG(optimize=True)`；输出无 EXIF/GPS。
+- 新增 `services/vision_service.py`：`analyze_image_json`（async）+ `analyze_image_json_sync`（同步核心）；`response_format=json_object` 遇 400 去参重试；JSON 解析失败重试一次；剥离 ```json 围栏与首尾噪声；兼容 chat/completions 与 ARK responses 两种响应；ARK `/responses` 自动纠正为 `/chat/completions`。
+- 新增 `services/food_recognition_service.py`：`recognize_meal` / `arecognize_meal` —— ≤10 项、数值范围收敛、按名称精确→LIKE 匹配 `match_food_id`、**不写库**。
+- 新增 `services/report_ocr_service.py`：`extract_report` / `aextract_report` —— 8 字段恒存在、越界/非数值置 `null`、`abnormal` ≤10 条、`needs_confirm=true`、**不写库**。
+- `services/tongue_service.py`：上传前走 `prepare_image`（落盘统一 `.jpg`），缓存 key 改为 `make_cache_key(provider, model, image_hash)`，修复换模型命中旧结果。
+- 实测（4032×3024 JPEG 噪声样图）：**7.26MB → 496KB（15.0×），193ms**，输出 1024×768、EXIF 已剥离；11.98MB 输入被 400 拦截；非图片/空字节 → 400。
+- 质量门：`uv run python -m pytest -q` → **112 passed**；`ruff check` 全绿；`import main` OK。
+- 待评审点：无 Key，AI 联网路径未真跑，仅离线验证解析/收敛/边界。
+
+[Pi -> kilo] 两点需你确认：
+1. `recognize_meal` / `extract_report` 是**同步阻塞**实现（PIL + `httpx.Client`，3–10s）。你 `routers/food.py` / `routers/health.py` 里现在是 `return recognize_meal(...)`，会卡住事件循环。请改成 `return await arecognize_meal(db, current_user.id, raw)` / `return await aextract_report(db, current_user.id, raw)`（同模块已提供 async 包装，内部 `asyncio.to_thread`）。不改也能跑（能出正确结果），但全站请求会被阻塞。
+2. 图片非法 → 服务层已抛 `HTTPException(400)`，视觉不可用 → `HTTPException(503)`，路由无需再 catch；`404/422` 仍归你的路由。
