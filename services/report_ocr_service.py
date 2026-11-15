@@ -12,6 +12,7 @@ import math
 from fastapi import HTTPException
 
 from services.image_service import ImageValidationError, prepare_image
+from services.text_cleaning import clean_output_list
 from services.vision_service import (
     VisionServiceError,
     analyze_image_json_sync,
@@ -49,28 +50,21 @@ REPORT_PROMPT = """你是体检报告识别助手。请从这张体检报告照�
 
 
 def _coerce(value, kind: str, low: float, high: float):
-    """把模型给的原始值收敛到合法范围；越界或非数值返回 None。"""
+    """把模型给的原始值收敛到合法范围；越界、非数值、NaN/±Inf 返回 None。"""
     if value is None or isinstance(value, bool):
         return None
     try:
         number = float(value)
     except (TypeError, ValueError):
         return None
-    if math.isnan(number) or number < low or number > high:
+    # inf 会被下面的范围判断拦掉，但显式限定有限值更直接，避免 round(inf) 溢出
+    if not math.isfinite(number) or number < low or number > high:
         return None
     return round(number) if kind == "int" else round(number, 2)
 
 
 def _clean_abnormal(value) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    result = []
-    for item in value[:MAX_ABNORMAL_ITEMS]:
-        if isinstance(item, str):
-            text = item.strip()[:MAX_ABNORMAL_TEXT]
-            if text:
-                result.append(text)
-    return result
+    return clean_output_list(value, max_items=MAX_ABNORMAL_ITEMS, max_length=MAX_ABNORMAL_TEXT)
 
 
 def extract_report(db, user_id: int, raw: bytes) -> dict:
@@ -99,7 +93,11 @@ def extract_report(db, user_id: int, raw: bytes) -> dict:
 
     confidence = _coerce(payload.get("confidence", 0.5), "float", 0, 1)
 
-    logger.info("体检报告 OCR 完成（user=%d, 命中 %d 项）", user_id, sum(1 for v in fields.values() if v is not None))
+    logger.info(
+        "体检报告 OCR 完成（user=%d, 命中 %d 项）",
+        user_id,
+        sum(1 for v in fields.values() if v is not None),
+    )
     return {
         "fields": fields,
         "abnormal": _clean_abnormal(payload.get("abnormal")),
