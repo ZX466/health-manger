@@ -147,3 +147,43 @@ F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部�
 - 交付：`services/mental_service.py`（打卡 upsert 含并发 IntegrityError 回退、trend 连续日期补 null、睡眠债、量表落库、history、summary、`is_serious_mode`）；`services/warning_service.py` 抽出 `_persist_warnings` 并追加交叉预警（量表危机/中重度→`心理状态需关注` danger；睡眠债≥10h 且血压/心率偏高→`睡眠不足叠加指标偏高`；近 7 天≥3 条打卡均分≤2→`情绪持续低落`）；无生理记录时也会产生心理预警；`services/scale_scoring.py` 新增 `risk_label`。
 - 口径：睡眠统计只看近 14 天内记录；严肃模式 = 各量表“最新一次”在 30 天内且 crisis_flag 或 risk ∈ {moderately_severe, severe}，更新的低风险测评会解除。
 - 待评审点：① 睡眠债预警阈值 10h、低落均分 ≤2 为经验值，可由评审调整；② `_crisis_hint` 在 `safety_service` 缺失/无配置时降级为通用文案，不编造号码；③ 路由 `submit_scale` 仍自行调用 `score()` 后再 `save_assessment` 重复评分一次（kilo 文件，功能无误，可后续收敛）。
+
+---
+
+## 2026-11-15 新派单：M-SEC1 心理安全兜底与合规
+
+[Claude -> Codex] M-SEC1 2026-11-15: 高风险识别 + 强制严肃 Prompt + 危机资源 + 隐私审计。先追加 `[Codex -> Claude] accept M-SEC1:`。
+依赖 M-DB1 的 `ScaleAssessment` / `MentalRecord`；纯函数与 Prompt 可先写。
+文件所有权：`services/safety_service.py`（新建）、`.orca/security/mental-safety-review.md`（新建）、`tests/test_safety_service.py`（安全回归测试，Claude 复核）；不要动 llm_service / routers / frontend。
+
+### 对外契约（Pi、kilo、Claude 都按此调用）
+```python
+@dataclass(frozen=True)
+class RiskState:
+    level: Literal["normal", "elevated", "high"]
+    reasons: tuple[str, ...]
+    crisis: bool
+
+def assess_user_risk(db: Session, user_id: int) -> RiskState
+def build_system_prompt(base: str, persona_style: str, risk: RiskState) -> str
+def crisis_resources() -> list[dict[str, str]]   # [{name, phone?, description}]
+```
+### 判定规则（近 30 天，取每类最新一条）
+- `high` + `crisis=True`：最新 PHQ-9 `crisis_flag` 或总分 ≥20；最新 GAD-7 ≥15；最新 `HealthAnalysis.health_rating == "危险"`。
+- `elevated`：最新 PHQ-9 10–19；GAD-7 10–14；健康评级 `较差`；存在未读 `danger` 预警。
+- 否则 `normal`；`reasons` 写可审计的中文短句（不含用户原文）。
+- 无数据时 `normal`，不得因缺数据误报。
+
+### Prompt 规则
+- `humorous`：允许轻松、懂梗，但禁止嘲笑、夸大、诊断、给药；不替代医生。
+- `clinical`：专业、克制、可执行。
+- `high`/`crisis` 强制覆写：禁用热梗/玩笑/表情；温和严肃；明确 AI 不能诊断治疗；建议尽快联系学校心理咨询中心/当地精神卫生中心；紧急危险拨打 120/110；不追问自伤方式与细节；不承诺绝对保密。
+- 资源只读环境变量 `MENTAL_HOTLINE`、`CAMPUS_COUNSELING`，为空就返回“请联系学校心理咨询中心/当地精神卫生中心”，**不得编造热线号码**。
+
+### 合规审计（写入 `.orca/security/mental-safety-review.md`）
+覆盖：Q9 阳性处置、危机文案、量表免责声明、心理数据隐私与保留、图片 EXIF/GPS 剥离（联动 Pi）、上传鉴权与大小限制、OCR/识餐 Prompt 注入（模型输出只当数据，清洗控制字符）、限流、AI 结论不得替代诊断。每条给“现状/风险/整改建议/负责任务”。
+
+### 验收
+- `tests/test_safety_service.py` 覆盖：无数据 normal、PHQ-9 Q9>0 强制 high/crisis、GAD-7 15 high、评级危险 high、humorous 正常时保留人设、high 时不含梗且含求助建议、资源为空不出现号码。
+- 回归 `uv run python -m pytest -q` 112+ 通过；`uv run python -c "import main"`。
+完成回 `[Codex -> Claude] complete M-SEC1: <hash> / 测试数 / 审计结论`；不要合并 main。评审 Agent：cline（你同时是 opencode M-DB1 的评审）。
