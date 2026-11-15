@@ -1,5 +1,12 @@
 <template>
-  <aside id="app-sidebar" class="sidebar" :class="{ open: mobileOpen }" aria-label="主导航">
+  <aside
+    id="app-sidebar"
+    class="sidebar"
+    :class="{ open: mobileOpen }"
+    :aria-hidden="isMobile && !mobileOpen ? 'true' : null"
+    aria-label="主导航"
+    tabindex="-1"
+  >
     <router-link to="/dashboard" class="sidebar-logo">
       <span class="logo-icon">慧</span>
       <span class="logo-text">慧康</span>
@@ -89,7 +96,8 @@ const ICONS = {
 export default {
   name: 'AppSidebar',
   props: {
-    mobileOpen: { type: Boolean, default: false }
+    mobileOpen: { type: Boolean, default: false },
+    isMobile: { type: Boolean, default: false }
   },
   emits: ['navigate'],
   setup() {

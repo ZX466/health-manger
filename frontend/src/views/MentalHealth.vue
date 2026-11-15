@@ -39,7 +39,7 @@
         <h2>先把玩梗放一边</h2>
         <p>最近的状态值得被认真对待。木鱼和玩梗先收起来，先照顾自己，必要时联系学校心理咨询中心。</p>
       </div>
-      <SafetyNotice serious context="general" compact />
+      <SafetyNotice serious context="general" compact :resources="localCrisisResources" />
     </section>
 
     <div v-if="loading" class="mental-grid" aria-busy="true">
@@ -160,11 +160,14 @@ const history = ref([])
 const activeScale = ref(null)
 const scaleSection = ref(null)
 const toast = ref('')
+const localCrisis = ref(false)
+const localCrisisResources = ref([])
 const errors = reactive({ summary: '', trend: '', mood: '', scales: '', history: '' })
 
 let toastTimer = null
 
-const seriousMode = computed(() => !!summary.value?.serious_mode)
+// 一旦看到过危机结果或 serious_mode，本次页面会话不再因刷新失败而降级。
+const seriousMode = computed(() => localCrisis.value || !!summary.value?.serious_mode)
 const loadError = computed(() => Object.values(errors).some(Boolean))
 
 const displayMood = computed(() => {
@@ -251,6 +254,7 @@ function errorText (e, fallback) {
 async function loadSummary () {
   const { data } = await api.getMentalSummary()
   summary.value = data
+  if (data?.serious_mode) localCrisis.value = true
 }
 
 async function loadTrend () {
@@ -317,6 +321,11 @@ async function onMoodSaved (record) {
 }
 
 async function onScaleSubmitted (result) {
+  if (result?.crisis_flag) {
+    // 先把危机状态和本次返回的资源锁在本地；刷新失败也不能退回玩梗模式。
+    localCrisis.value = true
+    localCrisisResources.value = Array.isArray(result.resources) ? result.resources : []
+  }
   showToast(result?.crisis_flag ? '结果已保存，请先看看下面的支持信息' : '测评结果已保存')
   await Promise.allSettled([loadSummary(), loadHistory()])
 }

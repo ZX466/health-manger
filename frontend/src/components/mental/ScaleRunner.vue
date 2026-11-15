@@ -93,7 +93,7 @@
           <strong>{{ result.score }}<small>/{{ result.max_score }}</small></strong>
         </div>
         <div class="risk-block">
-          <span class="risk-pill" :class="`risk-${result.risk_level}`">{{ result.label }}</span>
+          <span class="risk-pill" :class="resultRiskClass">{{ resultLabel }}</span>
           <p>{{ riskAdvice }}</p>
         </div>
       </div>
@@ -146,10 +146,20 @@ const total = computed(() => props.scale?.questions?.length || 0)
 const answeredCount = computed(() => answers.value.filter(value => value != null).length)
 const progressPercent = computed(() => total.value ? ((current.value + 1) / total.value) * 100 : 0)
 const needsSupport = computed(() =>
+  result.value?.crisis_flag ||
   ['moderate', 'moderately_severe', 'severe'].includes(result.value?.risk_level)
+)
+const resultLabel = computed(() =>
+  result.value?.crisis_flag ? '需要立即关注' : (result.value?.label || '已记录')
+)
+const resultRiskClass = computed(() =>
+  result.value?.crisis_flag ? 'risk-severe' : `risk-${result.value?.risk_level || 'minimal'}`
 )
 
 const riskAdvice = computed(() => {
+  if (result.value?.crisis_flag) {
+    return '你的回答里提到了伤害自己的念头。请先不要独处，联系身边信任的人、学校心理咨询中心，或拨打 120 / 110。你不需要一个人扛。'
+  }
   const level = result.value?.risk_level
   if (level === 'minimal') return '目前没有明显症状。继续保持规律作息；如果之后状态变化，可以再测一次。'
   if (level === 'mild') return '有一些轻度困扰。先从睡眠、运动和和人聊聊开始；如果持续两周以上，建议预约咨询。'

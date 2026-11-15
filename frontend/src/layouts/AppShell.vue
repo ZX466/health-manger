@@ -1,6 +1,11 @@
 <template>
   <div class="app-shell">
-    <AppSidebar :mobileOpen="mobileOpen" @navigate="closeMobile" />
+    <AppSidebar
+      ref="sidebar"
+      :mobile-open="mobileOpen"
+      :is-mobile="isMobile"
+      @navigate="closeMobile"
+    />
     <div
       class="sidebar-backdrop"
       :class="{ visible: mobileOpen }"
@@ -13,7 +18,7 @@
         :mobile-open="mobileOpen"
         @toggle-mobile-menu="toggleMobile"
       />
-      <div class="content">
+      <div class="content" :inert="mobileOpen">
         <router-view />
       </div>
     </main>
@@ -29,7 +34,9 @@ export default {
   components: { AppSidebar, AppTopbar },
   data() {
     return {
-      mobileOpen: false
+      mobileOpen: false,
+      isMobile: false,
+      lastFocused: null
     }
   },
   computed: {
@@ -43,9 +50,14 @@ export default {
     },
     mobileOpen(value) {
       this.syncBodyLock(value)
+      if (value) {
+        this.lastFocused = document.activeElement
+        this.$nextTick(() => this.focusFirstNav())
+      }
     }
   },
   mounted() {
+    this.syncViewport()
     window.addEventListener('keydown', this.onKeydown)
     window.addEventListener('resize', this.onResize)
   },
@@ -56,19 +68,60 @@ export default {
   },
   methods: {
     toggleMobile() {
-      this.mobileOpen = !this.mobileOpen
+      if (!this.isMobile) return
+      if (this.mobileOpen) this.closeMobile()
+      else this.mobileOpen = true
     },
     closeMobile() {
+      if (!this.mobileOpen) return
+      // 先把焦点移出即将 aria-hidden 的抽屉，再关闭，避免读屏焦点被困。
+      const target = this.lastFocused
+      this.lastFocused = null
+      if (target?.isConnected && typeof target.focus === 'function') target.focus()
       this.mobileOpen = false
     },
     onKeydown(event) {
-      if (event.key === 'Escape' && this.mobileOpen) this.closeMobile()
+      if (event.key === 'Escape' && this.mobileOpen) {
+        event.preventDefault()
+        this.closeMobile()
+        return
+      }
+      if (event.key !== 'Tab' || !this.mobileOpen || !this.isMobile) return
+
+      const focusables = this.navFocusables()
+      if (!focusables.length) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     },
     onResize() {
-      if (window.innerWidth > 768 && this.mobileOpen) this.closeMobile()
+      this.syncViewport()
+      if (!this.isMobile && this.mobileOpen) this.closeMobile()
+    },
+    syncViewport() {
+      this.isMobile = window.innerWidth <= 768
+      if (!this.isMobile) this.syncBodyLock(false)
     },
     syncBodyLock(open) {
-      document.body.style.overflow = open && window.innerWidth <= 768 ? 'hidden' : ''
+      document.body.style.overflow = open && this.isMobile ? 'hidden' : ''
+    },
+    navFocusables() {
+      const root = this.$refs.sidebar?.$el
+      if (!root) return []
+      return Array.from(
+        root.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
+      ).filter(element => element.getClientRects().length > 0)
+    },
+    focusFirstNav() {
+      const [first] = this.navFocusables()
+      if (first) first.focus()
+      else this.$refs.sidebar?.$el?.focus?.()
     }
   }
 }

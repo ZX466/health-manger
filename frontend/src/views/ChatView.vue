@@ -5,7 +5,7 @@
       <aside class="chat-side card" aria-label="会话列表">
         <div class="section-head">
           <h2>会话</h2>
-          <button class="btn btn--primary btn-sm" type="button" @click="createSession">＋ 新建</button>
+          <button class="btn btn--primary btn-sm" type="button" :disabled="creating" @click="createSession">＋ 新建</button>
         </div>
         <ul class="session-list">
           <li v-for="s in sessions" :key="s.id">
@@ -38,6 +38,7 @@
             <button
               class="btn btn--primary btn-sm chat-new-mobile"
               type="button"
+              :disabled="creating"
               @click="createSession"
             >
               ＋ 新建
@@ -120,7 +121,7 @@
             v-model="input"
             class="field-input"
             :placeholder="activeId ? '输入你想说的…' : '直接说点什么，发送时自动新建会话'"
-            :disabled="sending"
+            :disabled="sending || creating"
             maxlength="2000"
             aria-label="消息内容"
           />
@@ -136,7 +137,7 @@
             v-else
             class="btn btn--primary"
             type="submit"
-            :disabled="!input.trim()"
+            :disabled="!input.trim() || creating"
           >
             发送
           </button>
@@ -159,6 +160,7 @@ const activeId = ref(null)
 const messages = ref([])
 const input = ref('')
 const sending = ref(false)
+const creating = ref(false)
 const notice = ref('')
 const showHelp = ref(false)
 const seriousMode = ref(false)
@@ -168,6 +170,7 @@ const currentSafety = ref({ level: 'normal', crisis: false, resources: [] })
 let controller = null
 let loadToken = 0
 let streamToken = 0
+let messageSeq = 0
 
 const quickPrompts = computed(() => seriousMode.value
   ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
@@ -231,6 +234,8 @@ function detachStream () {
 }
 
 async function createSession () {
+  if (creating.value) return
+  creating.value = true
   if (sending.value) detachStream()
   loadToken += 1
   try {
@@ -245,6 +250,8 @@ async function createSession () {
     scrollBottom(true)
   } catch (e) {
     notice.value = '创建会话失败，请稍后重试'
+  } finally {
+    creating.value = false
   }
 }
 
@@ -288,27 +295,33 @@ function scrollBottom (force = false) {
 
 async function send () {
   const content = input.value.trim()
-  if (!content || sending.value) return
+  if (!content || sending.value || creating.value) return
 
   if (!activeId.value) {
     await createSession()
     if (!activeId.value) return
   }
 
+  // 发送会接管当前会话：作废尚未返回的历史请求，避免它覆盖刚发出的消息。
+  loadToken += 1
   input.value = ''
   notice.value = ''
   const token = ++streamToken
+  const replyId = `local-${++messageSeq}`
   messages.value.push({ role: 'user', content })
-  messages.value.push({ role: 'assistant', content: '', streaming: true })
+  messages.value.push({ role: 'assistant', content: '', streaming: true, id: replyId })
   sending.value = true
   // 不在每次发送时清空安全状态：上一轮的高风险/危机提示要保留到新事件覆盖。
-  controller = new AbortController()
+  const requestController = new AbortController()
+  controller = requestController
   await nextTick()
   scrollBottom(true)
 
+  const findReply = () => messages.value.find(m => m.id === replyId)
+
   try {
     await api.streamChatMessage(activeId.value, content, {
-      signal: controller.signal,
+      signal: requestController.signal,
       onEvent: (event, data) => {
         if (token !== streamToken) return
         if (event === 'safety') {
@@ -319,20 +332,22 @@ async function send () {
           }
           if (data?.crisis) showHelp.value = true
         } else if (event === 'delta') {
-          const last = messages.value[messages.value.length - 1]
-          if (last?.role === 'assistant') last.content += data?.content || ''
-          scrollBottom()
+          const reply = findReply()
+          if (reply) {
+            reply.content += data?.content || ''
+            scrollBottom()
+          }
         } else if (event === 'done') {
-          const last = messages.value[messages.value.length - 1]
-          if (last?.role === 'assistant') {
-            last.streaming = false
-            if (!last.content) last.content = '（没有收到内容，再试一次吧）'
+          const reply = findReply()
+          if (reply) {
+            reply.streaming = false
+            if (!reply.content) reply.content = '（没有收到内容，再试一次吧）'
           }
         } else if (event === 'error') {
-          const last = messages.value[messages.value.length - 1]
-          if (last?.role === 'assistant') {
-            last.streaming = false
-            last.content = data?.detail || 'AI 响应失败，请稍后重试'
+          const reply = findReply()
+          if (reply) {
+            reply.streaming = false
+            reply.content = data?.detail || 'AI 响应失败，请稍后重试'
           }
           notice.value = data?.detail || 'AI 响应失败，请稍后重试'
         }
@@ -340,26 +355,33 @@ async function send () {
     })
   } catch (e) {
     if (token !== streamToken) return
-    const last = messages.value[messages.value.length - 1]
+    const reply = findReply()
     if (e?.name === 'AbortError') {
-      if (last?.role === 'assistant') {
-        last.streaming = false
-        if (last.content) last.content += '\n\n（已停止生成，本次回复未保存）'
-        else last.content = '（已停止生成，本次回复未保存）'
+      if (reply) {
+        reply.streaming = false
+        if (reply.content) reply.content += '\n\n（已停止生成，本次回复未保存）'
+        else reply.content = '（已停止生成，本次回复未保存）'
       }
+    } else if (e?.code === 'STREAM_INCOMPLETE' || e?.name === 'StreamIncompleteError') {
+      if (reply) {
+        reply.streaming = false
+        if (reply.content) reply.content += '\n\n（连接中断，本次回复未保存）'
+        else reply.content = '连接中断，未收到完整回复，请再试一次。'
+      }
+      notice.value = '连接中断，未收到完整回复'
     } else {
-      if (last?.role === 'assistant') {
-        last.streaming = false
-        last.content = e?.detail || e?.message || '发送失败，请稍后重试'
+      if (reply) {
+        reply.streaming = false
+        reply.content = e?.detail || e?.message || '发送失败，请稍后重试'
       }
       notice.value = e?.detail || e?.message || '发送失败，请稍后重试'
     }
   } finally {
     if (token === streamToken) {
-      const last = messages.value[messages.value.length - 1]
-      if (last?.role === 'assistant') last.streaming = false
+      const reply = findReply()
+      if (reply) reply.streaming = false
       sending.value = false
-      controller = null
+      if (controller === requestController) controller = null
       await nextTick()
       scrollBottom()
     }

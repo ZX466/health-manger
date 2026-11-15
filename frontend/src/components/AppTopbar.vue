@@ -4,7 +4,7 @@
       <button
         class="mobile-menu-btn topbar-btn"
         type="button"
-        aria-label="打开导航菜单"
+        :aria-label="mobileOpen ? '关闭导航菜单' : '打开导航菜单'"
         aria-controls="app-sidebar"
         :aria-expanded="mobileOpen"
         @click="$emit('toggle-mobile-menu')"

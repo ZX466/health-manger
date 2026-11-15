@@ -44,6 +44,7 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
   let buffer = ''
   let eventName = 'message'
   let dataLines = []
+  let sawTerminal = false
 
   const dispatch = () => {
     if (!dataLines.length) {
@@ -60,6 +61,7 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
     } catch (e) {
       // 非 JSON 的 data 也交给调用方；后端当前全部是 JSON。
     }
+    if (name === 'done' || name === 'error') sawTerminal = true
     if (typeof onEvent === 'function') onEvent(name, data)
   }
 
@@ -89,4 +91,11 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
   }
   processLines(decoder.decode(), true)
   dispatch()
+
+  if (!sawTerminal) {
+    const error = new Error('连接中断，未收到完整回复')
+    error.name = 'StreamIncompleteError'
+    error.code = 'STREAM_INCOMPLETE'
+    throw error
+  }
 }
