@@ -394,7 +394,7 @@ class AIConfigUpdate(BaseModel):
     vision_base_url: str | None = Field(None, max_length=500)
     vision_api_key: str | None = Field(None, min_length=1, max_length=500)
     # 对话风格（可选：缺省 None 表示保持已存值）
-    persona_style: Literal["humorous", "warm", "professional", "concise"] | None = None
+    persona_style: Literal["humorous", "clinical"] | None = None
 
 
 class AIConfigResponse(BaseModel):
@@ -504,6 +504,14 @@ class ScaleSubmitRequest(BaseModel):
     answers: list[int] = Field(..., min_length=1, max_length=60)
 
 
+class CrisisResource(BaseModel):
+    """危机支持资源（热线/校心理中心）；phone 为空表示只提供线下渠道。"""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    phone: str | None = Field(None, max_length=40)
+    description: str = Field("", max_length=300)
+
+
 class ScaleSubmitResponse(BaseModel):
     id: int | None = None
     scale_type: str
@@ -512,7 +520,7 @@ class ScaleSubmitResponse(BaseModel):
     risk_level: str
     label: str
     crisis_flag: bool
-    resources: list[str] = Field(default_factory=list)
+    resources: list[CrisisResource] = Field(default_factory=list)
 
 
 class ScaleSummaryResponse(BaseModel):

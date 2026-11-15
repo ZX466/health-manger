@@ -387,6 +387,7 @@ def get_ai_config(
         vision_base_url=cfg.vision_base_url,
         vision_api_key_masked=vision_masked,
         has_vision_api_key=bool(cfg.vision_api_key_encrypted),
+        persona_style=cfg.persona_style or "humorous",
     )
 
 
@@ -396,7 +397,7 @@ def update_ai_config(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """保存用户 AI 配置（聊天 + 视觉；api_key 为空则保留原值）。"""
+    """保存用户 AI 配置（聊天 + 视觉 + 对话风格；api_key 为空则保留原值）。"""
     cfg = save_config(
         db,
         current_user.id,
@@ -408,6 +409,7 @@ def update_ai_config(
         vision_model=payload.vision_model,
         vision_base_url=payload.vision_base_url,
         vision_api_key=payload.vision_api_key,
+        persona_style=payload.persona_style,
     )
     masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
     vision_masked = (
@@ -426,6 +428,7 @@ def update_ai_config(
         vision_base_url=cfg.vision_base_url,
         vision_api_key_masked=vision_masked,
         has_vision_api_key=bool(cfg.vision_api_key_encrypted),
+        persona_style=cfg.persona_style or "humorous",
     )
 
 
