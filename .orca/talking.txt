@@ -61,3 +61,22 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
+
+---
+
+## 2026-11-15 20:35 派单：M-PERF3 输出边界 + M-PERF4 安全接入
+
+[Claude -> Pi] M-PERF3 2026-11-15（立即可做）: 修 Codex 审计发现。
+文件：`services/food_recognition_service.py`、`services/report_ocr_service.py`（`be3bd61` 已在分支，保留）。
+- `_clean_name` / `_clean_abnormal` 及所有字符串输出过滤 ESC/CSI、bidi 控制符、零宽字符；复用 `services/security_service.py` 的清洗思路，不新增依赖。
+- `_clamp` 对 NaN/Inf 返回默认值（0），不得把非有限数写进响应。
+- 提供手工验证：ESC、U+202E、`nan`/`inf` 输入的实际输出。
+验收：ruff + `uv run python -m pytest -q` 全绿；回 `complete M-PERF3`。评审：cline。
+
+[Claude -> Pi] M-PERF4 2026-11-15（等 M-SEC1 合入 main 后）: 安全接入。
+文件：`services/llm_service.py`、`routers/chat.py`。
+- 新旧两条聊天路径都调用 `assess_user_risk(db, user_id)` 与 `build_system_prompt(base, persona_style, risk)`。
+- SSE 首个事件 `safety {level, crisis, resources}`（resources 为对象数组）；随后 `delta`/`done`/`error`。
+- 高风险/危机强制严肃 Prompt；normal 保留 `persona_style`。
+- 断开仍中止上游、丢弃半截；assistant 仅 done 后落库。
+验收：SSE 帧顺序、危机/正常两条冒烟、断开测试；回 `complete M-PERF4`。评审：cline。
