@@ -35,7 +35,7 @@
         :href="resource.phone ? `tel:${resource.phone}` : undefined"
       >
         <span class="safety-card-label">{{ resource.name }}</span>
-        <strong>{{ resource.phone || '校内资源' }}</strong>
+        <strong>{{ resource.phone || resourceFallback(resource) }}</strong>
         <span>{{ resource.description || '以学校公布信息为准' }}</span>
       </a>
       <div v-if="!hasSchoolResource" class="safety-card safety-card--school">
@@ -90,6 +90,10 @@ const validResources = computed(() => {
 const hasSchoolResource = computed(() =>
   validResources.value.some(r => String(r.name).includes('学校心理咨询'))
 )
+
+function resourceFallback (resource) {
+  return String(resource?.name || '').includes('学校心理咨询') ? '校内资源' : '电话未配置'
+}
 
 const eyebrow = computed(() => ({
   crisis: 'Crisis support',
