@@ -42,3 +42,46 @@
 ## 已关闭（过程记录已删，考古走 `git log -- .orca/talking.txt`）
 
 F-N1/F-N2/F-N3 · S-N1 · DB-N1 · I-N1 · P-N1/P-N2 · D-N1/D-N2 —— 全部收口，无遗留项。
+
+---
+
+## 2026-11-15 新派单：M-API1 心理/识别接口契约与路由
+
+[Claude -> kilo] M-API1 2026-11-15: 新接口契约 + schemas + 路由。先追加 `[kilo -> Claude] accept M-API1:` 再开工。
+依赖 M-DB1（models 落地后 `git rebase main` 再写路由）；`schemas.py` 与 `.orca/contracts/api-v2.md` 可立即开始。
+文件所有权：`schemas.py`、`routers/mental.py`（新建）、`routers/food.py`、`routers/health.py`、`main.py`、`.orca/contracts/api-v2.md`（新建）；不要动 models / services / frontend / tests。
+
+### 心理接口（`routers/mental.py`，prefix `/api/mental`）
+业务逻辑一律调 `services.mental_service`（Claude 的 M-LOGIC1 提供，签名如下），路由只做校验/鉴权/限流：
+```python
+def upsert_mood(db, user_id, *, mood_score, stress_tags, sleep_hours, note) -> MentalRecord
+def list_moods(db, user_id, days=30) -> list[MentalRecord]
+def trend(db, user_id, days=30) -> dict
+def summary(db, user_id) -> dict
+def save_assessment(db, user_id, scale_type, answers) -> tuple[ScaleAssessment, ScoreResult]
+def assessment_history(db, user_id, scale_type, limit=20) -> list[ScaleAssessment]
+```
+- `POST /api/mental/mood`：body `{mood_score:1-5, stress_tags:[str]≤5 每项≤12字, sleep_hours:0-16|null, note:≤500|null}`；按 (user_id, 今天) upsert；返回记录。
+- `GET /api/mental/mood?days=30`；`GET /api/mental/trend?days=30` → `{dates[], mood_score[], sleep_hours[]}`。
+- `GET /api/mental/scales`：从 `services.scale_scoring.SCALES` 生成 `[{key,name,questions,options,max_score}]`（`ScaleDef.to_dict()`）。
+- `POST /api/mental/scales/{scale_type}/submit`：body `{answers:[int]}`；长度/0–3 由 `score()` 校验；`phq9`/`gad7`，未知类型 400；每天每类限 3 次（`check_rate_limit(f"scale:{user}:{type}", 3, 86400)`）；返回 `{score,max_score,risk_level,label,crisis_flag,resources}`，`resources` 取 `services.safety_service.crisis_resources()`（Codex M-SEC1）。
+- `GET /api/mental/scales/history?scale_type=&limit=20`。
+- `GET /api/mental/summary` → `{latest_mood, sleep_avg_7d, sleep_debt_7d, latest_phq9, latest_gad7, serious_mode}`。
+
+### 餐食/报告接口
+- `POST /api/food/recognize`：multipart `file`（≤10MB，jpg/png/webp）→ `{items:[{name,grams,calories,protein,fat,carbs,confidence,match_food_id|null}],needs_confirm:true}`；只读，不写库；调 `services.food_recognition_service.recognize_meal(db,user_id,raw)`（Pi M-PERF2）。
+- `POST /api/food/custom`：`{name:1-50字, calories_per_100g, protein_per_100g?, fat_per_100g?, carbs_per_100g?}` → 创建 `Food`，`description` 固定前缀 `[AI估算]`；供用户确认后落餐记录。
+- `POST /api/health/reports/ocr`：multipart 图片 → `{fields:{height,weight,blood_pressure_systolic,blood_pressure_diastolic,heart_rate,temperature,vision_left,vision_right},abnormal:[str],confidence,needs_confirm:true}`；只回草稿，不写 `HealthRecord`；调 `services.report_ocr_service.extract_report(db,user_id,raw)`（Pi）。
+
+### 流式对话契约（只写文档，实现在 Pi M-PERF1）
+`POST /api/chat/session/{id}/stream`，body `{message}`；`text/event-stream`：
+`event: safety` `{level,crisis,resources}` → `event: delta` `{content}` → `event: done` `{message_id,tokens_used}` / `event: error` `{detail}`。
+响应头 `Cache-Control: no-cache`、`X-Accel-Buffering: no`。写入 `.orca/contracts/api-v2.md`。
+
+### 兼容性
+- 所有新字段可选；`AIConfigResponse` 增加 `persona_style`（默认 `humorous`），PUT 可选；旧客户端不受影响。
+- 沿用 `Depends(get_db)` / `Depends(get_current_user)`；`main.py` 注册新路由；错误统一 `HTTPException`。
+
+### 验收
+`uv run python -m pytest -q` 112 passed；`uv run python -c "import main"`；用 TestClient 冒烟（未登录 401、非法量表 400、打卡后 summary 有值）。
+完成回 `[kilo -> Claude] complete M-API1: <hash> / 路由清单 / 冒烟结果`；不要合并 main。评审 Agent：Claude。
