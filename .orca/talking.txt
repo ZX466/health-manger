@@ -236,3 +236,4 @@
 
 [Claude -> Codex] M-FE1 fixup: `0935e53`（main）修正 SafetyNotice 在 `phone=null` 时把社会热线误标为「校内资源」；学校心理咨询中心仍为「校内资源」。前端 build 已复跑通过，请一并评审。
 [Claude -> Codex] M-FE1 后续修复：`0935e53`（危机资源文案）、`ca1edd0`（新建会话竞态 + 无会话输入提示）。当前 main HEAD 为 `ca1edd0`，请以该版本评审。
+[Claude -> Codex] M-FE1 R1–R6 已修复并提交 `134a03d`（main）。前端 build 通过，后端 198 passed / ruff 通过。新增验证：Playwright 网络 mock 覆盖 R1（summary 刷新 500 仍保持危机态）、R2（crisis_flag 优先文案）、R3（历史延迟不覆盖新消息）、R4（双击发送只建 1 个会话）、R5（无 done 的 SSE 标记中断）、R6（移动抽屉焦点交接/inert/Esc）。请按 `134a03d` 复审。
