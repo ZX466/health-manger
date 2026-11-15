@@ -15,12 +15,12 @@
 | M-SEC1 安全兜底 | Codex | 🟡 实现完成 · 集成 blocked | `6c77022` + `2ec3b98` |
 | M-PERF1 流式对话 | Pi | ✅ 完成 · cline 评审 pass | `ba5eda2`（已合并） |
 | M-PERF2 视觉管线 | Pi | ✅ 完成 · cline 评审 pass | `9e43850`（已合并） |
-| M-LOGIC1 心理服务+交叉预警 | Claude | 🟡 评审要求修改 | `90c69f9`（已合并） |
+| M-LOGIC1 心理服务+交叉预警 | Claude | ✅ A01 已修 · 待 Codex 复核 | `c41a484` |
 | M-FE1 心理前端+年轻化 | Claude | ⏳ 未开始 | — |
 | M-DOC1 文档/配置 | cline | 🟡 第二阶段完成 | `880209d` |
 
 - `main` = `5eddc66`；opencode 已合并，cline/codex/kilo/pi 分支各有未合并提交。
-- 全量基线：main 131 passed；Codex 分支（含安全测试）191 passed / 1 failed（失败项即 M-LOGIC1 `_crisis_hint`）。
+- 全量基线：main **137 passed**（A01 修复后）；Codex 分支（含安全测试）191 passed / 1 failed，待 A02/M-PERF4 接入后复跑。
 
 ## 统一口径（已裁决，不再分叉）
 
@@ -36,7 +36,7 @@
 10. `crisis_resources()` 返回 `list[dict[str, str]]`：`{name, phone?, description}`；消费方按字段格式化，禁止 `join(dict)`。
 11. 测试固定 `uv run python -m pytest -q`。
 
-## 本树任务（M-SEC1 · 实现完成，集成 blocked）
+## 本树任务（M-SEC1 · 合并前记录，最新状态见末尾收尾回执）
 
 - 提交：`6c77022`（safety_service + 测试 + 审计）+ `2ec3b98`（评审/阻塞记录）。
 - 交付：`services/safety_service.py`（RiskState、assess_user_risk、build_system_prompt、crisis_resources）；`tests/test_safety_service.py` 61 passed；`.orca/security/mental-safety-review.md` A01–A11。
@@ -48,6 +48,36 @@
   4. cline 评审 `6c77022` 未回。
 - 安全发现（转 Pi）：识餐 `_clean_name` / OCR `_clean_abnormal` 未过滤 ESC/bidi 控制字符；`_clamp(float('nan'))` 仍非有限数。
 - 待办：上述 1–4 完成后同步 main、重跑全量（预期 192），回 `complete M-SEC1`。
+
+---
+
+## 待办与阻塞
+
+**Claude（协调 + 前端）**
+- [x] 修 M-LOGIC1 评审项（`c41a484`）：`_crisis_hint` 已支持对象资源；`summary.serious_mode` 已纳入健康评级“危险”，保留 PHQ-9 15–19 保守策略。待 Codex 复核。
+- [ ] 评审 M-API1 `785f354`（接口契约/兼容性）。
+- [ ] M-FE1：心理页、量表、人设卡、流式聊天、呼吸环、木鱼等（依赖已具备）。
+- [ ] M-SEC1 合并门：cline 评审 pass + A01/A02 集成完成后再合。
+
+**kilo**
+- [ ] `schemas.ScaleSubmitResponse.resources` 改为对象列表（对齐口径 10）。
+- [ ] `routers/food.py:130`、`routers/health.py:114` 改 `await arecognize_meal` / `aextract_report`。
+- [ ] `api-v2.md` 的 `safety.level` 与资源示例对齐口径 9/10。
+- [ ] `persona_style` 接线：`services/ai_config_service.save_config` + `routers/ai_analysis.py` GET/PUT。
+
+**Codex**
+- [ ] 等 cline 评审 `6c77022`；等 A01（Claude）/A02（kilo）/Pi 接入后同步 main、重跑全量，回 `complete M-SEC1`。
+
+**Pi**
+- [ ] 接入 `assess_user_risk` / `build_system_prompt` 到两条聊天路径，SSE 首帧 `safety`。
+- [ ] 识餐/OCR 输出过滤控制字符、收敛非有限数。
+- [ ] `be3bd61` 待合并（图片解码顺序修复）。
+
+**cline**
+- [ ] 评审 M-SEC1；M-FE1 合并后定稿 M-DOC1（README/.env/CLAUDE/AGENTS）。
+
+**opencode**
+- [ ] 空闲，等新派单。
 
 ## 文件所有权（互斥，冲突即 blocked）
 
@@ -63,7 +93,6 @@
 - 同步：`git merge --ff-only main`；本分支已有提交则 `git merge main`（不 rebase，避免重复解 talking 冲突）。
 - 只解自己文件冲突；他人文件冲突立即 `blocked`。
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main。
-
 ---
 
 ## 2026-11-15 20:35 派单：M-SEC1 收尾（等联动，不新增代码）
@@ -84,3 +113,19 @@
 - `mental_service.is_serious_mode` / `summary.serious_mode` 纳入 30 天内 `HealthAnalysis.health_rating == "危险"`，与 safety high 口径对齐；保留 PHQ-9 15–19 保守策略，Q9/GAD-7 ≥15 仍覆盖。
 - 新增 6 例回归；全量 **137 passed**，ruff 绿。
 请复核 A01。A02 待 kilo M-API2；M-PERF4 待 M-SEC1 合入 main 后由 Pi 接入。
+
+---
+
+## 本轮派单（2026-11-15 20:35）
+
+| 任务 | Agent | 内容 | 依赖 |
+|---|---|---|---|
+| M-API2 集成修正 | kilo | resources 对象化、await 识餐/OCR、api-v2 口径、persona_style 接线 | M-API1 |
+| M-SEC1 收尾 | Codex | 等 cline 评审 + A01/A02/M-PERF4，合并后全量验收 | M-SEC1-R、M-API2、M-PERF4 |
+| M-PERF3 输出边界 | Pi | 控制字符/nan 收敛（立即可做） | — |
+| M-PERF4 安全接入 | Pi | 风险评估 + 严肃 Prompt + SSE safety 首帧 | M-SEC1 合入 main |
+| M-SEC1-R 评审 | cline | 只读评审 `6c77022` | — |
+| M-DB2 数据层回归 | opencode | 迁移链/约束/索引只读验证 | — |
+| M-LOGIC1 修 | Claude | `_crisis_hint` 对象化、`serious_mode` 对齐 | Codex findings |
+| M-API1 评审 | Claude | 评审 `785f354` | — |
+| M-FE1 | Claude | 心理前端 + 年轻化 | M-API2/M-PERF4 |
