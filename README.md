@@ -14,8 +14,8 @@
 - **数据库迁移**: Alembic
 - **认证**: JWT Token (python-jose) + SECRET_KEY 强度校验
 - **密码加密**: bcrypt (12 rounds)
-- **AI 对话**: 智谱 AI GLM-4.5-Air（httpx 线程本地连接池，异步任务工作线程安全）
-- **AI 舌诊**: 火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)
+- **AI 对话/分析**: 默认智谱 AI GLM-4.5-Air（httpx 线程本地连接池，异步任务工作线程安全）；支持每用户在「AI 设置」页自定义供应商（智谱 / OpenAI 兼容 / 火山 Ark）、Base URL、模型与 API Key
+- **AI 舌诊**: 默认火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)；支持每用户单独配置视觉模型（GLM-4V / GPT-4o / Doubao-Vision，OpenAI 兼容图像输入格式）
 - **测试**: pytest + pytest-asyncio + pytest-cov (112 tests)
 
 ### 前端
@@ -30,7 +30,7 @@
 ## 前端设计系统（modern-minimal）
 
 - **设计令牌**: `tokens.css` 为唯一配色/字体来源——OKLch 冷色中性底 + 单一蓝色强调 `--accent`（派生 `--accent-strong/--accent-soft`），语义色 `success/warn/danger` 永远成对使用（文字色 + 浅底），中文字体栈含 PingFang SC/Microsoft YaHei 回退；禁止组件内硬编码颜色
-- **图标系统**: `AppIcon.vue`（22 个 1.7px 描线 SVG 图标：home/record/diet/sport/ai/tongue/alert/check/plus/chevron/device/close 等），全站功能图标统一走它；emoji 仅限吉祥物与趣图模块
+- **图标系统**: `AppIcon.vue`（22 个 1.7px 描线 SVG 图标：home/record/diet/sport/ai/tongue/alert/check/sliders/plus/chevron/device/close 等），全站功能图标统一走它；emoji 仅限吉祥物与趣图模块
 - **数据可视化**: `RingGauge.vue`（评分环，count-up 动画 + reduced-motion 降级）、`TrendChart.vue`（数据计算生成的实心面积折线图，带类别/数值标签）
 - **响应式导航**: 桌面 232px 侧栏 → ≤1024px 收成 68px 图标栏 → ≤768px 隐藏侧栏、底部 Tab 栏（56px 触控目标）
 - **可访问性**: 全局 `:focus-visible` 焦点环、触控目标 ≥44px、`prefers-reduced-motion` 全局降级
@@ -60,17 +60,24 @@
 - 运动记录与统计
 
 ### 5. AI 健康分析
-- 基于智谱 AI GLM-4.5-Air 的智能健康顾问
+- 默认基于智谱 AI GLM-4.5-Air 的智能健康顾问（可在「AI 设置」页覆盖为任意 OpenAI 兼容供应商）
 - 个性化健康建议与快速评估（规则评分 + LLM 综合）
 - AI 对话咨询（`/chat` 页面 + 侧边栏「AI 对话」入口已上线，后端会话 API 已实现）
+- 所有分析 / 聊天 / 舌诊端点优先使用当前用户的 AI 配置，未配置则回退 `.env` 默认模型
 
 ### 6. 中医舌诊分析
 - 上传舌象图片，AI 自动分析（PIL 图像有效性校验 + 10MB 大小限制）
 - 舌色、苔色、苔质、舌形、润燥等多维度诊断
 - 体质辨识与调理建议
-- 基于 ARK 豆包视觉大模型（云端分析，不可用返回 503，失败自动清理孤儿文件与记录）
+- 默认基于 ARK 豆包视觉大模型，支持每用户自定义视觉模型（云端分析，不可用返回 503，失败自动清理孤儿文件与记录）
 
-### 7. 健康预警系统
+### 7. AI 模型设置（每用户）
+- 「AI 设置」页（`/ai-settings`）分别配置**聊天/分析模型**与**舌诊视觉模型**
+- 供应商预设：智谱 GLM / OpenAI 兼容 / 火山引擎 ARK；支持自定义 Base URL 与模型名
+- API Key 前端仅显示掩码（前 4 后 2），服务端 Fernet 加密存储（密钥由 `SECRET_KEY` 派生）
+- 支持「测试连接」（不保存）、保存、恢复默认；未配置时回退 `.env` 默认模型
+
+### 8. 健康预警系统
 - BMI / 血压 / 心率 / 体温异常预警
 - 预警级别分类（警告、危险）
 
@@ -124,6 +131,8 @@ cp .env.example .env
 # ARK_API_KEY=your-ark-api-key           # 火山引擎 ARK（舌诊分析）
 # ARK_MODEL_ID=doubao-seed-1-6-vision-250815
 ```
+
+> **AI 配置说明**: 以上 `ZHIPU_API_KEY` / `ARK_API_KEY` 为全局默认值；登录后可在「AI 设置」页为每个账号单独配置聊天模型与舌诊视觉模型（供应商 / Base URL / 模型 / API Key），用户配置优先于环境变量默认值。
 
 > **SECRET_KEY 安全要求**: 长度 >= 32 字符，禁止使用 `your-secret-key-here` 等弱密钥。推荐生成方式: `openssl rand -hex 32`
 
@@ -200,6 +209,8 @@ project1/
 ├── interfaces/                # AI 流水线抽象接口（Protocol）
 ├── services/                  # 业务逻辑层（SQLAlchemy 2.0 select 风格）
 │   ├── auth_service.py        #   邀请码校验（无内置默认码）
+│   ├── ai_config_service.py   #   每用户 AI 配置（Fernet 加密 Key，聊天/视觉双模型）
+│   ├── ai_module_service.py   #   AI 流水线编排（ai_module 结果持久化）
 │   ├── health_record_service.py
 │   ├── health_service.py      #   BMI/血压分析（高血压优先判定）
 │   ├── food_service.py        #   含 delete_food_record
@@ -221,8 +232,8 @@ project1/
 ├── tests/                     # pytest 测试（112 个用例，TDD）
 ├── frontend/                  # 前端源码（Vue 3）
 │   └── src/
-│       ├── views/             #   9 个页面组件（健康知识/提醒页已移除，含聊天页 ChatView）
-│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, CharacterAvatar, ChatView 依赖等）
+│       ├── views/             #   10 个页面组件（健康知识/提醒页已移除，含聊天页 ChatView、AI 设置页 AISettings）
+│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, AiModelForm, CharacterAvatar, ChatView 依赖等）
 │       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏 + 移动端底部 Tab）
 │       ├── composables/       #   useHealthU（useSound）
 │       ├── styles/            #   tokens.css（OKLch 令牌）+ layout.css + components.css
@@ -293,6 +304,10 @@ INVITE_CODES=code1,code2
 - `POST /health-evaluation` - LLM 增强健康评价（规则评分 + LLM 综合）
 - `POST /async-analysis` - 异步 AI 分析（返回 task_id）
 - `GET /task/{task_id}` - 查询异步任务状态
+- `GET /config` - 读取当前用户 AI 配置（聊天 + 视觉；Key 仅返回掩码）
+- `PUT /config` - 保存/更新 AI 配置（Key 留空则保留原值）
+- `DELETE /config` - 重置为默认配置
+- `POST /config/test` - 测试连接（不保存，Key 缺省时复用已保存密钥）
 
 ### 舌诊接口 (`/api/tongue`)
 - `POST /upload` - 上传舌象图片分析（10MB 限制 + PIL 魔数校验）
@@ -371,6 +386,7 @@ make lint          # 代码检查
 14. **API 密钥管理**: 通过 `.env` 环境变量管理，`.env.example` 仅含占位符
 15. **集中配置**: `settings.py` 统一管理可调参数，全部从环境变量读取
 16. **LLM 缓存**: 相同健康数据的 AI 分析结果缓存 30 分钟，舌诊按图片 hash 缓存 1 小时
+17. **AI 密钥加密**: 每用户 API Key 以 Fernet 加密落库（密钥由 `SECRET_KEY` 经 SHA-256 派生），接口仅返回掩码（前 4 后 2），解密只在服务端发起模型请求时进行
 
 ## License
 
