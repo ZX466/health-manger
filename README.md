@@ -1,440 +1,186 @@
 # 大学生健康管理系统
 
-一个用于管理大学生身心健康数据的 Web 应用程序，基于 FastAPI + Vue.js 3 构建，集成中医舌诊、心理健康与 AI 对话分析。
+FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮食运动、AI 分析 / 对话、舌诊、心理空间与健康预警。
 
-## 项目简介
+## 功能
 
-本系统旨在帮助大学生管理个人身心健康数据，提供健康记录、饮食管理、运动管理、心理健康、AI 健康分析、中医舌诊和预警等功能。前端采用 modern-minimal 设计系统（Linear / Vercel 式：冷色中性底 + 单一蓝色强调，OKLch 令牌），响应式侧边栏 + 移动端抽屉导航。
+- **认证**：邀请码注册、JWT 登录。
+- **健康记录**：问卷录入、BMI / 血压 / 心率 / 体温预警、综合评级、体检报告 OCR（草稿）。
+- **饮食 / 运动**：食物与运动库、记录统计、拍照识餐（草稿）。
+- **AI**：健康分析、SSE 流式对话、每用户自定义聊天 / 视觉模型、中医舌诊。
+- **心理空间 `/mental`**：情绪打卡、睡眠趋势、PHQ-9 / GAD-7 初筛、危机资源、呼吸环 / 木鱼 / 人设卡。
+- **预警**：分级列表、标记已读。
 
 ## 技术栈
 
-### 后端
-- **框架**: FastAPI + SQLAlchemy 2.0 + SQLite
-- **环境管理**: uv（虚拟环境 + 依赖管理）
-- **数据库迁移**: Alembic
-- **认证**: JWT Token (python-jose) + SECRET_KEY 强度校验
-- **密码加密**: bcrypt (12 rounds)
-- **AI 对话/分析**: 默认智谱 AI GLM-4.5-Air（httpx 线程本地连接池，异步任务工作线程安全）；支持每用户在「AI 设置」页自定义供应商（智谱 / OpenAI 兼容 / 火山 Ark）、Base URL、模型与 API Key
-- **AI 舌诊**: 默认火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)；支持每用户单独配置视觉模型（GLM-4V / GPT-4o / Doubao-Vision，OpenAI 兼容图像输入格式）
-- **测试**: pytest + pytest-asyncio + pytest-cov (198 tests)
+| 层 | 技术 |
+|---|---|
+| 后端 | FastAPI、SQLAlchemy 2.0、SQLite、Alembic、JWT、bcrypt |
+| 前端 | Vue 3、Vite 5、Vue Router 4、Pinia、Axios |
+| AI | 默认智谱 GLM-4.5-Air；舌诊默认火山 ARK 豆包视觉模型，支持用户覆盖 |
+| 测试 | pytest（198 个用例）、pytest-asyncio、pytest-cov |
 
-### 前端
-- **框架**: Vue.js 3（以 Options API 为主，部分组件使用 `<script setup>`）
-- **构建工具**: Vite 5
-- **路由**: Vue Router 4 (history mode)
-- **状态管理**: Pinia
-- **HTTP 客户端**: Axios
-- **设计系统**: modern-minimal（Linear / Vercel 式）——OKLch 设计令牌 + AppIcon 描线图标系统 + RingGauge/TrendChart 数据可视化组件，桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端抽屉导航
-- **交互系统**: Vue composable（`useSound` 音效；useToast/Modal/ScrollReveal/CountUp/Lightbox 已作为死代码清理）
-
-## 前端设计系统（modern-minimal）
-
-- **设计令牌**: `tokens.css` 为唯一配色/字体来源——OKLch 冷色中性底 + 单一蓝色强调 `--accent`（派生 `--accent-strong/--accent-soft`），语义色 `success/warn/danger` 永远成对使用（文字色 + 浅底），中文字体栈含 PingFang SC/Microsoft YaHei 回退；禁止组件内硬编码颜色
-- **图标系统**: `AppIcon.vue`（统一 1.7px 描线 SVG 图标：home/record/diet/sport/ai/tongue/mental/alert/check/sliders/plus/chevron/device/close 等），全站功能图标统一走它；emoji 仅限吉祥物与趣图模块
-- **数据可视化**: `RingGauge.vue`（评分环，count-up 动画 + reduced-motion 降级）、`TrendChart.vue`（数据计算生成的实心面积折线图，带类别/数值标签）
-- **响应式导航**: 桌面 232px 侧栏 → ≤1024px 收成 68px 图标栏 → ≤768px 顶栏汉堡按钮 + 抽屉式侧栏（焦点交接、背景 `inert`、Esc 关闭、Tab 循环）
-- **可访问性**: 全局 `:focus-visible` 焦点环、触控目标 ≥44px、`prefers-reduced-motion` 全局降级
-- **动效纪律**: 仅允许 count-up 与 hover 微上移 2px；无卡片毛玻璃（顶栏除外）、无发光、无无限循环动画
-
-## 核心功能
-
-### 1. 用户认证系统
-- 用户注册（邀请码验证）
-- 用户登录（JWT Token 认证）
-- 密码安全加密（bcrypt，最大 72 字符）
-
-### 2. 健康记录管理
-- 问卷式健康数据填写（身体指标、心血管、视力、生活习惯）
-- 自动计算 BMI 并分析
-- **健康综合评级**（优秀/良好/中等/较差/危险 五级体系）
-- 历史记录查看、单选/多选管理
-
-### 3. 饮食管理系统
-- 食物库管理（20+ 预置食物）
-- 营养成分查询（热量、蛋白质、脂肪、碳水化合物）
-- 饮食记录（按餐次分类）与热量摄入统计
-
-### 4. 运动管理系统
-- 运动库管理（18+ 预置运动项目）
-- 运动消耗查询（kcal/小时）
-- 运动记录与统计
-
-### 5. AI 健康分析
-- 默认基于智谱 AI GLM-4.5-Air 的智能健康顾问（可在「AI 设置」页覆盖为任意 OpenAI 兼容供应商）
-- 个性化健康建议与快速评估（规则评分 + LLM 综合）
-- AI 对话咨询（`/chat` 页面 + 侧边栏「AI 对话」入口）：SSE 流式输出、停止生成、会话历史；首帧 `safety` 事件携带风险等级与危机资源，高风险/危机时强制严肃关怀
-- 所有分析 / 聊天 / 舌诊端点优先使用当前用户的 AI 配置，未配置则回退 `.env` 默认模型
-
-### 6. 中医舌诊分析
-- 上传舌象图片，AI 自动分析（PIL 图像有效性校验 + 10MB 大小限制）
-- 舌色、苔色、苔质、舌形、润燥等多维度诊断
-- 体质辨识与调理建议
-- 默认基于 ARK 豆包视觉大模型，支持每用户自定义视觉模型（云端分析，不可用返回 503，失败自动清理孤儿文件与记录）
-
-### 7. AI 模型设置（每用户）
-- 「AI 设置」页（`/ai-settings`）分别配置**聊天/分析模型**与**舌诊视觉模型**
-- 供应商预设：智谱 GLM / OpenAI 兼容 / 火山引擎 ARK；支持自定义 Base URL 与模型名
-- API Key 前端仅显示掩码（前 4 后 2），服务端 Fernet 加密存储（密钥由 `SECRET_KEY` 派生）
-- 支持「测试连接」（不保存）、保存、恢复默认；未配置时回退 `.env` 默认模型
-
-### 8. 健康预警系统
-- BMI / 血压 / 心率 / 体温异常预警
-- 预警级别分类（警告、危险）
-
-### 9. 心理健康（`/mental`）
-- **10 秒情绪打卡**：情绪 1–5 分 + 压力标签（≤5 个、每个 ≤12 字）+ 睡眠时长（0–16 小时，只记时长）；每人每天一条，同日重复提交即更新。
-- **睡眠债**：近 7 个有记录日 `Σ max(0, 8 − 睡眠小时)`；记录不足 4 天显示「数据不足」。
-- **PHQ-9 / GAD-7 初筛**：题目与选项由后端 `scale_scoring` 下发，前端不硬编码；每类量表每天最多 3 次。初筛不构成诊断。
-- **危机标记**：PHQ-9 Q9 > 0 或总分 ≥ 20、GAD-7 ≥ 15 时 `crisis_flag=true`；前端必须展示危机资源，不得隐藏。
-- **风险分级与严肃模式**：`assess_user_risk` 输出 `normal | elevated | high`；高风险/危机时聊天强制严肃关怀 Prompt，页面隐藏木鱼与玩梗人设，但不阻止求助与聊天。`summary.serious_mode` 为保守展示口径（PHQ-9 ≥15 / GAD-7 ≥10 / 评级危险 / crisis_flag 任一）。
-- **危机资源**：只读环境变量 `MENTAL_HOTLINE` / `CAMPUS_COUNSELING`，默认空、不编造号码；未配置或 `phone=null` 时前端仍固定展示 **120 / 110 + 学校心理咨询中心**兜底文案。
-- **放松模块**：4-4-6 呼吸环、电子木鱼（本地计数）、双人设卡（humorous / clinical）。
-
-### 10. 拍照识餐 / 体检报告 OCR（后端 API）
-- 识餐与体检报告 OCR 当前提供后端 API，返回**草稿**（`needs_confirm: true`），不直接写库；确认后由调用方复用现有饮食/健康记录接口。
-- 图片限制 ≤10MB，支持 jpg/png/webp；PIL 校验真实格式，解码前检查尺寸，输出最长边 1024、JPEG 质量 85 并剥离 EXIF/GPS。
-- 显示文本统一清洗（ANSI/零宽/bidi/控制字符、空白折叠、截断），NaN/±Inf 等非有限数收敛，保证 JSON 合法。
-- 识餐/OCR 路由使用异步包装（`await`），避免识别请求阻塞事件循环。
-
-> 注：原「健康知识库 / 健康提醒」页面因后端未实现对应功能（仅孤儿表），已在审计清理中移除，避免前端崩溃。
+前端使用 modern-minimal 设计令牌、统一描线图标和响应式侧栏 / 移动端抽屉导航。
 
 ## 快速开始
 
 ### 环境要求
 
-> **本项目使用 [uv](https://docs.astral.sh/uv/) 管理 Python 环境与依赖，请勿使用全局 Python 直接运行！**
-
 - Python 3.9+
-- [uv](https://docs.astral.sh/uv/)（Python 包与虚拟环境管理，替代 pip/venv）
-- Node.js 16+（仅开发模式需要）
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 16+（开发模式和构建前端时需要）
 
-### 创建虚拟环境（首次运行前必做，使用 uv）
+### 安装依赖
 
-```bash
-# 安装 uv（任选其一，若已安装可跳过）
-#   Windows:  winget install astral-sh.uv   或   pip install uv
-#   macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
+```powershell
+cd E:\zxdevelop\project1
 
-cd <仓库根目录>   # 例如 E:\zxdevelop\project1
-
-# 创建虚拟环境 + 安装依赖（一步完成）
+# 首次运行；已有 .venv 可跳过
 uv venv .venv
+.\.venv\Scripts\Activate.ps1
 uv pip install -r requirements.txt
 
-# 激活虚拟环境
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# Windows CMD:
-.\.venv\Scripts\activate.bat
-# Linux/macOS:
-source .venv/bin/activate
+cd frontend
+npm install
+cd ..
 
-# 或者不激活，直接用 uv run 执行任意命令：
-uv run python -m pytest -q
+Copy-Item .env.example .env
 ```
 
-### 配置环境变量
+macOS / Linux 将激活命令换成 `source .venv/bin/activate`，复制命令换成 `cp`。
 
-```bash
-# 复制配置模板
-cp .env.example .env
+### 配置 `.env`
 
-# 编辑 .env，填入以下配置：
-# SECRET_KEY=<至少32字符的随机强密钥>     # JWT 签名密钥（必须）
-# INVITE_CODES=your-invite-codes          # 注册邀请码（逗号分隔，未配置则禁止注册）
-# ZHIPU_API_KEY=your-zhipu-api-key       # 智谱 AI（健康分析/对话）
-# ARK_API_KEY=your-ark-api-key           # 火山引擎 ARK（舌诊分析）
-# ARK_MODEL_ID=doubao-seed-1-6-vision-250815
-# MENTAL_HOTLINE=                        # 心理支持热线（可选，默认空）
-# CAMPUS_COUNSELING=                     # 学校心理咨询中心联系方式（可选，默认空）
+至少填写 `SECRET_KEY`；需要注册时再配置 `INVITE_CODES`。
+
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `SECRET_KEY` | 是 | JWT 签名密钥，至少 32 字符，禁止使用示例弱密钥 |
+| `INVITE_CODES` | 注册时必填 | 逗号分隔的邀请码；未配置则禁止注册 |
+| `ZHIPU_API_KEY` | 否 | 默认聊天 / 健康分析模型 |
+| `ARK_API_KEY` | 否 | 舌诊视觉模型 |
+| `ARK_MODEL_ID` | 否 | 舌诊模型 ID，默认 `doubao-seed-1-6-vision-250815` |
+| `MENTAL_HOTLINE` / `CAMPUS_COUNSELING` | 否 | 心理危机资源，未配置不编造号码 |
+
+生成密钥：
+
+```powershell
+uv run python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-> **AI 配置说明**: 以上 `ZHIPU_API_KEY` / `ARK_API_KEY` 为全局默认值；登录后可在「AI 设置」页为每个账号单独配置聊天模型与舌诊视觉模型（供应商 / Base URL / 模型 / API Key），用户配置优先于环境变量默认值。
+登录后也可以在「AI 设置」页按用户配置聊天 / 视觉模型；用户配置优先于 `.env`。
 
-> **心理支持资源**: `MENTAL_HOTLINE` / `CAMPUS_COUNSELING` 仅用于展示危机资源，默认空；未配置或格式非法时不展示号码，前端固定提供 120 / 110 + 学校心理咨询中心兜底文案，不编造号码。
+### 启动
 
-> **SECRET_KEY 安全要求**: 长度 >= 32 字符，禁止使用 `your-secret-key-here` 等弱密钥。推荐生成方式: `openssl rand -hex 32`
+**生产模式（端口 8420，FastAPI 同时托管前端）**
 
-### 启动服务
+```powershell
+cd frontend
+npm run build
+cd ..
 
-> 前置：已按上文创建 `.venv` 并安装依赖、已配置 `.env`（至少 `SECRET_KEY`，否则启动即报错；`INVITE_CODES` 未配置则禁止注册）。
-
-#### 方式一：生产模式（推荐，端口 8420）
-
-```bash
-# ① 构建前端（生成 static/ 产物，生产由 FastAPI 直接托管；首次运行必做）
-cd frontend && npm install && npm run build && cd ..
-
-# ② 应用数据库迁移（开发环境 create_all 会自动建表，此步可跳过）
 uv run alembic upgrade head
-
-# ③ 启动后端
 uv run uvicorn main:app --port 8420
-# 访问 http://localhost:8420
 ```
 
-#### 方式二：开发模式（前后端分离，热更新）
+访问 <http://localhost:8420>。
 
-```bash
-# 终端 1：后端（端口 8420，--reload 热重载）
+**开发模式（前后端热更新）**
+
+```powershell
+# 终端 1：后端
 uv run uvicorn main:app --reload --port 8420
 
-# 终端 2：前端（端口 3000，Vite 将 /api 代理到 8420）
-cd frontend && npm install && npm run dev
-# 访问 http://localhost:3000
+# 终端 2：前端
+cd frontend
+npm run dev
 ```
 
-#### 验证启动
+访问 <http://localhost:3000>。Vite 会把 `/api` 代理到 8420。
 
-```bash
-# 后端健康检查（应返回 {"status":"healthy"}）
-curl http://localhost:8420/api/health
-
-# API 交互文档
-# http://localhost:8420/docs  （Swagger UI）
-# http://localhost:8420/redoc （ReDoc）
-```
+SQLite 首次启动会自动建表；`alembic upgrade head` 用于确保数据库结构是最新的。
 
 ### 初始化数据
 
-```bash
-uv run python scripts/init_data.py          # 初始化食物/运动数据
-uv run python scripts/create_test_user.py   # 创建测试用户
+```powershell
+uv run python scripts/init_data.py          # 食物 / 运动基础数据
+uv run python scripts/create_test_user.py   # 测试用户：testuser / test123
 ```
+
+### 验证
+
+```powershell
+curl http://localhost:8420/api/health
+# 应返回 {"status":"healthy"}
+
+# 接口文档
+# http://localhost:8420/docs
+# http://localhost:8420/redoc
+```
+
+## 心理安全
+
+- PHQ-9 Q9 > 0 或总分 ≥ 20、GAD-7 ≥ 15 时标记 `crisis_flag`；前端始终展示危机资源，不隐藏。
+- 高风险 / 危机时聊天强制严肃关怀 Prompt，隐藏木鱼和玩梗人设，但不阻止求助。
+- 危机资源来自 `MENTAL_HOTLINE` / `CAMPUS_COUNSELING`；未配置时固定展示 120 / 110 + 学校心理咨询中心，不编造号码。
+
+## API
+
+完整参数与响应见 `/docs`（Swagger UI）或 `/redoc`。
+
+| 前缀 | 功能 |
+|---|---|
+| `/api/auth` | 注册、登录、当前用户 |
+| `/api/health` | 健康记录、分析、评级、体检报告 OCR |
+| `/api/food` | 食物库、饮食记录、拍照识餐 |
+| `/api/sport` | 运动库、运动记录与统计 |
+| `/api/ai` | AI 分析、异步任务、用户 AI 配置 |
+| `/api/tongue` | 舌象上传、记录、图片访问 |
+| `/api/chat` | 会话、消息、SSE 流式对话 |
+| `/api/mental` | 情绪打卡、趋势、量表、心理摘要 |
+| `/api/warning` | 预警检查、列表、已读、统计 |
 
 ## 项目结构
 
+```text
+main.py                   FastAPI 入口
+models.py / schemas.py    ORM 模型 / Pydantic 模式
+auth.py / settings.py     认证 / 集中配置
+routers/                  HTTP 路由
+services/                 业务逻辑（健康、心理、AI、安全等）
+alembic/                  数据库迁移
+scripts/                  初始化数据 / 测试用户
+tests/                    pytest 测试（198 个）
+frontend/src/             Vue 页面、组件、路由、API、样式
+static/                   前端构建产物
+uploads/                  用户上传文件
 ```
-project1/
-├── main.py                    # FastAPI 应用入口（CORS、安全头、SPA fallback）
-├── models.py                  # SQLAlchemy 数据库模型（users.name 唯一约束）
-├── schemas.py                 # Pydantic 请求/响应模式
-├── database.py                # 数据库引擎与会话配置
-├── auth.py                    # JWT 认证（iat/iss/aud 声明）+ SECRET_KEY 强度校验
-├── constants.py               # 医学阈值常量（中国临床标准）
-├── health_rating.py           # 健康综合评级（优秀/良好/中等/较差/危险）
-├── chat_session.py            # 聊天会话管理（token 感知上下文截断）
-├── async_tasks.py             # 异步任务队列（TTL 定期清理 + user_id 归属校验）
-├── settings.py                # 集中配置（环境变量 + 默认值）
-├── requirements.txt           # Python 依赖
-├── alembic.ini                # 数据库迁移配置
-├── alembic/                   # Alembic 迁移脚本
-├── tongue/                    # 舌诊模块包
-│   ├── diagnosis.py           #   舌诊分析（云端 ARK）
-│   ├── cloud_analyzer.py      #   ARK 云端舌象分析器（requests.Session 复用）
-│   └── feature_mapping.py     #   舌诊数据映射
-├── ai_module/                 # AI 流水线模块（factory/pipeline/metrics/exceptions）
-├── backends/                  # AI 流水线后端（预处理/推理/后处理，llm_call 可注入）
-├── interfaces/                # AI 流水线抽象接口（Protocol）
-├── services/                  # 业务逻辑层（SQLAlchemy 2.0 select 风格）
-│   ├── auth_service.py        #   邀请码校验（无内置默认码）
-│   ├── ai_config_service.py   #   每用户 AI 配置（Fernet 加密 Key，聊天/视觉双模型）
-│   ├── ai_module_service.py   #   AI 流水线编排（ai_module 结果持久化）
-│   ├── health_record_service.py
-│   ├── health_service.py      #   BMI/血压分析（高血压优先判定）
-│   ├── mental_service.py      #   情绪/睡眠趋势/量表历史/首页摘要
-│   ├── scale_scoring.py       #   PHQ-9/GAD-7 题目与评分、危机标记
-│   ├── safety_service.py      #   30 天风险分级 + 严肃 Prompt + 危机资源
-│   ├── image_service.py       #   图片校验/缩放/EXIF 剥离
-│   ├── vision_service.py      #   视觉模型调用（舌诊/识餐/OCR 共用）
-│   ├── food_recognition_service.py # 拍照识餐草稿
-│   ├── report_ocr_service.py  #   体检报告 OCR 草稿
-│   ├── text_cleaning.py       #   显示文本边界清洗（ANSI/零宽/控制字符）
-│   ├── food_service.py        #   含 delete_food_record
-│   ├── sport_service.py       #   含 delete_sport_record
-│   ├── tongue_service.py      #   PIL 魔数校验 + 失败清理孤儿文件
-│   ├── llm_service.py         #   httpx 线程本地连接池
-│   ├── warning_service.py
-│   ├── security_service.py    #   prompt 注入防护 + 速率限制
-│   └── cache_service.py       # TTL 内存缓存（LLM 响应 + 舌诊结果）
-├── routers/                   # HTTP 路由层
-│   ├── auth.py                #   注册（去枚举）+ 登录（IP+用户名限流）
-│   ├── health.py
-│   ├── food.py                #   含 DELETE /records/{id}
-│   ├── sport.py               #   含 DELETE /records/{id}
-│   ├── tongue.py
-│   ├── chat.py                #   会话 + SSE 流式（safety → delta* → done|error）
-│   ├── mental.py              #   情绪打卡/趋势/量表/摘要
-│   ├── ai_analysis.py
-│   └── warning.py
-├── tests/                     # pytest 测试（198 个用例，TDD）
-├── frontend/                  # 前端源码（Vue 3）
-│   └── src/
-│       ├── views/             #   11 个页面组件（含心理空间 MentalHealth、聊天 ChatView、AI 设置 AISettings）
-│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, AiModelForm, CharacterAvatar 等）
-│       │   └── mental/        #   情绪打卡/趋势/量表/呼吸环/木鱼/人设卡/安全提示
-│       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏 + 移动端抽屉）
-│       ├── composables/       #   useHealthU（useSound）
-│       ├── styles/            #   tokens.css（OKLch 令牌）+ layout.css + components.css
-│       ├── assets/            #   静态资源管理
-│       ├── router/            #   路由配置（含 auth guard）
-│       ├── api/               #   API 调用封装（含 SSE stream.js）
-│       └── stores/            #   Pinia 状态管理
-├── static/                    # 前端构建产物（生产模式）
-└── uploads/                   # 用户上传文件
-```
-
-## 邀请码
-
-注册时需要有效的邀请码。**系统不再内置默认邀请码**——必须通过环境变量 `INVITE_CODES` 配置（逗号分隔多个），未配置则禁止注册：
-
-```bash
-# .env
-INVITE_CODES=code1,code2
-```
-
-## 测试账户
-
-- **用户名**: `testuser`
-- **密码**: `test123`
-
-## API 文档
-
-启动后端服务后访问：
-
-- **Swagger UI**: http://localhost:8420/docs
-- **ReDoc**: http://localhost:8420/redoc
-
-## API 端点概览
-
-### 认证接口 (`/api/auth`)
-- `POST /register` - 用户注册
-- `POST /login` - 用户登录
-- `GET /me` - 获取当前用户信息
-
-### 健康接口 (`/api/health`)
-- `POST /records` - 创建健康记录
-- `GET /records` - 获取健康记录列表
-- `DELETE /records/{id}` - 删除健康记录（仅删除关联分析）
-- `GET /analysis/latest` - 最新健康分析
-- `GET /analysis/history` - 分析历史
-- `GET /rating/latest` - 最新健康评级
-- `POST /reports/ocr` - 体检报告 OCR（返回草稿，`needs_confirm: true`）
-
-### 饮食接口 (`/api/food`)
-- `GET /foods` - 食物列表（支持搜索/分类筛选）
-- `POST /foods` - 添加食物（需管理员）
-- `POST /records` - 添加饮食记录
-- `GET /records` - 饮食记录列表
-- `GET /records/stats` - 饮食统计
-- `DELETE /records/{id}` - 删除饮食记录（按用户归属校验）
-- `POST /recognize` - 拍照识餐（返回草稿，`needs_confirm: true`）
-- `POST /custom` - 创建自定义食物（识餐确认后使用）
-
-### 运动接口 (`/api/sport`)
-- `GET /sports` - 运动列表（支持搜索/分类筛选）
-- `POST /sports` - 添加运动（需管理员）
-- `POST /records` - 添加运动记录
-- `GET /records` - 运动记录列表
-- `GET /records/stats` - 运动统计
-- `DELETE /records/{id}` - 删除运动记录（按用户归属校验）
-
-### AI 分析接口 (`/api/ai`)
-- `POST /analysis` - AI 健康分析
-- `GET /analysis/history` - 分析历史
-- `POST /quick-analysis` - 快速分析（30min 缓存）
-- `POST /health-evaluation` - LLM 增强健康评价（规则评分 + LLM 综合）
-- `POST /async-analysis` - 异步 AI 分析（返回 task_id）
-- `GET /task/{task_id}` - 查询异步任务状态
-- `GET /config` - 读取当前用户 AI 配置（聊天 + 视觉；Key 仅返回掩码）
-- `PUT /config` - 保存/更新 AI 配置（Key 留空则保留原值）
-- `DELETE /config` - 重置为默认配置
-- `POST /config/test` - 测试连接（不保存，Key 缺省时复用已保存密钥）
-
-### 舌诊接口 (`/api/tongue`)
-- `POST /upload` - 上传舌象图片分析（10MB 限制 + PIL 魔数校验）
-- `GET /list` - 舌诊记录列表
-- `GET /{id}` - 舌诊详情
-- `GET /latest/result` - 最新舌诊结果
-- `GET /stats/summary` - 舌诊统计
-- `GET /image/{diagnosis_id}` - 获取舌诊图片（需认证，防未授权访问）
-
-### 对话接口 (`/api/chat`)
-- `POST /session` - 创建对话会话
-- `GET /sessions` - 会话列表
-- `GET /session/{id}/messages` - 会话消息列表
-- `POST /session/{id}/message` - 发送消息（事务一致性保障）
-- `POST /session/{id}/stream` - SSE 流式发送（`safety → delta* → done|error`）
-- `POST /session/{id}/tongue-context` - 注入舌诊上下文
-- `DELETE /session/{id}` - 删除会话
-
-### 心理健康接口 (`/api/mental`)
-- `POST /mood` - 当日情绪打卡（同日重复提交即更新）
-- `GET /mood` - 情绪记录列表（`days=1..365`）
-- `GET /trend` - 情绪/睡眠趋势（`days=1..365`）
-- `GET /scales` - 量表定义（PHQ-9 / GAD-7）
-- `GET /scales/history` - 量表作答历史
-- `POST /scales/{scale_type}/submit` - 提交量表（每类每天 3 次；危机时返回资源）
-- `GET /summary` - 首页心理摘要（含 `serious_mode`）
-
-### 预警接口 (`/api/warning`)
-- `POST /check` - 检查健康预警
-- `GET /list` - 预警列表
-- `PUT /read/{id}` - 标记已读
-- `GET /stats` - 预警统计
-
-## 健康标准参考（中国临床标准）
-
-### BMI 标准
-| 范围 | 分类 |
-|------|------|
-| < 18.5 | 偏瘦 |
-| 18.5 - 24 | 正常 |
-| 24 - 28 | 偏胖 |
-| >= 28 | 肥胖 |
-
-### 血压标准 (mmHg)
-| 收缩压 | 舒张压 | 分类 |
-|--------|--------|------|
-| < 90 | < 60 | 低血压 |
-| 90-120 | 60-80 | 正常 |
-| 120-139 | 80-89 | 偏高 |
-| >= 140 | >= 90 | 高血压 |
-
-### 健康评级体系
-| 评级 | 分数 | 含义 |
-|------|------|------|
-| 优秀 | 95-100 | 所有指标正常 |
-| 良好 | 80-94 | 大部分指标正常 |
-| 中等 | 60-79 | 部分指标异常 |
-| 较差 | 40-59 | 多项指标异常 |
-| 危险 | 0-39 | 健康状况较差 |
 
 ## 测试
 
-```bash
-# 激活虚拟环境后运行；推荐用 python -m 形式，避免 uv run pytest 的 sys.path 问题
-uv run python -m pytest --tb=short -q                 # 运行全部测试（198 个）
-uv run python -m pytest --cov=. --cov-report=term-missing -q  # 查看覆盖率
-uv run ruff check .                                  # 代码检查
-make test          # 快速运行（需先激活环境）
-make coverage      # 带覆盖率报告
-make lint          # 代码检查
+```powershell
+uv run python -m pytest -q
+uv run python -m pytest --cov=. --cov-report=term-missing -q
+uv run ruff check .
 ```
 
-## 安全特性
+> 使用 `uv run python -m pytest`，不要直接用 `uv run pytest`，避免 `sys.path` 问题。
 
-1. **SECRET_KEY 强度校验**: 启动时强制 >= 32 字符，拒绝已知弱密钥
-2. **密码加密**: bcrypt 算法 (12 rounds) 加密存储，最大 72 字符
-3. **Token 认证**: JWT Token 短期有效（默认 30 分钟），含 `iat/iss/aud` 声明并在校验端验证；`sub` 缺失/异常统一返回 401
-4. **CORS 配置**: 限制允许的 HTTP 方法和请求头
-5. **输入验证**: Pydantic Field 约束 + Literal 枚举 + 中英文 prompt 注入防护（Unicode 归一化 + 零宽字符剥离 + 绕过变体黑名单）
-6. **SQL 注入防护**: SQLAlchemy ORM 参数化查询（2.0 select 风格）
-7. **路径穿越防护**: SPA 静态文件服务用 `abspath + commonpath` 校验，阻止 `..` 逃逸
-8. **登录防爆破**: `/api/auth/login` 按 IP + 用户名限流（5 次/60 秒）
-9. **异步任务越权防护**: 任务结果绑定 `user_id`，查询时校验归属
-10. **文件上传安全**: UUID 文件名 + 扩展名白名单 + 10MB 限制 + **PIL 魔数校验**（防伪造图片）
-11. **安全响应头**: CSP / X-Frame-Options / X-Content-Type-Options / Referrer-Policy 中间件
-12. **用户名唯一约束**: `users.name` 唯一索引 + 注册 IntegrityError 兜底，注册统一提示防枚举
-13. **线程安全**: httpx client 改线程本地存储，异步任务工作线程不共享连接池
-14. **API 密钥管理**: 通过 `.env` 环境变量管理，`.env.example` 仅含占位符
-15. **集中配置**: `settings.py` 统一管理可调参数，全部从环境变量读取
-16. **LLM 缓存**: 相同健康数据的 AI 分析结果缓存 30 分钟，舌诊按图片 hash 缓存 1 小时
-17. **AI 密钥加密**: 每用户 API Key 以 Fernet 加密落库（密钥由 `SECRET_KEY` 经 SHA-256 派生），接口仅返回掩码（前 4 后 2），解密只在服务端发起模型请求时进行
-18. **心理危机干预**: 近 30 天风险分级（normal/elevated/high）；高风险/危机强制严肃关怀 Prompt（完全覆盖原人设）；危机资源只读环境变量、格式校验宁拒勿截断，未配置不编造号码
-19. **AI 输出边界**: 识餐/OCR 显示文本统一清洗（ANSI/零宽/bidi/控制字符、空白折叠、截断）；NaN/±Inf 收敛为默认值或 null，保证响应为合法 JSON
-20. **图片元数据**: 上传图片解码前校验格式/尺寸，重新编码为 JPEG 并剥离 EXIF/GPS；识别结果仅为草稿，人工确认后才写库
-21. **心理数据最小化**: 风险 `reasons` 只含固定中文短句，不读心理笔记、不含用户原文；跨用户查询全部按 `user_id` 隔离
+## 安全要点
+
+- `SECRET_KEY` 启动时校验长度和弱密钥；密码 bcrypt 加密，JWT 含 `iat/iss/aud`，登录按 IP + 用户名限流。
+- 请求参数使用 Pydantic 校验，数据库访问使用 SQLAlchemy 参数化查询；含 prompt 注入清洗。
+- 上传文件限制 10MB，UUID 文件名 + 扩展名白名单 + PIL 魔数校验，重新编码并剥离 EXIF/GPS。
+- 每用户 AI Key 使用 Fernet 加密存储，接口只返回掩码；`.env` 不入库。
+- 识餐 / OCR 只返回草稿，人工确认后才写库；心理风险数据按用户隔离并最小化。
+
+## 健康标准
+
+| 项目 | 标准 |
+|---|---|
+| BMI | < 18.5 偏瘦；18.5–24 正常；24–28 偏胖；≥ 28 肥胖 |
+| 血压（mmHg） | 正常 90–120 / 60–80；偏高 120–139 / 80–89；高血压 ≥ 140 / 90 |
+| 综合评级 | 优秀 95–100；良好 80–94；中等 60–79；较差 40–59；危险 0–39 |
 
 ## License
 
