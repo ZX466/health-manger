@@ -58,6 +58,19 @@
         <div class="user-role">在校大学生</div>
       </div>
       <button
+        class="logout-toggle"
+        type="button"
+        title="退出登录"
+        aria-label="退出登录"
+        @click="logout"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <path d="M16 17l5-5-5-5"/>
+          <path d="M21 12H9"/>
+        </svg>
+      </button>
+      <button
         class="sound-toggle"
         :class="{ muted: !soundEnabled }"
         :title="soundEnabled ? '关闭音效' : '开启音效'"
@@ -134,6 +147,12 @@ export default {
   methods: {
     isActive(path) {
       return this.$route.path === path
+    },
+    logout() {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userName')
+      this.$emit('navigate')
+      this.$router.push('/login')
     }
   }
 }
