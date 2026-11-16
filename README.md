@@ -21,6 +21,8 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 
 示例只用于说明功能路径，不对应真实用户；实际数据由各自账号录入。
 
+运行 `uv run python scripts/seed_demo_users.py` 可创建这三位演示用户（密码均为 `demo1234`）及对应健康、饮食、运动和心理数据。
+
 ## 技术栈
 
 | 层 | 技术 |
@@ -115,6 +117,7 @@ SQLite 首次启动会自动建表；`alembic upgrade head` 用于确保数据�
 ```powershell
 uv run python scripts/init_data.py          # 食物 / 运动基础数据
 uv run python scripts/create_test_user.py   # 测试用户：testuser / test123
+uv run python scripts/seed_demo_users.py    # 三位演示用户：小林 / 阿哲 / 小周，密码均为 demo1234
 ```
 
 ### 验证
