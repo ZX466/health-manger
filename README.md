@@ -1,10 +1,10 @@
 # 大学生健康管理系统
 
-一个用于管理大学生身体健康数据的 Web 应用程序，基于 FastAPI + Vue.js 3 构建，集成中医舌诊 AI 分析。
+一个用于管理大学生身心健康数据的 Web 应用程序，基于 FastAPI + Vue.js 3 构建，集成中医舌诊、心理健康与 AI 对话分析。
 
 ## 项目简介
 
-本系统旨在帮助大学生管理个人健康数据，提供健康记录、饮食管理、运动管理、AI 健康分析、中医舌诊和预警等功能。前端采用 modern-minimal 设计系统（Linear / Vercel 式：冷色中性底 + 单一蓝色强调，OKLch 令牌），响应式侧边栏 + 移动端底部 Tab 导航。
+本系统旨在帮助大学生管理个人身心健康数据，提供健康记录、饮食管理、运动管理、心理健康、AI 健康分析、中医舌诊和预警等功能。前端采用 modern-minimal 设计系统（Linear / Vercel 式：冷色中性底 + 单一蓝色强调，OKLch 令牌），响应式侧边栏 + 移动端抽屉导航。
 
 ## 技术栈
 
@@ -16,7 +16,7 @@
 - **密码加密**: bcrypt (12 rounds)
 - **AI 对话/分析**: 默认智谱 AI GLM-4.5-Air（httpx 线程本地连接池，异步任务工作线程安全）；支持每用户在「AI 设置」页自定义供应商（智谱 / OpenAI 兼容 / 火山 Ark）、Base URL、模型与 API Key
 - **AI 舌诊**: 默认火山引擎 ARK 豆包视觉模型 (`doubao-seed-1-6-vision-250815`)；支持每用户单独配置视觉模型（GLM-4V / GPT-4o / Doubao-Vision，OpenAI 兼容图像输入格式）
-- **测试**: pytest + pytest-asyncio + pytest-cov (112 tests)
+- **测试**: pytest + pytest-asyncio + pytest-cov (198 tests)
 
 ### 前端
 - **框架**: Vue.js 3（以 Options API 为主，部分组件使用 `<script setup>`）
@@ -24,15 +24,15 @@
 - **路由**: Vue Router 4 (history mode)
 - **状态管理**: Pinia
 - **HTTP 客户端**: Axios
-- **设计系统**: modern-minimal（Linear / Vercel 式）——OKLch 设计令牌 + AppIcon 描线图标系统 + RingGauge/TrendChart 数据可视化组件，桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端底部 Tab
+- **设计系统**: modern-minimal（Linear / Vercel 式）——OKLch 设计令牌 + AppIcon 描线图标系统 + RingGauge/TrendChart 数据可视化组件，桌面 232px 侧栏 → 平板 68px 图标栏 → 移动端抽屉导航
 - **交互系统**: Vue composable（`useSound` 音效；useToast/Modal/ScrollReveal/CountUp/Lightbox 已作为死代码清理）
 
 ## 前端设计系统（modern-minimal）
 
 - **设计令牌**: `tokens.css` 为唯一配色/字体来源——OKLch 冷色中性底 + 单一蓝色强调 `--accent`（派生 `--accent-strong/--accent-soft`），语义色 `success/warn/danger` 永远成对使用（文字色 + 浅底），中文字体栈含 PingFang SC/Microsoft YaHei 回退；禁止组件内硬编码颜色
-- **图标系统**: `AppIcon.vue`（22 个 1.7px 描线 SVG 图标：home/record/diet/sport/ai/tongue/alert/check/sliders/plus/chevron/device/close 等），全站功能图标统一走它；emoji 仅限吉祥物与趣图模块
+- **图标系统**: `AppIcon.vue`（统一 1.7px 描线 SVG 图标：home/record/diet/sport/ai/tongue/mental/alert/check/sliders/plus/chevron/device/close 等），全站功能图标统一走它；emoji 仅限吉祥物与趣图模块
 - **数据可视化**: `RingGauge.vue`（评分环，count-up 动画 + reduced-motion 降级）、`TrendChart.vue`（数据计算生成的实心面积折线图，带类别/数值标签）
-- **响应式导航**: 桌面 232px 侧栏 → ≤1024px 收成 68px 图标栏 → ≤768px 隐藏侧栏、底部 Tab 栏（56px 触控目标）
+- **响应式导航**: 桌面 232px 侧栏 → ≤1024px 收成 68px 图标栏 → ≤768px 顶栏汉堡按钮 + 抽屉式侧栏（焦点交接、背景 `inert`、Esc 关闭、Tab 循环）
 - **可访问性**: 全局 `:focus-visible` 焦点环、触控目标 ≥44px、`prefers-reduced-motion` 全局降级
 - **动效纪律**: 仅允许 count-up 与 hover 微上移 2px；无卡片毛玻璃（顶栏除外）、无发光、无无限循环动画
 
@@ -62,7 +62,7 @@
 ### 5. AI 健康分析
 - 默认基于智谱 AI GLM-4.5-Air 的智能健康顾问（可在「AI 设置」页覆盖为任意 OpenAI 兼容供应商）
 - 个性化健康建议与快速评估（规则评分 + LLM 综合）
-- AI 对话咨询（`/chat` 页面 + 侧边栏「AI 对话」入口已上线，后端会话 API 已实现）
+- AI 对话咨询（`/chat` 页面 + 侧边栏「AI 对话」入口）：SSE 流式输出、停止生成、会话历史；首帧 `safety` 事件携带风险等级与危机资源，高风险/危机时强制严肃关怀
 - 所有分析 / 聊天 / 舌诊端点优先使用当前用户的 AI 配置，未配置则回退 `.env` 默认模型
 
 ### 6. 中医舌诊分析
@@ -80,6 +80,21 @@
 ### 8. 健康预警系统
 - BMI / 血压 / 心率 / 体温异常预警
 - 预警级别分类（警告、危险）
+
+### 9. 心理健康（`/mental`）
+- **10 秒情绪打卡**：情绪 1–5 分 + 压力标签（≤5 个、每个 ≤12 字）+ 睡眠时长（0–16 小时，只记时长）；每人每天一条，同日重复提交即更新。
+- **睡眠债**：近 7 个有记录日 `Σ max(0, 8 − 睡眠小时)`；记录不足 4 天显示「数据不足」。
+- **PHQ-9 / GAD-7 初筛**：题目与选项由后端 `scale_scoring` 下发，前端不硬编码；每类量表每天最多 3 次。初筛不构成诊断。
+- **危机标记**：PHQ-9 Q9 > 0 或总分 ≥ 20、GAD-7 ≥ 15 时 `crisis_flag=true`；前端必须展示危机资源，不得隐藏。
+- **风险分级与严肃模式**：`assess_user_risk` 输出 `normal | elevated | high`；高风险/危机时聊天强制严肃关怀 Prompt，页面隐藏木鱼与玩梗人设，但不阻止求助与聊天。`summary.serious_mode` 为保守展示口径（PHQ-9 ≥15 / GAD-7 ≥10 / 评级危险 / crisis_flag 任一）。
+- **危机资源**：只读环境变量 `MENTAL_HOTLINE` / `CAMPUS_COUNSELING`，默认空、不编造号码；未配置或 `phone=null` 时前端仍固定展示 **120 / 110 + 学校心理咨询中心**兜底文案。
+- **放松模块**：4-4-6 呼吸环、电子木鱼（本地计数）、双人设卡（humorous / clinical）。
+
+### 10. 拍照识餐 / 体检报告 OCR（后端 API）
+- 识餐与体检报告 OCR 当前提供后端 API，返回**草稿**（`needs_confirm: true`），不直接写库；确认后由调用方复用现有饮食/健康记录接口。
+- 图片限制 ≤10MB，支持 jpg/png/webp；PIL 校验真实格式，解码前检查尺寸，输出最长边 1024、JPEG 质量 85 并剥离 EXIF/GPS。
+- 显示文本统一清洗（ANSI/零宽/bidi/控制字符、空白折叠、截断），NaN/±Inf 等非有限数收敛，保证 JSON 合法。
+- 识餐/OCR 路由使用异步包装（`await`），避免识别请求阻塞事件循环。
 
 > 注：原「健康知识库 / 健康提醒」页面因后端未实现对应功能（仅孤儿表），已在审计清理中移除，避免前端崩溃。
 
@@ -115,7 +130,7 @@ uv pip install -r requirements.txt
 source .venv/bin/activate
 
 # 或者不激活，直接用 uv run 执行任意命令：
-uv run pytest -q
+uv run python -m pytest -q
 ```
 
 ### 配置环境变量
@@ -130,9 +145,13 @@ cp .env.example .env
 # ZHIPU_API_KEY=your-zhipu-api-key       # 智谱 AI（健康分析/对话）
 # ARK_API_KEY=your-ark-api-key           # 火山引擎 ARK（舌诊分析）
 # ARK_MODEL_ID=doubao-seed-1-6-vision-250815
+# MENTAL_HOTLINE=                        # 心理支持热线（可选，默认空）
+# CAMPUS_COUNSELING=                     # 学校心理咨询中心联系方式（可选，默认空）
 ```
 
 > **AI 配置说明**: 以上 `ZHIPU_API_KEY` / `ARK_API_KEY` 为全局默认值；登录后可在「AI 设置」页为每个账号单独配置聊天模型与舌诊视觉模型（供应商 / Base URL / 模型 / API Key），用户配置优先于环境变量默认值。
+
+> **心理支持资源**: `MENTAL_HOTLINE` / `CAMPUS_COUNSELING` 仅用于展示危机资源，默认空；未配置或格式非法时不展示号码，前端固定提供 120 / 110 + 学校心理咨询中心兜底文案，不编造号码。
 
 > **SECRET_KEY 安全要求**: 长度 >= 32 字符，禁止使用 `your-secret-key-here` 等弱密钥。推荐生成方式: `openssl rand -hex 32`
 
@@ -213,6 +232,14 @@ project1/
 │   ├── ai_module_service.py   #   AI 流水线编排（ai_module 结果持久化）
 │   ├── health_record_service.py
 │   ├── health_service.py      #   BMI/血压分析（高血压优先判定）
+│   ├── mental_service.py      #   情绪/睡眠趋势/量表历史/首页摘要
+│   ├── scale_scoring.py       #   PHQ-9/GAD-7 题目与评分、危机标记
+│   ├── safety_service.py      #   30 天风险分级 + 严肃 Prompt + 危机资源
+│   ├── image_service.py       #   图片校验/缩放/EXIF 剥离
+│   ├── vision_service.py      #   视觉模型调用（舌诊/识餐/OCR 共用）
+│   ├── food_recognition_service.py # 拍照识餐草稿
+│   ├── report_ocr_service.py  #   体检报告 OCR 草稿
+│   ├── text_cleaning.py       #   显示文本边界清洗（ANSI/零宽/控制字符）
 │   ├── food_service.py        #   含 delete_food_record
 │   ├── sport_service.py       #   含 delete_sport_record
 │   ├── tongue_service.py      #   PIL 魔数校验 + 失败清理孤儿文件
@@ -226,20 +253,22 @@ project1/
 │   ├── food.py                #   含 DELETE /records/{id}
 │   ├── sport.py               #   含 DELETE /records/{id}
 │   ├── tongue.py
-│   ├── chat.py
+│   ├── chat.py                #   会话 + SSE 流式（safety → delta* → done|error）
+│   ├── mental.py              #   情绪打卡/趋势/量表/摘要
 │   ├── ai_analysis.py
 │   └── warning.py
-├── tests/                     # pytest 测试（112 个用例，TDD）
+├── tests/                     # pytest 测试（198 个用例，TDD）
 ├── frontend/                  # 前端源码（Vue 3）
 │   └── src/
-│       ├── views/             #   10 个页面组件（健康知识/提醒页已移除，含聊天页 ChatView、AI 设置页 AISettings）
-│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, AiModelForm, CharacterAvatar, ChatView 依赖等）
-│       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏 + 移动端底部 Tab）
+│       ├── views/             #   11 个页面组件（含心理空间 MentalHealth、聊天 ChatView、AI 设置 AISettings）
+│       ├── components/        #   通用组件（AppSidebar, AppTopbar, AppIcon, RingGauge, TrendChart, AiModelForm, CharacterAvatar 等）
+│       │   └── mental/        #   情绪打卡/趋势/量表/呼吸环/木鱼/人设卡/安全提示
+│       ├── layouts/           #   AppShell 布局（侧边栏 + 顶栏 + 移动端抽屉）
 │       ├── composables/       #   useHealthU（useSound）
 │       ├── styles/            #   tokens.css（OKLch 令牌）+ layout.css + components.css
 │       ├── assets/            #   静态资源管理
 │       ├── router/            #   路由配置（含 auth guard）
-│       ├── api/               #   API 调用封装
+│       ├── api/               #   API 调用封装（含 SSE stream.js）
 │       └── stores/            #   Pinia 状态管理
 ├── static/                    # 前端构建产物（生产模式）
 └── uploads/                   # 用户上传文件
@@ -280,6 +309,7 @@ INVITE_CODES=code1,code2
 - `GET /analysis/latest` - 最新健康分析
 - `GET /analysis/history` - 分析历史
 - `GET /rating/latest` - 最新健康评级
+- `POST /reports/ocr` - 体检报告 OCR（返回草稿，`needs_confirm: true`）
 
 ### 饮食接口 (`/api/food`)
 - `GET /foods` - 食物列表（支持搜索/分类筛选）
@@ -288,6 +318,8 @@ INVITE_CODES=code1,code2
 - `GET /records` - 饮食记录列表
 - `GET /records/stats` - 饮食统计
 - `DELETE /records/{id}` - 删除饮食记录（按用户归属校验）
+- `POST /recognize` - 拍照识餐（返回草稿，`needs_confirm: true`）
+- `POST /custom` - 创建自定义食物（识餐确认后使用）
 
 ### 运动接口 (`/api/sport`)
 - `GET /sports` - 运动列表（支持搜索/分类筛选）
@@ -320,8 +352,20 @@ INVITE_CODES=code1,code2
 ### 对话接口 (`/api/chat`)
 - `POST /session` - 创建对话会话
 - `GET /sessions` - 会话列表
+- `GET /session/{id}/messages` - 会话消息列表
 - `POST /session/{id}/message` - 发送消息（事务一致性保障）
+- `POST /session/{id}/stream` - SSE 流式发送（`safety → delta* → done|error`）
+- `POST /session/{id}/tongue-context` - 注入舌诊上下文
 - `DELETE /session/{id}` - 删除会话
+
+### 心理健康接口 (`/api/mental`)
+- `POST /mood` - 当日情绪打卡（同日重复提交即更新）
+- `GET /mood` - 情绪记录列表（`days=1..365`）
+- `GET /trend` - 情绪/睡眠趋势（`days=1..365`）
+- `GET /scales` - 量表定义（PHQ-9 / GAD-7）
+- `GET /scales/history` - 量表作答历史
+- `POST /scales/{scale_type}/submit` - 提交量表（每类每天 3 次；危机时返回资源）
+- `GET /summary` - 首页心理摘要（含 `serious_mode`）
 
 ### 预警接口 (`/api/warning`)
 - `POST /check` - 检查健康预警
@@ -359,9 +403,9 @@ INVITE_CODES=code1,code2
 ## 测试
 
 ```bash
-# 激活虚拟环境后运行，或用 uv run 直接执行
-uv run pytest --tb=short -q                          # 运行全部测试（112 个）
-uv run pytest --cov=. --cov-report=term-missing -q   # 查看覆盖率
+# 激活虚拟环境后运行；推荐用 python -m 形式，避免 uv run pytest 的 sys.path 问题
+uv run python -m pytest --tb=short -q                 # 运行全部测试（198 个）
+uv run python -m pytest --cov=. --cov-report=term-missing -q  # 查看覆盖率
 uv run ruff check .                                  # 代码检查
 make test          # 快速运行（需先激活环境）
 make coverage      # 带覆盖率报告
@@ -387,6 +431,10 @@ make lint          # 代码检查
 15. **集中配置**: `settings.py` 统一管理可调参数，全部从环境变量读取
 16. **LLM 缓存**: 相同健康数据的 AI 分析结果缓存 30 分钟，舌诊按图片 hash 缓存 1 小时
 17. **AI 密钥加密**: 每用户 API Key 以 Fernet 加密落库（密钥由 `SECRET_KEY` 经 SHA-256 派生），接口仅返回掩码（前 4 后 2），解密只在服务端发起模型请求时进行
+18. **心理危机干预**: 近 30 天风险分级（normal/elevated/high）；高风险/危机强制严肃关怀 Prompt（完全覆盖原人设）；危机资源只读环境变量、格式校验宁拒勿截断，未配置不编造号码
+19. **AI 输出边界**: 识餐/OCR 显示文本统一清洗（ANSI/零宽/bidi/控制字符、空白折叠、截断）；NaN/±Inf 收敛为默认值或 null，保证响应为合法 JSON
+20. **图片元数据**: 上传图片解码前校验格式/尺寸，重新编码为 JPEG 并剥离 EXIF/GPS；识别结果仅为草稿，人工确认后才写库
+21. **心理数据最小化**: 风险 `reasons` 只含固定中文短句，不读心理笔记、不含用户原文；跨用户查询全部按 `user_id` 隔离
 
 ## License
 
