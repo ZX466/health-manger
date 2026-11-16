@@ -69,9 +69,6 @@ macOS / Linux 将激活命令换成 `source .venv/bin/activate`，复制命令�
 |---|---|---|
 | `SECRET_KEY` | 是 | JWT 签名密钥，至少 32 字符，禁止使用示例弱密钥 |
 | `INVITE_CODES` | 注册时必填 | 逗号分隔的邀请码；未配置则禁止注册 |
-| `ZHIPU_API_KEY` | 否 | 默认聊天 / 健康分析模型 |
-| `ARK_API_KEY` | 否 | 舌诊视觉模型 |
-| `ARK_MODEL_ID` | 否 | 舌诊模型 ID，默认 `doubao-seed-1-6-vision-250815` |
 | `MENTAL_HOTLINE` / `CAMPUS_COUNSELING` | 否 | 心理危机资源，未配置不编造号码 |
 
 生成密钥：
@@ -80,7 +77,7 @@ macOS / Linux 将激活命令换成 `source .venv/bin/activate`，复制命令�
 uv run python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-登录后也可以在「AI 设置」页按用户配置聊天 / 视觉模型；用户配置优先于 `.env`。
+AI 模型（供应商 / Base URL / 模型 ID / API Key）统一在登录后的「AI 设置」页按用户配置，不写入 `.env`。
 
 ### 启动
 
