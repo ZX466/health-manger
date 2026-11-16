@@ -18,11 +18,12 @@
 | M-PERF1 流式对话 | Pi | ✅ 完成 · cline 评审 pass | `ba5eda2`（已合并） |
 | M-PERF2 视觉管线 | Pi | ✅ 完成 · cline 评审 pass | `9e43850`（已合并） |
 | M-PERF3 输出边界 | Pi | ✅ 完成 · cline 评审 pass · 已合并 | `e07854a` → main `b452fc4` |
+| M-PERF4 安全接入 | Pi | ✅ 完成 · cline 评审 pass · 已合并 | `630d10d` → main `44d6e96` |
 | M-LOGIC1 心理服务+交叉预警 | Claude | ✅ A01 已修 · Codex 评审 pass | `c41a484`（已合并） |
-| M-FE1 心理前端+年轻化 | Claude | ⏳ 未开始 | — |
-| M-DOC1 文档/配置 | cline | 🟡 草稿已对齐，待 M-FE1 定稿 | `d30d5f2` |
+| M-FE1 心理前端+年轻化 | Claude | 🟡 实现 + R1–R6 已修，待复审 | `134a03d`（main） |
+| M-DOC1 文档/配置 | cline | ✅ 已定稿（Claude 代收） | `fac98bc`（main） |
 
-- `main` = `cf13637`；kilo/codex/pi 已合并，cline 分支仅文档（M-DOC1 定稿待 M-FE1），opencode/kilo 空闲。
+- `main` = 当前 HEAD（以 `git log` 为准）；M-DB1/M-DB2/M-API1/M-API2/M-SEC1/M-PERF1–4/M-LOGIC1 均已收口，M-FE1 待复审。
 - 全量基线：main **198 passed**（含 safety 61）；`ruff check`/`format` 通过；`alembic heads` 单头 `9f1a2b3c4d5e`；`import main` 77 路由。
 
 ## 统一口径（已裁决，不再分叉）
