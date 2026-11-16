@@ -88,7 +88,7 @@
             <span class="scale-top">
               <span class="scale-key">{{ scale.key.toUpperCase() }}</span>
               <span v-if="latestFor(scale.key)" class="scale-latest">
-                上次 {{ latestFor(scale.key).label || riskLabel(latestFor(scale.key).risk_level) }}
+                上次 {{ scaleResultLabel(latestFor(scale.key)) }}
               </span>
             </span>
             <h3>{{ scale.name }}</h3>
@@ -111,8 +111,8 @@
           <div class="history-list">
             <div v-for="item in history" :key="item.id" class="history-row">
               <span class="history-name">{{ scaleName(item.scale_type) }}</span>
-              <span class="risk-pill" :class="`risk-${item.risk_level}`">
-                {{ item.label || riskLabel(item.risk_level) }}
+              <span class="risk-pill" :class="scaleRiskClass(item)">
+                {{ scaleResultLabel(item) }}
               </span>
               <span class="history-score">{{ item.score }}<small>/{{ item.max_score }}</small></span>
               <time class="history-time">{{ formatScaleDate(item.created_at) }}</time>
@@ -189,11 +189,12 @@ const heroChips = computed(() => {
     chips.push({ label: `7 天平均睡眠 ${Number(summary.value.sleep_avg_7d).toFixed(1)}h`, tone: 'muted' })
   }
 
-  const latestScale = summary.value?.latest_phq9 || summary.value?.latest_gad7
+  const latestScales = [summary.value?.latest_phq9, summary.value?.latest_gad7].filter(Boolean)
+  const latestScale = latestScales.find(item => item.crisis_flag) || latestScales[0]
   if (latestScale) {
     chips.push({
-      label: `${scaleName(latestScale.scale_type)} ${latestScale.label || riskLabel(latestScale.risk_level)}`,
-      tone: 'muted'
+      label: `${scaleName(latestScale.scale_type)} ${scaleResultLabel(latestScale)}`,
+      tone: latestScale.crisis_flag ? 'warn' : 'muted'
     })
   }
 
@@ -220,6 +221,15 @@ function moodLabel (score) {
 
 function riskLabel (risk) {
   return RISK_LABELS[risk] || risk || '已记录'
+}
+
+function scaleResultLabel (item) {
+  if (!item) return '已记录'
+  return item.crisis_flag ? '需要立即关注' : (item.label || riskLabel(item.risk_level))
+}
+
+function scaleRiskClass (item) {
+  return item?.crisis_flag ? 'risk-severe' : `risk-${item?.risk_level || 'minimal'}`
 }
 
 function scaleName (type) {

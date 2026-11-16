@@ -14,6 +14,7 @@
     />
     <main class="main app-main">
       <AppTopbar
+        ref="topbar"
         :title="pageTitle"
         :mobile-open="mobileOpen"
         @toggle-mobile-menu="toggleMobile"
@@ -75,7 +76,10 @@ export default {
     closeMobile() {
       if (!this.mobileOpen) return
       // 先把焦点移出即将 aria-hidden 的抽屉，再关闭，避免读屏焦点被困。
-      const target = this.lastFocused
+      let target = this.lastFocused
+      if (!target || target === document.body || !target.isConnected || typeof target.focus !== 'function') {
+        target = this.$refs.topbar?.$el?.querySelector('.mobile-menu-btn')
+      }
       this.lastFocused = null
       if (target?.isConnected && typeof target.focus === 'function') target.focus()
       this.mobileOpen = false

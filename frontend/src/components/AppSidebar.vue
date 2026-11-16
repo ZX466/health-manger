@@ -7,7 +7,7 @@
     aria-label="主导航"
     tabindex="-1"
   >
-    <router-link to="/dashboard" class="sidebar-logo">
+    <router-link to="/dashboard" class="sidebar-logo" @click="$emit('navigate')">
       <span class="logo-icon">慧</span>
       <span class="logo-text">慧康</span>
     </router-link>
