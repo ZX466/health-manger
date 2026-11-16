@@ -40,14 +40,13 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 
 - Python 3.9+
 - [uv](https://docs.astral.sh/uv/)
-- Node.js 16+（开发模式和构建前端时需要）
+- Node.js 16+（构建或开发前端时需要）
 
-### 安装依赖
+### 1. 安装依赖（首次）
 
 ```powershell
 cd E:\zxdevelop\project1
 
-# 首次运行；已有 .venv 可跳过
 uv venv .venv
 .\.venv\Scripts\Activate.ps1
 uv pip install -r requirements.txt
@@ -55,13 +54,15 @@ uv pip install -r requirements.txt
 cd frontend
 npm install
 cd ..
-
-Copy-Item .env.example .env
 ```
 
-macOS / Linux 将激活命令换成 `source .venv/bin/activate`，复制命令换成 `cp`。
+macOS / Linux 将激活命令换成 `source .venv/bin/activate`。
 
-### 配置 `.env`
+### 2. 配置 `.env`（首次）
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
 
 至少填写 `SECRET_KEY`；需要注册时再配置 `INVITE_CODES`。
 
@@ -77,9 +78,21 @@ macOS / Linux 将激活命令换成 `source .venv/bin/activate`，复制命令�
 uv run python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-AI 模型（供应商 / Base URL / 模型 ID / API Key）统一在登录后的「AI 设置」页按用户配置，不写入 `.env`。
+AI 模型（供应商 / Base URL / 模型 ID / API Key）在登录后的「AI 设置」页按用户配置，不写入 `.env`。
 
-### 启动
+### 3. 初始化数据库（首次）
+
+```powershell
+uv run alembic upgrade head
+uv run python scripts/init_data.py
+
+# 可选：三位演示用户（小林 / 阿哲 / 小周，密码均为 demo1234）
+uv run python scripts/seed_demo_users.py
+```
+
+SQLite 数据库会自动创建；迁移用于确保表结构最新。
+
+### 4. 启动
 
 **生产模式（端口 8420，FastAPI 同时托管前端）**
 
@@ -88,11 +101,10 @@ cd frontend
 npm run build
 cd ..
 
-uv run alembic upgrade head
 uv run uvicorn main:app --port 8420
 ```
 
-访问 <http://localhost:8420>。
+访问 <http://localhost:8420>。首次运行或前端改动后需要重新执行 `npm run build`。
 
 **开发模式（前后端热更新）**
 
@@ -107,26 +119,14 @@ npm run dev
 
 访问 <http://localhost:3000>。Vite 会把 `/api` 代理到 8420。
 
-SQLite 首次启动会自动建表；`alembic upgrade head` 用于确保数据库结构是最新的。
-
-### 初始化数据
+### 5. 验证
 
 ```powershell
-uv run python scripts/init_data.py          # 食物 / 运动基础数据
-uv run python scripts/create_test_user.py   # 测试用户：testuser / test123
-uv run python scripts/seed_demo_users.py    # 三位演示用户：小林 / 阿哲 / 小周，密码均为 demo1234
+Invoke-RestMethod http://localhost:8420/api/health
+# 应返回 status = healthy
 ```
 
-### 验证
-
-```powershell
-curl http://localhost:8420/api/health
-# 应返回 {"status":"healthy"}
-
-# 接口文档
-# http://localhost:8420/docs
-# http://localhost:8420/redoc
-```
+接口文档：<http://localhost:8420/docs> 或 <http://localhost:8420/redoc>。
 
 ## 心理安全
 
