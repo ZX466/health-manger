@@ -353,6 +353,23 @@ data: {"detail":"上游模型超时"}
 - 落地：`services.ai_config_service.save_config(persona_style=...)` 已透传（缺省不覆盖已存值），`routers/ai_analysis.py` GET/PUT 已读写该字段。
 - 兼容：v1 客户端不传该字段时行为完全不变；未落库列时响应仍返回默认值，不报 500。
 
+## 5.1 AI 分析接口错误码口径（K-3）
+
+适用于 `POST /api/ai/analysis`、`POST /api/ai/quick-analysis`、`POST /api/ai/health-evaluation`（`/async-analysis` 与 `/task/{id}` 见下）：
+
+| 场景 | 状态码 | `detail` 语义 |
+|---|---|---|
+| 未登录/令牌失效 | `401` | 未认证 |
+| 请求体结构不合法 | `422` | Pydantic 字段错误 |
+| 无健康数据 / 无规则评分 | `400` | 「暂无健康数据，请先添加健康记录」/「暂无规则评分数据，请先添加含 BMI 的健康记录」 |
+| **用户未配置 AI API Key** | `503` | 「未配置 AI API 密钥，请在「AI 设置」中完善后重试」 |
+| 上游模型超时/失败/返回异常 | `500` | 「AI 分析失败，请稍后重试」/「健康评价失败，请稍后重试」 |
+| 触发限流 | `429` | 带 `Retry-After` 头 |
+
+- 失败时**不落库**：`ai_analyses` 仅在成功返回后写入（`/analysis`、`/quick-analysis`、`/health-evaluation` 一致）。
+- `503`（未配置 Key）与 `500`（上游故障）必须区分，前端据此给「去设置」或「稍后重试」提示。
+- `POST /api/ai/async-analysis`：无健康数据 `400`；成功返回 `{task_id, status: "pending"}`（`200`）。`GET /api/ai/task/{task_id}`：任务不存在、已过期或属于其他用户一律 `404`（不泄露存在性）。
+
 ## 6. 兼容性与回归红线
 
 1. 既有 v1 路由的路径、请求体、响应字段**零变更**；仅新增可选字段与新路由。
