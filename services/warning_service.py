@@ -28,6 +28,7 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
             select(models.HealthRecord)
             .where(models.HealthRecord.user_id == user_id)
             .order_by(models.HealthRecord.record_date.desc())
+            .limit(1)
         )
         .scalars()
         .first()
