@@ -2,12 +2,12 @@
   <section class="card mood-trend">
     <div class="trend-head">
       <div>
-        <p class="eyebrow">Last 14 days</p>
+        <p class="eyebrow">Last 7 days</p>
         <h2>心情和睡眠</h2>
       </div>
       <span class="trend-legend">
-        <span><i class="legend-bar"></i>心情</span>
-        <span><i class="legend-line"></i>睡眠</span>
+        <span><i class="legend-bar"></i>精神状态</span>
+        <span><i class="legend-line"></i>睡眠时长</span>
       </span>
     </div>
 
@@ -29,45 +29,9 @@
       </div>
     </div>
 
-    <div v-if="hasData" class="chart-wrap" role="img" :aria-label="chartAriaLabel">
-      <div class="chart-grid" aria-hidden="true">
-        <span v-for="line in 3" :key="line" class="grid-line"></span>
-      </div>
-
-      <div class="bars">
-        <div v-for="(date, index) in dates" :key="date" class="bar-col">
-          <div class="bar-track">
-            <span
-              v-if="moodAt(index) != null"
-              class="bar"
-              :style="{ height: `${moodHeight(moodAt(index))}%` }"
-              :title="`${date} 心情 ${moodAt(index)}/5`"
-            ></span>
-          </div>
-          <span v-if="showLabel(index)" class="bar-label">{{ shortDate(date) }}</span>
-        </div>
-      </div>
-
-      <svg
-        v-if="hasSleep"
-        class="sleep-line"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <polyline
-          v-for="(segment, index) in sleepSegments"
-          :key="`sleep-segment-${index}`"
-          :points="segment"
-        />
-        <circle
-          v-for="point in sleepDots"
-          :key="point.key"
-          :cx="point.x"
-          :cy="point.y"
-          r="1.5"
-        />
-      </svg>
+    <div v-if="hasData" class="chart-wrap">
+      <TrendChart :series="chartSeries" :height="180" />
+      <p class="chart-note">两条曲线各自按自身量程绘制，用来观察「熬夜后情绪滑坡」的同步节奏。</p>
     </div>
 
     <div v-else class="trend-empty">
@@ -83,12 +47,16 @@
 
 <script setup>
 import { computed } from 'vue'
+import TrendChart from '../TrendChart.vue'
+import { moodTitle } from '../../constants/copywriting'
 
 const props = defineProps({
   /** GET /mental/trend?days=7 的返回 */
   trend: { type: Object, default: () => ({ dates: [], mood_score: [], sleep_hours: [] }) },
   /** GET /mental/summary 的返回 */
-  summary: { type: Object, default: null }
+  summary: { type: Object, default: null },
+  /** 高危状态下用中性描述替代玩梗标签 */
+  serious: { type: Boolean, default: false }
 })
 
 const dates = computed(() => Array.isArray(props.trend?.dates) ? props.trend.dates : [])
@@ -110,55 +78,20 @@ function sleepAt (index) {
   return value == null || Number.isNaN(Number(value)) ? null : Number(value)
 }
 
-function moodHeight (score) {
-  const clamped = Math.max(1, Math.min(5, score))
-  return 8 + ((clamped - 1) / 4) * 92
-}
-
-function sleepPoint (index) {
-  const value = sleepAt(index)
-  if (value == null) return null
-  return {
-    x: dates.value.length <= 1 ? 50 : (index / (dates.value.length - 1)) * 100,
-    y: 100 - (Math.max(0, Math.min(12, value)) / 12) * 100
-  }
-}
-
-// 缺失日断开折线，避免把两段不相邻的睡眠记录连成一条假趋势。
-const sleepSegments = computed(() => {
-  const segments = []
-  let current = []
-  dates.value.forEach((_, index) => {
-    const point = sleepPoint(index)
-    if (!point) {
-      if (current.length) segments.push(current.join(' '))
-      current = []
-      return
-    }
-    current.push(`${point.x},${point.y}`)
-  })
-  if (current.length) segments.push(current.join(' '))
-  return segments
+const chartSeries = computed(() => {
+  const moodData = dates.value.map((date, index) => ({
+    label: String(date || '').slice(5),
+    value: moodAt(index)
+  }))
+  const sleepData = dates.value.map((date, index) => ({
+    label: String(date || '').slice(5),
+    value: sleepAt(index)
+  }))
+  return [
+    { name: '精神状态', color: 'var(--accent)', unit: '/5', max: 5, data: moodData },
+    { name: '睡眠时长', color: 'var(--teal)', unit: 'h', max: 12, data: sleepData }
+  ]
 })
-
-const sleepDots = computed(() => {
-  const dots = []
-  dates.value.forEach((date, index) => {
-    const point = sleepPoint(index)
-    if (!point) return
-    dots.push({ key: `${date}-${index}`, ...point })
-  })
-  return dots
-})
-
-const labelStep = computed(() => Math.max(1, Math.ceil(dates.value.length / 6)))
-function showLabel (index) {
-  return index % labelStep.value === 0 || index === dates.value.length - 1
-}
-function shortDate (value) {
-  const text = String(value || '')
-  return text.length >= 10 ? text.slice(5) : text
-}
 
 const moodValues = computed(() =>
   dates.value.map((_, index) => moodAt(index)).filter(value => value != null)
@@ -173,7 +106,8 @@ const moodAvgLabel = computed(() => {
   if (!moodValues.value.length) return '本周还没有记录'
   const avg = moodValues.value.reduce((sum, value) => sum + value, 0) / moodValues.value.length
   const rounded = Math.max(1, Math.min(5, Math.round(avg)))
-  return { 1: '很难受', 2: '有点丧', 3: '还行', 4: '不错', 5: '很好' }[rounded]
+  if (props.serious) return { 1: '很难受', 2: '有些低落', 3: '一般', 4: '尚可', 5: '稳定' }[rounded]
+  return moodTitle(rounded)
 })
 function formatSummaryNumber (value) {
   if (value == null) return '—'
@@ -279,8 +213,16 @@ const chartAriaLabel = computed(() => {
   position: relative;
   display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 148px;
   padding-top: 6px;
+}
+
+.chart-note {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
 }
 
 .chart-grid {

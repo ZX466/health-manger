@@ -28,6 +28,16 @@
         <strong>110</strong>
         <span>身处危险或需要即时保护</span>
       </a>
+      <a class="safety-card" href="tel:4001619995">
+        <span class="safety-card-label">全国 24 小时心理援助</span>
+        <strong>400-161-9995</strong>
+        <span>希望 24 热线，随时可以打</span>
+      </a>
+      <a class="safety-card" href="tel:12356">
+        <span class="safety-card-label">全国心理援助热线</span>
+        <strong>12356</strong>
+        <span>免费、保密，工作日与夜间均可尝试</span>
+      </a>
       <a
         v-for="resource in validResources"
         :key="`${resource.name}-${resource.phone || ''}`"
