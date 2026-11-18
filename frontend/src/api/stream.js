@@ -46,6 +46,16 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
   let dataLines = []
   let sawTerminal = false
 
+  const isValidTerminal = (name, data) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+    if (name === 'done') {
+      // 契约：done = {message_id:int, tokens_used:int}
+      return Number.isInteger(data.message_id) && Number.isFinite(data.tokens_used)
+    }
+    // 契约：error = {detail:string}
+    return typeof data.detail === 'string' && data.detail.length > 0
+  }
+
   const dispatch = () => {
     if (!dataLines.length) {
       eventName = 'message'
@@ -63,18 +73,22 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
     } catch (e) {
       // 非 JSON 的 data 也交给调用方；后端当前全部是 JSON。
     }
-    // 只认可完整解析的终态帧：EOF 时被截断的 done/error 不能当作正常结束。
-    if (parsed && (name === 'done' || name === 'error')) sawTerminal = true
+    if (name === 'done' || name === 'error') {
+      // 终态帧必须完整解析且符合契约；截断/缺字段的帧不回调，按未收到终态处理。
+      if (!parsed || !isValidTerminal(name, data)) return
+      sawTerminal = true
+    }
     if (typeof onEvent === 'function') onEvent(name, data)
   }
 
-  const processLines = (text, flush = false) => {
+  const processLines = (text) => {
     buffer += text
     const lines = buffer.split('\n')
-    buffer = flush ? '' : lines.pop()
+    buffer = lines.pop()
     for (const rawLine of lines) {
       const line = rawLine.replace(/\r$/, '')
       if (line === '') {
+        // 仅在空行（帧结束）时派发；EOF 时未以空行结束的残余帧按规范丢弃。
         dispatch()
         continue
       }
@@ -92,8 +106,8 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
     if (done) break
     processLines(decoder.decode(value, { stream: true }))
   }
-  processLines(decoder.decode(), true)
-  dispatch()
+  // 冲掉解码器尾部；未构成完整帧的 buffer 不派发（SSE 规范要求空行结束）。
+  processLines(decoder.decode())
 
   if (!sawTerminal) {
     const error = new Error('连接中断，未收到完整回复')

@@ -80,14 +80,21 @@ export default {
     },
     closeMobile() {
       if (!this.mobileOpen) return
-      // 先把焦点移出即将 aria-hidden 的抽屉，再关闭，避免读屏焦点被困。
+      // 入口可能位于即将被 inert 的 MobileTabs 中：先关闭解除 inert，再归还焦点。
       let target = this.lastFocused
       if (!target || target === document.body || !target.isConnected || typeof target.focus !== 'function') {
         target = this.$refs.topbar?.$el?.querySelector('.mobile-menu-btn')
       }
       this.lastFocused = null
-      if (target?.isConnected && typeof target.focus === 'function') target.focus()
       this.mobileOpen = false
+      this.$nextTick(() => {
+        if (target?.isConnected && typeof target.focus === 'function') {
+          target.focus()
+          return
+        }
+        const fallback = this.$refs.topbar?.$el?.querySelector('.mobile-menu-btn')
+        if (fallback?.isConnected) fallback.focus()
+      })
     },
     onKeydown(event) {
       if (event.key === 'Escape' && this.mobileOpen) {

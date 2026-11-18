@@ -110,8 +110,8 @@
           :aria-busy="sending"
         >
           <div v-if="!messages.length" class="empty chat-empty">
-            <p class="empty-title">{{ seriousMode ? '今天想从哪里开始？' : modeMeta.emptyTitle }}</p>
-            <p>{{ seriousMode ? '不用组织好语言，想到哪说到哪。' : modeMeta.emptyText }}</p>
+            <p class="empty-title">{{ personaSerious ? '今天想从哪里开始？' : modeMeta.emptyTitle }}</p>
+            <p>{{ personaSerious ? '不用组织好语言，想到哪说到哪。' : modeMeta.emptyText }}</p>
             <div class="prompt-chips">
               <button
                 v-for="prompt in quickPrompts"
@@ -215,7 +215,7 @@ const MODE_META = {
 }
 
 const modeMeta = computed(() => {
-  if (seriousMode.value) {
+  if (personaSerious.value) {
     return {
       ...MODE_META[mode.value],
       hint: '最近的状态值得被认真对待。这里不玩梗，也不用一个人扛。',
@@ -227,12 +227,13 @@ const modeMeta = computed(() => {
 })
 
 const quickPrompts = computed(() => {
+  // 与人设使用同一有效安全状态：摘要失败但 SSE 已报 high/crisis 时也不能出现玩梗快捷词。
   if (mode.value === 'mental') {
-    return seriousMode.value
+    return personaSerious.value
       ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
       : ['今天有点破防', '压力大到不想说话', '想找个地方倒垃圾']
   }
-  return seriousMode.value
+  return personaSerious.value
     ? ['我最近总是睡不好', '身体一直不太舒服', '想找人说说']
     : ['最近总是睡不好', '吃完饭胃不舒服', '帮我看看今天的记录']
 })

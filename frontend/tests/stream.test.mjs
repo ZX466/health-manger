@@ -39,18 +39,38 @@ async function collect (chunks) {
 test('完整 done 帧正常结束', async () => {
   const { events, error } = await collect([
     'event: delta\ndata: {"content":"你"}\n\n',
-    'event: done\ndata: {"ok":true}\n\n'
+    'event: done\ndata: {"message_id":7,"tokens_used":3}\n\n'
   ])
   assert.equal(error, null)
   assert.deepEqual(events.map(([name]) => name), ['delta', 'done'])
 })
 
-test('截断的 done 帧按中断处理', async () => {
-  const { error } = await collect([
+test('截断的 done 帧按中断处理且不回调 done', async () => {
+  const { events, error } = await collect([
     'event: delta\ndata: {"content":"半"}\n\n',
-    'event: done\ndata: {"ok":'
+    'event: done\ndata: {"message_id":7,'
   ])
   assert.equal(error?.code, 'STREAM_INCOMPLETE')
+  assert.deepEqual(events.map(([name]) => name), ['delta'])
+})
+
+test('done 帧缺少结束空行按中断处理', async () => {
+  const { events, error } = await collect([
+    'event: delta\ndata: {"content":"半"}\n\n',
+    'event: done\ndata: {"message_id":7,"tokens_used":3}\n'
+  ])
+  assert.equal(error?.code, 'STREAM_INCOMPLETE')
+  assert.deepEqual(events.map(([name]) => name), ['delta'])
+})
+
+test('done 数据为 null 或缺少契约字段按中断处理', async () => {
+  for (const payload of ['null', '{}', '{"message_id":7}']) {
+    const { events, error } = await collect([
+      `event: done\ndata: ${payload}\n\n`
+    ])
+    assert.equal(error?.code, 'STREAM_INCOMPLETE', payload)
+    assert.deepEqual(events, [], payload)
+  }
 })
 
 test('缺少终态按中断处理', async () => {
@@ -66,4 +86,12 @@ test('error 帧正常结束', async () => {
   ])
   assert.equal(error, null)
   assert.deepEqual(events.map(([name]) => name), ['error'])
+})
+
+test('error 数据为 null 按中断处理且不回调', async () => {
+  const { events, error } = await collect([
+    'event: error\ndata: null\n\n'
+  ])
+  assert.equal(error?.code, 'STREAM_INCOMPLETE')
+  assert.deepEqual(events, [])
 })

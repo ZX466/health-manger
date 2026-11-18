@@ -48,6 +48,7 @@
             type="button"
             role="radio"
             :aria-checked="answers[current] === option.score"
+            :disabled="submitting"
             @click="choose(option.score, $event)"
           >
             <span class="answer-score">{{ option.score }}</span>
@@ -141,6 +142,8 @@ const answers = ref([])
 const submitting = ref(false)
 const error = ref('')
 const result = ref(null)
+// 提交时的答案快照：结果文案必须绑定本次请求的作答，而非提交后仍可修改的实时答案。
+const resultAnswers = ref(null)
 let advanceTimer = null
 
 const total = computed(() => props.scale?.questions?.length || 0)
@@ -157,13 +160,14 @@ const resultRiskClass = computed(() =>
   result.value?.crisis_flag ? 'risk-severe' : `risk-${result.value?.risk_level || 'minimal'}`
 )
 
-const riskAdvice = computed(() => scaleRiskAdvice(result.value, answers.value))
+const riskAdvice = computed(() => scaleRiskAdvice(result.value, resultAnswers.value))
 
 function resetAnswers () {
   answers.value = Array(total.value).fill(null)
   current.value = 0
   started.value = false
   result.value = null
+  resultAnswers.value = null
   error.value = ''
   submitting.value = false
   clearAdvance()
@@ -182,6 +186,7 @@ function clearAdvance () {
 }
 
 function choose (score, event) {
+  if (submitting.value) return
   answers.value = answers.value.map((value, index) => index === current.value ? score : value)
   error.value = ''
   clearAdvance()
@@ -211,8 +216,10 @@ async function submit () {
     return
   }
   submitting.value = true
+  const submittedAnswers = [...answers.value]
   try {
-    const { data } = await api.submitMentalScale(props.scale.key, { answers: answers.value })
+    const { data } = await api.submitMentalScale(props.scale.key, { answers: submittedAnswers })
+    resultAnswers.value = submittedAnswers
     result.value = data
     emit('submitted', data)
   } catch (e) {
