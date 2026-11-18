@@ -152,3 +152,13 @@
 3. 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得推送远程。
 4. 评审链：K-* 与 C-1 由 Claude 评审；O-1、W-1、A-1 由 Codex 评审；P-1、S-1 由 cline 评审。
 5. 本轮只做上述任务；未派单不改业务代码。
+
+---
+
+## 执行顺序（2026-11-18 17:10）
+
+- **可并行起跑（6 条）**：W-1（Claude）、K-1（kilo）、O-1（opencode）、P-1（pi）、C-1（cline）、S-1（codex）。彼此无文件依赖。
+- **同 Agent 串行**：Claude `W-1 → A-1 → DASH-1 → CHAT-1`；kilo `K-1 → K-2 → K-3`（K-1/K-2 都改 `routers/health.py`，不得并行）。
+- **依赖**：DASH-1 等 K-2 合入；A-1 不依赖 K-3（现有接口可用，K-3 只保契约）；C-1 可在实现期先写，P0 合并后二次校准；Codex 复审等 W-1/A-1/O-1 的 `complete`。
+- **建议合并顺序**：K-1 → W-1 → A-1 → K-2 → DASH-1 → O-1 → K-3 → C-1 → CHAT-1。P-1/S-1 为报告/审计，不阻塞合并。
+- **文件冲突提醒**：W-1 与 DASH-1 都改 `Dashboard.vue`（同 Agent 串行）；K-1/K-2 都改 `routers/health.py`（同 Agent 串行）；其余任务文件不重叠。
