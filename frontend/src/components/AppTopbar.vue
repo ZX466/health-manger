@@ -16,9 +16,13 @@
       <span class="topbar-title">{{ title }}</span>
     </div>
     <div class="topbar-right">
-      <router-link class="icon-btn" to="/health-record" aria-label="查看健康提醒">
+      <router-link
+        class="icon-btn"
+        to="/warnings"
+        :aria-label="warningStore.stats.unread ? `${warningStore.stats.unread} 条未读健康预警` : '查看健康预警'"
+      >
         <AppIcon name="alert" :size="18" />
-        <span class="notify-dot" aria-hidden="true" />
+        <span v-if="warningStore.stats.unread" class="notify-dot" aria-hidden="true" />
       </router-link>
       <span class="topbar-user">
         <span class="user-avatar user-avatar--sm">{{ userInitial }}</span>
@@ -30,6 +34,7 @@
 
 <script>
 import AppIcon from './AppIcon.vue'
+import { useWarningStore } from '../stores/warnings'
 
 export default {
   name: 'AppTopbar',
@@ -39,6 +44,9 @@ export default {
     mobileOpen: { type: Boolean, default: false }
   },
   emits: ['toggle-mobile-menu'],
+  setup() {
+    return { warningStore: useWarningStore() }
+  },
   data() {
     return {
       currentDate: ''
@@ -56,6 +64,7 @@ export default {
     const now = new Date()
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
     this.currentDate = `${now.getMonth() + 1} 月 ${now.getDate()} 日 · ${weekdays[now.getDay()]}`
+    this.warningStore.refreshStats()
   }
 }
 </script>

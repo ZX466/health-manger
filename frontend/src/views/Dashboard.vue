@@ -29,6 +29,27 @@
       </div>
     </section>
 
+    <router-link
+      v-if="warningStore.stats.unread"
+      class="dash-warning"
+      to="/warnings"
+      aria-label="查看健康预警"
+    >
+      <span class="dash-warning-mark"><AppIcon name="alert" :size="18" /></span>
+      <span class="dash-warning-copy">
+        <span class="micro">ALERTS / {{ warningStore.stats.danger ? 'ACTION NEEDED' : 'UNREAD' }}</span>
+        <strong>{{ warningStore.stats.unread }} 条健康提醒待查看</strong>
+        <small>
+          {{
+            warningStore.stats.danger
+              ? `${warningStore.stats.danger} 条危险级提醒，建议优先处理。`
+              : '来自最近的体检记录与量表结果。'
+          }}
+        </small>
+      </span>
+      <AppIcon name="arrow" :size="16" />
+    </router-link>
+
     <div class="dashboard-grid">
       <section class="score-panel" aria-labelledby="score-title">
         <div class="score-panel-head">
@@ -186,7 +207,7 @@
         <span class="micro">05 / RECORD</span><strong>体检单自动填入</strong><AppIcon name="arrow" :size="16" />
       </router-link>
       <router-link class="quick-link" to="/chat">
-        <span class="micro">08 / CHAT</span><strong>身体问诊 / 心理树洞</strong><AppIcon name="arrow" :size="16" />
+        <span class="micro">09 / CHAT</span><strong>身体问诊 / 心理树洞</strong><AppIcon name="arrow" :size="16" />
       </router-link>
     </nav>
 
@@ -206,10 +227,14 @@ import MiniNailong from '../components/mascots/MiniNailong.vue'
 import { buildPersonaCard, getHealthTier, moodTitle } from '../constants/copywriting'
 import { formatShortDate, localDateKey } from '../utils/date'
 import { useWellnessStore } from '../stores/wellness'
+import { useWarningStore } from '../stores/warnings'
 
 export default {
   name: 'Dashboard',
   components: { MemeGallery, AudioPlayer, AppIcon, MiniNailong },
+  setup() {
+    return { warningStore: useWarningStore() }
+  },
   data() {
     return {
       userName: '',
@@ -632,6 +657,7 @@ export default {
     await this.loadMentalSummary()
     await this.loadTrend()
     await this.loadWellness()
+    this.warningStore.refreshStats(true)
 
     // paint ring after data is ready
     this.$nextTick(() => {
