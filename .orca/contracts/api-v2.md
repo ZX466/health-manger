@@ -289,6 +289,29 @@
 
 错误：同 2.1（`400` / `503` / `429`，每用户 10 次/60 秒）。
 
+### 3.2 `GET /api/health/rating/history?days=7|30`（K-2）
+
+- 查询参数 `days`：**仅支持 `7` 或 `30`**（缺省 `7`）；其他整数与非整数一律 `422`（`detail` 说明只支持 7/30），不做静默截断。
+- 响应 `200`：连续日期序列（升序，最后一项为今天），每天一个点：
+
+```json
+[
+  {"date": "2026-11-12", "score": null, "level": null},
+  {"date": "2026-11-13", "score": 86, "level": "良好"},
+  {"date": "2026-11-14", "score": null, "level": null}
+]
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `date` | string(`YYYY-MM-DD`) | **始终存在**，缺失数据日也保留日期占位 |
+| `score` | int \| null | 当日综合评分（0–100）；无数据为 `null` |
+| `level` | string \| null | 当日综合等级（如「优秀/良好/中等/较差/危险」）；无数据为 `null` |
+
+- 数据来源：`health_analyses`（评分与等级来自 `health_rating.calculate_health_rating` 的落库结果）；**同一天多次分析取最新一条**（`analysis_date` 最大，其次 `id` 最大）。
+- 仅返回当前登录用户的数据（`user_id` 过滤），跨用户不可见。
+- 前端不得自行猜测缺失日语义：`score: null` 即「当天无分析」。
+
 ## 4. 流式对话（`POST /api/chat/session/{id}/stream`）
 
 实现属 Pi M-PERF1；本节仅固定事件契约。

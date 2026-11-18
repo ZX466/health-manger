@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 import models
@@ -15,6 +15,7 @@ from services.health_record_service import (
     get_record,
     get_records,
 )
+from services.rating_history_service import rating_history
 from services.security_service import check_rate_limit
 from services.warning_service import safe_check_health_warnings
 
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/api/health", tags=["健康数据"])
 
 REPORT_OCR_RATE_LIMIT = 10
 REPORT_OCR_RATE_WINDOW_SECONDS = 60
+RATING_HISTORY_WINDOWS = (7, 30)
 
 
 @router.post("/records", response_model=schemas.HealthRecordResponse)
@@ -98,6 +100,18 @@ def get_latest_rating(
         "overall_advice": analysis.overall_advice,
         "analysis_date": analysis.analysis_date,
     }
+
+
+@router.get("/rating/history", response_model=list[schemas.HealthRatingHistoryPoint])
+def get_rating_history(
+    days: int = Query(7, description="统计窗口，仅支持 7 或 30"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """近 7/30 天每日评级；缺失日保留 date，score/level 为 null（契约见 api-v2）。"""
+    if days not in RATING_HISTORY_WINDOWS:
+        raise HTTPException(status_code=422, detail="days 仅支持 7 或 30")
+    return rating_history(db, current_user.id, days)
 
 
 @router.post("/reports/ocr", response_model=schemas.ReportOcrResponse)
