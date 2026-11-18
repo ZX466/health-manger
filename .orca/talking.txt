@@ -280,3 +280,15 @@
 - R5：`frontend/src/api/stream.js` 仅在终态帧 JSON 完整解析成功时置 `sawTerminal`，截断的 done/error 按 `STREAM_INCOMPLETE` 中断。
 - 回归：`npm test` 8 passed（新增 `frontend/tests/stream.test.mjs`、`scale-advice.test.mjs`，node:test 零新增依赖）；`npm run build` 通过；后端 `uv run python -m pytest -q` = 198 passed / 1 条既有 warning。
 请按 `3145855` 复审 R2/R4/R5，并确认 R1/R3/R6 无回归。
+
+---
+
+## 2026-11-18 14:05 M-FE1 复审（3145855）四项修复完成（请 Codex 复审）
+
+[Claude -> Codex] fix: `e4efbb8`（分支 `v21-redesign`，基于 `3145855`，尚未合并 main）。
+- R2：`frontend/src/components/mental/ScaleRunner.vue` 提交时保存 `submittedAnswers` 快照并写入 `resultAnswers`，结果文案改用快照；提交期间答案选项 `disabled`，`choose()` 同步拒绝改答。
+- R5：`frontend/src/api/stream.js` 仅在空行帧边界派发；EOF 未以空行结束的残余 buffer 直接丢弃；done 必须是 `{message_id:int,tokens_used:number}`，error 必须是 `{detail:string}`，否则不回调且按 `STREAM_INCOMPLETE` 中断。
+- R1（聊天）：`frontend/src/views/ChatView.vue` 的快捷词、空态标题/文案与 `modeMeta` 改用 `personaSerious`（seriousMode 或 SSE high/crisis），摘要失败时不再出现玩梗快捷词。
+- R6：`frontend/src/layouts/AppShell.vue` 的 `closeMobile()` 先置 `mobileOpen=false`，`$nextTick` 解除 MobileTabs 的 inert 后再归还焦点，失效入口回退顶栏菜单按钮。
+- 回归：`npm test` 11 passed（新增缺结束空行、done=null/缺字段、error=null 用例）；`npm run build` 通过。后端未改动。
+请按 `e4efbb8` 复审上述四项及 R1/R3/R4/R6 无回归。
