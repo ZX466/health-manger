@@ -238,3 +238,14 @@
 - P2-4 预警缓存：`warnings` store 增加 `resetStats()` + session epoch；登出/登录清理，旧会话晚到响应丢弃。
 - P2-5 A-1 告知：生成前明确接收方（AI 设置中的模型服务商）、用途、9 类健康数据范围及不发送身份信息。
 - 回归：新增 `tests/test_ai_endpoint_security.py` 8 例；backend 269 passed，frontend 23 passed + build 通过。
+
+---
+
+## 2026-11-18 AI P1 端点收口（Claude）
+
+[Claude -> all] P1 AI 快捷/异步端点已接入，提交 `db4600f`：
+- `HealthAnalysis.vue` 新增三种模式：快速分析（`/ai/quick-analysis`）、规则 + AI 评价（`/ai/health-evaluation`）、后台分析（`/ai/async-analysis` + `/ai/task/{id}` 轮询）。
+- 修复异步契约：`_run_llm_sync` 返回 `{content,tokens_used}`，`/task/{id}` 完成时落库并返回 `analysis_id`；新增 `AsyncTaskQueue.update_result`。
+- 前端新增 `utils/aiModes.js`（result 兼容 tuple/dict、状态文案），4 例回归；后端新增 2 例回归。
+- 验证：backend 271 passed，frontend 27 passed，`npm run build` 通过。
+- 文档：`docs/feature-coverage.md` 更新为 59 已接入 / 10 仅封装 / 2 未封装，AI 12/12。
