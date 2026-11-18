@@ -58,6 +58,18 @@
   --duration-fast: 150ms;
   --duration-base: 240ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 成对语义令牌（文字色 / 浅底色，供新组件使用） ───── */
+  --accent-fg:    var(--accent-strong);
+  --accent-bg:    var(--accent-soft);
+  --success-fg:   var(--success);
+  --success-bg:   var(--success-soft);
+  --warn-fg:      var(--warn);
+  --warn-bg:      var(--warn-soft);
+  --danger-fg:    var(--danger);
+  --danger-bg:    var(--danger-soft);
+  --info-fg:      var(--info);
+  --info-bg:      var(--info-soft);
 }
 
 /* ═══════════════════════════════════════════════════════════

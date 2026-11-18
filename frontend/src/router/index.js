@@ -9,7 +9,7 @@ const HealthAnalysis = () => import('../views/HealthAnalysis.vue')
 const DietManagement = () => import('../views/DietManagement.vue')
 const SportManagement = () => import('../views/SportManagement.vue')
 const TongueDiagnosis = () => import('../views/TongueDiagnosis.vue')
-const MentalHealth = () => import('../views/MentalHealth.vue')
+const MentalView = () => import('../views/MentalView.vue')
 const ChatView = () => import('../views/ChatView.vue')
 const AISettings = () => import('../views/AISettings.vue')
 
@@ -68,8 +68,8 @@ const routes = [
   },
   {
     path: '/mental',
-    name: 'MentalHealth',
-    component: MentalHealth,
+    name: 'MentalView',
+    component: MentalView,
     meta: { requiresAuth: true, title: '心理空间' }
   },
   {

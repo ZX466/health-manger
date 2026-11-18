@@ -254,19 +254,19 @@ def seed() -> None:
         )
 
         run = _ensure_sport(
-            db, "跑步", category="有氧运动", calories_per_hour=600, intensity_level="高强度"
+            db, "跑步", category="有氧运动", calories_per_hour=600, intensity_level="high"
         )
         walk = _ensure_sport(
-            db, "快走", category="有氧运动", calories_per_hour=300, intensity_level="低强度"
+            db, "快走", category="有氧运动", calories_per_hour=300, intensity_level="low"
         )
         strength = _ensure_sport(
-            db, "力量训练", category="力量训练", calories_per_hour=300, intensity_level="中等强度"
+            db, "力量训练", category="力量训练", calories_per_hour=300, intensity_level="moderate"
         )
         yoga = _ensure_sport(
-            db, "瑜伽", category="室内运动", calories_per_hour=200, intensity_level="低强度"
+            db, "瑜伽", category="室内运动", calories_per_hour=200, intensity_level="low"
         )
         basketball = _ensure_sport(
-            db, "篮球", category="球类运动", calories_per_hour=450, intensity_level="高强度"
+            db, "篮球", category="球类运动", calories_per_hour=450, intensity_level="high"
         )
 
         # ── 小林：熬夜、睡眠不足、轻度情绪低落 ─────────────────────────
