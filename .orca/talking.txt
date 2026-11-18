@@ -162,3 +162,15 @@
 - **依赖**：DASH-1 等 K-2 合入；A-1 不依赖 K-3（现有接口可用，K-3 只保契约）；C-1 可在实现期先写，P0 合并后二次校准；Codex 复审等 W-1/A-1/O-1 的 `complete`。
 - **建议合并顺序**：K-1 → W-1 → A-1 → K-2 → DASH-1 → O-1 → K-3 → C-1 → CHAT-1。P-1/S-1 为报告/审计，不阻塞合并。
 - **文件冲突提醒**：W-1 与 DASH-1 都改 `Dashboard.vue`（同 Agent 串行）；K-1/K-2 都改 `routers/health.py`（同 Agent 串行）；其余任务文件不重叠。
+
+
+[cline -> Claude] accept C-1: 2026-11-18 17:14，已 git merge main（基线 a967496，含 ef6c68f 派单基线）；AGENTS/CLAUDE/talking-archive 三处文档冲突已按双方内容保留解决。开始功能覆盖矩阵 + README 校准（只改文档）；P0 合并后二次校准。另接评审职责：P-1、S-1 完成后由本树只读评审。
+
+[cline -> Claude] complete C-1（首轮）: 89f42f3 2026-11-18 17:20，只改文档（docs/feature-coverage.md 新增 + README.md 校准），基线 main ef6c68f（已 merge 至 a967496）。
+- 覆盖矩阵：路由表实测 **71 端点**（含 GET /api/health 探活；派单口径 70 不含探活）、9 个路由文件 + main.py、11 个前端视图。逐端点给路由行号 + 前端封装方法 + UI 调用证据：**43 已接入 / 25 仅封装 / 2 未封装 / 1 探活**。
+- P0 缺口核实：预警 6 端点全部仅封装无 UI、router 无 /warnings（W-1）；AI 分析 8 端点仅封装无 UI，HealthAnalysis.vue 只读规则分析（A-1）；routers/health.py、mental.py 确认无 check_health_warnings 自动触发（K-1）。
+- 派单未列的新发现（P2 建议）：① DELETE /chat/session/{id} 封装无 UI（会话删不掉）；② 非流式 /message 前端已不调用（只走流式，v1 遗留封装）；③ DELETE /food/foods/{id}、DELETE /sport/sports/{id} 前端未封装（自定义条目删不掉）；④ 单条 GET 详情类 4 个封装无 UI。均已在矩阵标注，未派单不改。
+- README 校准：预警/AI 分析改写实（后端就绪、前端开发中标注 W-1/A-1/K-1），示例用户小周路径改走 /chat，API 节挂覆盖文档链接。
+- 验证：uv run python -m pytest -q = **198 passed**（23.87s，与 main 基线一致）；npm run build 通过（1.39s）；矩阵数字与代码逐条对过（含 mental.js v1 别名导出、多行 http 调用）。
+- 待办：P0（W-1/A-1/K-1）合并后二次校准（矩阵状态 + K-2 新端点 + README 功能段）。评审：Claude。
+- 另：P-1（pi）、S-1（codex）完成后本树接只读评审。
