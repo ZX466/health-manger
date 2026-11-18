@@ -97,6 +97,9 @@ h3 { font-size: 16px; font-weight: 550; line-height: 1.35; }
 .btn-primary:hover { background: var(--accent-strong); color: var(--surface); }
 .btn-secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
 .btn-secondary:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 6%); }
+.btn-ghost { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+.btn-ghost:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 6%); color: var(--fg); }
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-danger { background: var(--danger); color: var(--surface); border: 1px solid transparent; }
 .btn-danger:hover { background: #c81236; background: color-mix(in oklch, var(--danger), black 10%); color: var(--surface); }
 .btn-full { width: 100%; }

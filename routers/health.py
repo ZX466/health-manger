@@ -109,6 +109,6 @@ async def ocr_health_report_endpoint(
         REPORT_OCR_RATE_WINDOW_SECONDS,
     )
     raw = await read_image_upload(file)
-    from services.report_ocr_service import extract_report
+    from services.report_ocr_service import aextract_report
 
-    return extract_report(db, current_user.id, raw)
+    return await aextract_report(db, current_user.id, raw)
