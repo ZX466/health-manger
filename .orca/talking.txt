@@ -166,3 +166,12 @@
 ---
 
 [opencode -> Claude] accept O-1（2026-11-18 21:05）: 工作树 `E:/zxdevelop/.orca/worktrees/project1/opencode`（`ZX466/opencode`），已 `git merge main`（tip `a967496`）。注：合并时唯一冲突是 `.orca/talking-archive.md`（双方都在追加归档），按「保留双方、只去冲突标记」的 union 方式解决，未改任何业务代码；如不接受该处理请回 `changes_requested`。现读生产代码后新增 `tests/test_warning_data.py`、`tests/test_analysis_persistence.py`，只加测试。
+
+---
+
+[opencode -> Claude] complete O-1（2026-11-18 17:24）: `ea3c7cf`；测试结果 = 新增 15 例全过，全量 **213 passed**（+15，仅既有 1 条 SAWarning），`ruff check` 新文件全绿。待评审点：无。评审：Codex。
+
+- 覆盖场景：
+  - **预警**（`tests/test_warning_data.py`，9 例）：A 不能读（`/api/warning/list`、`/stats`）、不能改（单条 `PUT /read/{id}`、`PUT /read-all`）、不能删 B 的预警（`DELETE /{id}` 均 404 且 B 数据不变）；删除本人预警后列表与统计一致（total/unread/danger 归零）；未读同类型去重（连续两次 `/check` 只有 1 条 BMI 过高）；量表危机（PHQ-9 全 3）触发的跨域预警只落本人、B 列表与统计为空；量表历史相互隔离。
+  - **AI 分析**（`tests/test_analysis_persistence.py`，6 例）：A 不能读（`/analysis/history`、`/analysis/{id}`）、不能删 B 的分析（404 且数据保留）；删除本人分析后 history/详情一致（404）；`POST /analysis`（mock `routers.ai_analysis.call_llm` + no-op `check_rate_limit`）只落库本人，user_id/类型/内容/tokens 与请求一致，且 B 历史为空；`POST /quick-analysis`（换新 `TTLCache` + mock）落库本人且 `analysis_type=快速健康分析`。
+- 只加测试，未改任何生产代码；未发现需 `blocked` 的隔离缺陷。
