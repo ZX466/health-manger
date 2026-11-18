@@ -145,6 +145,11 @@ def _gad7_risk(total: int) -> RiskLevel:
     return "severe"
 
 
+def risk_label(risk_level: str) -> str:
+    """风险等级的中文标签；未知等级原样返回，避免历史数据导致序列化失败。"""
+    return _RISK_LABELS.get(risk_level, risk_level)  # type: ignore[arg-type]
+
+
 def score(scale_type: str, answers: Sequence[int]) -> ScoreResult:
     """计算量表总分与风险等级。
 

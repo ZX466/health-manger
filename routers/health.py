@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 import models
@@ -6,6 +6,7 @@ import schemas
 from auth import get_current_user
 from database import get_db
 from health_rating import get_rating_bg_color, get_rating_color, get_rating_emoji
+from routers._uploads import read_image_upload
 from services.health_record_service import (
     create_record,
     delete_record,
@@ -14,8 +15,12 @@ from services.health_record_service import (
     get_record,
     get_records,
 )
+from services.security_service import check_rate_limit
 
 router = APIRouter(prefix="/api/health", tags=["健康数据"])
+
+REPORT_OCR_RATE_LIMIT = 10
+REPORT_OCR_RATE_WINDOW_SECONDS = 60
 
 
 @router.post("/records", response_model=schemas.HealthRecordResponse)
@@ -89,3 +94,21 @@ def get_latest_rating(
         "overall_advice": analysis.overall_advice,
         "analysis_date": analysis.analysis_date,
     }
+
+
+@router.post("/reports/ocr", response_model=schemas.ReportOcrResponse)
+async def ocr_health_report_endpoint(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """体检报告 OCR：只回草稿，不写 HealthRecord；用户确认后复用 v1 记录接口。"""
+    check_rate_limit(
+        f"report_ocr:{current_user.id}",
+        REPORT_OCR_RATE_LIMIT,
+        REPORT_OCR_RATE_WINDOW_SECONDS,
+    )
+    raw = await read_image_upload(file)
+    from services.report_ocr_service import aextract_report
+
+    return await aextract_report(db, current_user.id, raw)

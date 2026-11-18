@@ -71,10 +71,12 @@ def save_config(
     vision_model: str | None = None,
     vision_base_url: str | None = None,
     vision_api_key: str | None = None,
+    persona_style: str | None = None,
 ) -> models.AIConfig:
     """保存/更新用户 AI 配置（聊天 + 舌诊视觉两套）。
 
-    api_key / vision_api_key 为空则保留原值（编辑时不重复提交明文）。
+    api_key / vision_api_key 为空则保留原值（编辑时不重复提交明文）；
+    persona_style 为空则保留原值，未设置过的用户落库默认 humorous。
     """
     config = get_config(db, user_id)
     if config is None:
@@ -100,6 +102,10 @@ def save_config(
         config.vision_base_url = vision_base_url
     if vision_api_key:
         config.vision_api_key_encrypted = encrypt_api_key(vision_api_key)
+
+    # 对话风格（humorous / clinical，缺省沿用已存值）
+    if persona_style:
+        config.persona_style = persona_style
 
     db.commit()
     db.refresh(config)

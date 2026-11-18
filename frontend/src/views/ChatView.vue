@@ -5,16 +5,19 @@
       <aside class="chat-side card" aria-label="会话列表">
         <div class="section-head">
           <h2>会话</h2>
-          <button class="btn btn--primary btn-sm" type="button" @click="createSession">＋ 新建</button>
+          <button class="btn btn--primary btn-sm" type="button" :disabled="creating" @click="createSession">＋ 新建</button>
         </div>
         <ul class="session-list">
-          <li
-            v-for="s in sessions" :key="s.id"
-            :class="['session-item', { active: s.id === activeId }]"
-            @click="selectSession(s)"
-          >
-            <div class="session-title">{{ s.title || '新会话' }}</div>
-            <div class="session-meta">{{ formatDate(s.updated_at) }}</div>
+          <li v-for="s in sessions" :key="s.id">
+            <button
+              class="session-item"
+              :class="{ active: s.id === activeId }"
+              type="button"
+              @click="selectSession(s)"
+            >
+              <span class="session-title">{{ s.title || '新会话' }}</span>
+              <span class="session-meta">{{ formatDate(s.updated_at) }}</span>
+            </button>
           </li>
           <li v-if="!sessions.length" class="empty">
             <p class="empty-title">暂无会话</p>
@@ -25,26 +28,134 @@
 
       <!-- 消息区 -->
       <section class="chat-main card">
-        <div ref="msgBox" class="messages" aria-live="polite">
-          <div v-if="!messages.length" class="empty">
-            <p class="empty-title">开始健康咨询</p>
-            <p>可以问：我的血压正常吗？怎么改善睡眠？</p>
+        <div class="chat-top">
+          <div class="chat-title">
+            <span class="chat-dot" aria-hidden="true"></span>
+            <span>{{ modeMeta.label }}</span>
+            <span v-if="safetyBadge" class="serious-pill">{{ safetyBadge }}</span>
+          </div>
+          <div class="chat-actions">
+            <button
+              class="btn btn--primary btn-sm chat-new-mobile"
+              type="button"
+              :disabled="creating"
+              @click="createSession"
+            >
+              ＋ 新建
+            </button>
+            <button
+              class="help-toggle"
+              type="button"
+              :aria-expanded="showHelp"
+              @click="showHelp = !showHelp"
+            >
+              <AppIcon name="heart" :size="14" />
+              需要帮助？
+            </button>
+          </div>
+        </div>
+
+        <div class="mode-switch" role="group" aria-label="对话模式">
+          <button
+            v-for="item in modeOptions"
+            :key="item.key"
+            class="mode-btn"
+            :class="{ active: mode === item.key }"
+            type="button"
+            :aria-pressed="mode === item.key"
+            @click="setMode(item.key)"
+          >
+            <AppIcon :name="item.icon" :size="15" />
+            {{ item.label }}
+          </button>
+        </div>
+        <p class="mode-hint">{{ modeMeta.hint }}</p>
+
+        <div class="chat-persona">
+          <PersonaCard compact :serious="personaSerious" />
+        </div>
+
+        <select
+          v-if="sessions.length"
+          class="session-select"
+          :value="activeId"
+          aria-label="切换会话"
+          @change="onSelectChange"
+        >
+          <option v-for="s in sessions" :key="s.id" :value="s.id">
+            {{ s.title || '新会话' }}
+          </option>
+        </select>
+
+        <SafetyNotice
+          v-if="showSafety"
+          :level="safetyLevel"
+          :crisis="currentSafety.crisis"
+          :resources="currentSafety.resources"
+          :serious="seriousMode"
+          context="chat"
+          :compact="!currentSafety.crisis"
+        />
+
+        <p v-if="seriousMode && !showSafety" class="serious-note" role="status">
+          最近的状态值得被认真对待。不用急着组织语言；如果很难受，点右上角「需要帮助？」。
+        </p>
+
+        <p v-if="notice" class="chat-notice" role="status">{{ notice }}</p>
+
+        <div
+          ref="msgBox"
+          class="messages"
+          :aria-live="sending ? 'off' : 'polite'"
+          :aria-busy="sending"
+        >
+          <div v-if="!messages.length" class="empty chat-empty">
+            <p class="empty-title">{{ personaSerious ? '今天想从哪里开始？' : modeMeta.emptyTitle }}</p>
+            <p>{{ personaSerious ? '不用组织好语言，想到哪说到哪。' : modeMeta.emptyText }}</p>
+            <div class="prompt-chips">
+              <button
+                v-for="prompt in quickPrompts"
+                :key="prompt"
+                class="prompt-chip"
+                type="button"
+                @click="usePrompt(prompt)"
+              >
+                {{ prompt }}
+              </button>
+            </div>
           </div>
           <div v-for="(m, i) in messages" :key="i" :class="['msg', m.role]">
             <span class="msg-role">{{ m.role === 'assistant' ? 'AI' : '我' }}</span>
-            <div class="msg-content">{{ m.content }}</div>
+            <div class="msg-content">
+              {{ m.content }}<span v-if="m.streaming" class="stream-cursor" aria-hidden="true"></span>
+            </div>
           </div>
         </div>
+
         <form class="chat-input" @submit.prevent="send">
           <input
             v-model="input"
             class="field-input"
-            placeholder="输入你的健康问题..."
-            :disabled="!activeId || sending"
+            :placeholder="activeId ? modeMeta.placeholder : `${modeMeta.placeholder}，发送时自动新建会话`"
+            :disabled="sending || creating"
+            maxlength="2000"
             aria-label="消息内容"
           />
-          <button class="btn btn--primary" type="submit" :disabled="!activeId || !input.trim() || sending">
-            {{ sending ? '思考中…' : '发送' }}
+          <button
+            v-if="sending"
+            class="btn btn-ghost"
+            type="button"
+            @click="stop"
+          >
+            停止
+          </button>
+          <button
+            v-else
+            class="btn btn--primary"
+            type="submit"
+            :disabled="!input.trim() || creating"
+          >
+            发送
           </button>
         </form>
       </section>
@@ -52,95 +163,581 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../api'
+import AppIcon from '../components/AppIcon.vue'
+import PersonaCard from '../components/mental/PersonaCard.vue'
+import SafetyNotice from '../components/mental/SafetyNotice.vue'
+import { parseServerDate } from '../utils/date'
 
-export default {
-  name: 'ChatView',
-  data() {
+const sessions = ref([])
+const activeId = ref(null)
+const messages = ref([])
+const input = ref('')
+const sending = ref(false)
+const creating = ref(false)
+let disposed = false
+const notice = ref('')
+const route = useRoute()
+const showHelp = ref(false)
+const seriousMode = ref(false)
+const mode = ref(route.query.mode === 'mental' ? 'mental' : 'body')
+const msgBox = ref(null)
+const currentSafety = ref({ level: 'normal', crisis: false, resources: [] })
+
+let controller = null
+let loadToken = 0
+let streamToken = 0
+let messageSeq = 0
+
+const modeOptions = [
+  { key: 'body', label: '身体问诊', icon: 'activity' },
+  { key: 'mental', label: '心理树洞', icon: 'mood' }
+]
+
+const MODE_META = {
+  body: {
+    label: '身体问诊',
+    hint: '说清楚哪里不舒服、多久了；AI 会结合你的健康记录给建议，不替代医生诊断。',
+    emptyTitle: '身体哪里不太对劲？',
+    emptyText: '睡眠、肠胃、头疼、体检单上的箭头，都可以直接说。',
+    placeholder: '描述一下身体的不舒服…'
+  },
+  mental: {
+    label: '心理树洞',
+    hint: '这里不评判、不催你振作。想骂人、想哭、想沉默一会儿都可以。',
+    emptyTitle: '今天心里堵着什么？',
+    emptyText: '不用组织好语言，想到哪说到哪。有风险时，安全支持会先接管。',
+    placeholder: '想说什么就说什么…'
+  }
+}
+
+const modeMeta = computed(() => {
+  if (personaSerious.value) {
     return {
-      sessions: [],
-      activeId: null,
-      messages: [],
-      input: '',
-      sending: false
+      ...MODE_META[mode.value],
+      hint: '最近的状态值得被认真对待。这里不玩梗，也不用一个人扛。',
+      emptyTitle: '今天想从哪里开始？',
+      emptyText: '不用组织好语言，想到哪说到哪。'
     }
-  },
-  async mounted() {
-    await this.loadSessions()
-  },
-  methods: {
-    async loadSessions() {
-      try {
-        const r = await api.getChatSessions({ limit: 20 })
-        this.sessions = r.data || []
-      } catch (e) { /* silent */ }
-    },
-    async createSession() {
-      try {
-        const r = await api.createChatSession({ title: '新会话', context_type: 'general' })
-        this.sessions.unshift(r.data)
-        await this.selectSession(r.data)
-      } catch (e) {
-        alert('创建会话失败，请稍后重试')
+  }
+  return MODE_META[mode.value]
+})
+
+const quickPrompts = computed(() => {
+  // 与人设使用同一有效安全状态：摘要失败但 SSE 已报 high/crisis 时也不能出现玩梗快捷词。
+  if (mode.value === 'mental') {
+    return personaSerious.value
+      ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
+      : ['今天有点破防', '压力大到不想说话', '想找个地方倒垃圾']
+  }
+  return personaSerious.value
+    ? ['我最近总是睡不好', '身体一直不太舒服', '想找人说说']
+    : ['最近总是睡不好', '吃完饭胃不舒服', '帮我看看今天的记录']
+})
+
+const isCrisis = computed(() => currentSafety.value.crisis || currentSafety.value.level === 'crisis')
+const safetyLevel = computed(() => {
+  if (isCrisis.value) return 'crisis'
+  if (currentSafety.value.level === 'high') return 'serious'
+  if (currentSafety.value.level === 'elevated') return 'elevated'
+  return 'info'
+})
+
+const showSafety = computed(() =>
+  showHelp.value ||
+  seriousMode.value ||
+  isCrisis.value ||
+  currentSafety.value.level === 'high' ||
+  currentSafety.value.level === 'elevated'
+)
+const personaSerious = computed(() => seriousMode.value || isCrisis.value || currentSafety.value.level === 'high')
+const safetyBadge = computed(() => {
+  if (isCrisis.value || currentSafety.value.level === 'high') return '安全模式已接管'
+  return seriousMode.value ? '慢一点也没关系' : ''
+})
+
+function resetSafety () {
+  // 危机状态必须一直保留到新的 safety 事件覆盖，不能被会话切换静默清掉。
+  if (currentSafety.value.crisis) {
+    showHelp.value = true
+    return
+  }
+  currentSafety.value = { level: 'normal', crisis: false, resources: [] }
+  showHelp.value = false
+}
+
+async function loadSessions () {
+  try {
+    const { data } = await api.getChatSessions({ limit: 20 })
+    sessions.value = Array.isArray(data) ? data : []
+    if (!activeId.value && sessions.value.length) {
+      await selectSession(sessions.value[0])
+    }
+  } catch (e) {
+    notice.value = '会话列表没加载出来，稍后刷新试试'
+  }
+}
+
+async function loadSeriousMode () {
+  try {
+    const { data } = await api.getMentalSummary()
+    seriousMode.value = !!data?.serious_mode
+  } catch (e) { /* 摘要失败不阻塞聊天 */ }
+}
+
+function setMode (next) {
+  if (mode.value === next) return
+  mode.value = next
+  notice.value = next === 'mental'
+    ? '已切到心理树洞。新会话会套用树洞引导，当前会话内容不会丢。'
+    : '已切到身体问诊。新会话会优先结合健康记录。'
+}
+
+function detachStream () {
+  streamToken += 1
+  if (controller) controller.abort()
+  controller = null
+  sending.value = false
+}
+
+async function createSession () {
+  if (creating.value) return
+  creating.value = true
+  if (sending.value) detachStream()
+  loadToken += 1
+  try {
+    const contextType = mode.value === 'body' ? 'health' : 'general'
+    const title = mode.value === 'body' ? '身体问诊 · 新会话' : '心理树洞 · 新会话'
+    const { data } = await api.createChatSession({ title, context_type: contextType })
+    if (disposed) return
+    loadToken += 1
+    sessions.value = [data, ...sessions.value]
+    activeId.value = data.id
+    messages.value = []
+    notice.value = ''
+    resetSafety()
+    await nextTick()
+    scrollBottom(true)
+  } catch (e) {
+    notice.value = '创建会话失败，请稍后重试'
+  } finally {
+    creating.value = false
+  }
+}
+
+function onSelectChange (event) {
+  const session = sessions.value.find(s => String(s.id) === String(event.target.value))
+  if (session) selectSession(session)
+}
+
+async function selectSession (session) {
+  if (sending.value) detachStream()
+  resetSafety()
+  activeId.value = session.id
+  messages.value = []
+  const token = ++loadToken
+  try {
+    const { data } = await api.getChatMessages(session.id, { limit: 50 })
+    if (token !== loadToken) return
+    messages.value = (Array.isArray(data) ? data : []).filter(m => m.role !== 'system')
+    await nextTick()
+    scrollBottom(true)
+  } catch (e) {
+    if (token === loadToken) notice.value = '消息没加载出来，稍后重试'
+  }
+}
+
+function usePrompt (prompt) {
+  input.value = prompt
+  send()
+}
+
+function stop () {
+  if (controller) controller.abort()
+}
+
+function scrollBottom (force = false) {
+  const box = msgBox.value
+  if (!box) return
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 90
+  if (force || nearBottom) box.scrollTop = box.scrollHeight
+}
+
+async function send () {
+  const content = input.value.trim()
+  if (!content || sending.value || creating.value) return
+
+  if (!activeId.value) {
+    await createSession()
+    // 等待建会话期间已离开页面：本次发送作废，不能继续发起流式请求。
+    if (disposed || !activeId.value) return
+  }
+
+  // 发送会接管当前会话：作废尚未返回的历史请求，避免它覆盖刚发出的消息。
+  loadToken += 1
+  input.value = ''
+  notice.value = ''
+  const token = ++streamToken
+  const replyId = `local-${++messageSeq}`
+  messages.value.push({ role: 'user', content })
+  messages.value.push({ role: 'assistant', content: '', streaming: true, id: replyId })
+  sending.value = true
+  // 不在每次发送时清空安全状态：上一轮的高风险/危机提示要保留到新事件覆盖。
+  const requestController = new AbortController()
+  controller = requestController
+  await nextTick()
+  scrollBottom(true)
+
+  const findReply = () => messages.value.find(m => m.id === replyId)
+
+  try {
+    await api.streamChatMessage(activeId.value, content, {
+      signal: requestController.signal,
+      onEvent: (event, data) => {
+        if (token !== streamToken) return
+        if (event === 'safety') {
+          currentSafety.value = {
+            level: data?.level || 'normal',
+            crisis: !!data?.crisis,
+            resources: Array.isArray(data?.resources) ? data.resources : []
+          }
+          if (data?.crisis) showHelp.value = true
+        } else if (event === 'delta') {
+          const reply = findReply()
+          if (reply) {
+            reply.content += data?.content || ''
+            scrollBottom()
+          }
+        } else if (event === 'done') {
+          const reply = findReply()
+          if (reply) {
+            reply.streaming = false
+            if (!reply.content) reply.content = '（没有收到内容，再试一次吧）'
+          }
+        } else if (event === 'error') {
+          const reply = findReply()
+          if (reply) {
+            reply.streaming = false
+            reply.content = data?.detail || 'AI 响应失败，请稍后重试'
+          }
+          notice.value = data?.detail || 'AI 响应失败，请稍后重试'
+        }
       }
-    },
-    async selectSession(s) {
-      this.activeId = s.id
-      this.messages = []
-      try {
-        const r = await api.getChatMessages(s.id, { limit: 50 })
-        this.messages = r.data || []
-        this.$nextTick(() => this.scrollBottom())
-      } catch (e) { /* silent */ }
-    },
-    async send() {
-      const content = this.input.trim()
-      if (!content || !this.activeId) return
-      this.input = ''
-      this.messages.push({ role: 'user', content })
-      this.sending = true
-      try {
-        const r = await api.sendChatMessage(this.activeId, { content })
-        this.messages.push({ role: 'assistant', content: r.data.response || '（无回复）' })
-        this.$nextTick(() => this.scrollBottom())
-      } catch (e) {
-        this.messages.push({ role: 'assistant', content: '（发送失败，请稍后重试）' })
-      } finally {
-        this.sending = false
+    })
+  } catch (e) {
+    if (token !== streamToken) return
+    const reply = findReply()
+    if (e?.name === 'AbortError') {
+      if (reply) {
+        reply.streaming = false
+        if (reply.content) reply.content += '\n\n（已停止生成，本次回复未保存）'
+        else reply.content = '（已停止生成，本次回复未保存）'
       }
-    },
-    scrollBottom() {
-      if (this.$refs.msgBox) this.$refs.msgBox.scrollTop = this.$refs.msgBox.scrollHeight
-    },
-    formatDate(d) {
-      if (!d) return ''
-      const dt = new Date(d)
-      return dt.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    } else if (e?.code === 'STREAM_INCOMPLETE' || e?.name === 'StreamIncompleteError') {
+      if (reply) {
+        reply.streaming = false
+        if (reply.content) reply.content += '\n\n（连接中断，本次回复未保存）'
+        else reply.content = '连接中断，未收到完整回复，请再试一次。'
+      }
+      notice.value = '连接中断，未收到完整回复'
+    } else {
+      if (reply) {
+        reply.streaming = false
+        reply.content = e?.detail || e?.message || '发送失败，请稍后重试'
+      }
+      notice.value = e?.detail || e?.message || '发送失败，请稍后重试'
+    }
+  } finally {
+    if (token === streamToken) {
+      const reply = findReply()
+      if (reply) reply.streaming = false
+      sending.value = false
+      if (controller === requestController) controller = null
+      await nextTick()
+      scrollBottom()
     }
   }
 }
+
+function formatDate (value) {
+  const date = parseServerDate(value)
+  if (!date) return ''
+  return date.toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+onMounted(async () => {
+  await Promise.allSettled([loadSessions(), loadSeriousMode()])
+})
+
+onUnmounted(() => {
+  disposed = true
+  if (controller) controller.abort()
+})
 </script>
 
 <style scoped>
 .chat-view { min-height: 60vh; }
 .chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
-@media (max-width: 768px) { .chat-layout { grid-template-columns: 1fr; } .chat-side { display: none; } }
 .chat-side { padding: 16px; }
 .chat-main { display: flex; flex-direction: column; min-height: 60vh; padding: 0; overflow: hidden; }
-.messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; max-height: 60vh; }
-.msg { display: flex; gap: 8px; align-items: flex-start; max-width: 80%; }
+
+.chat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: var(--border-hairline);
+}
+
+.chat-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.chat-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.chat-new-mobile { display: none; }
+
+.serious-pill {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.help-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: var(--border-hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.help-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  margin: 10px 16px 0;
+  padding: 4px;
+  border: var(--border-hairline);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.mode-btn:hover { color: var(--fg); }
+
+.mode-btn.active {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-hint {
+  margin: 6px 18px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.chat-persona {
+  padding: 7px 16px;
+  border-bottom: var(--border-hairline);
+}
+
+.chat-main :deep(.safety-notice) {
+  margin: 10px 16px 0;
+}
+
+.serious-note {
+  margin: 10px 16px 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.session-select {
+  display: none;
+  width: calc(100% - 32px);
+  margin: 10px 16px 0;
+}
+
+.chat-notice {
+  margin: 10px 16px 0;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 58vh;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.msg { display: flex; gap: 8px; align-items: flex-start; max-width: 82%; }
 .msg.user { align-self: flex-end; flex-direction: row-reverse; }
-.msg-role { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); font-size: 12px; font-weight: 550; }
+
+.msg-role {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 550;
+}
+
 .msg.user .msg-role { background: var(--success-soft); color: var(--success); }
-.msg-content { background: var(--bg); border: var(--border-hairline); border-radius: var(--radius-md); padding: 10px 14px; font-size: 14px; line-height: 1.75; }
+
+.msg-content {
+  padding: 10px 14px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .msg.user .msg-content { background: var(--accent-soft); border-color: transparent; }
+
+.stream-cursor {
+  display: inline-block;
+  width: 5px;
+  height: 14px;
+  margin-left: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  vertical-align: -2px;
+  animation: cursor-blink 900ms step-end infinite;
+}
+
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+
+.chat-empty {
+  margin: auto;
+  text-align: center;
+}
+
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.prompt-chip {
+  padding: 5px 10px;
+  border: var(--border-hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.prompt-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
 .chat-input { display: flex; gap: 8px; padding: 12px 16px; border-top: var(--border-hairline); }
-.chat-input input { flex: 1; }
+.chat-input input { flex: 1; min-width: 0; }
+
 .session-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-.session-item { padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; border: var(--border-hairline); background: var(--surface); }
+
+.session-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+
 .session-item:hover { background: color-mix(in oklch, var(--bg), var(--fg) 4%); }
 .session-item.active { background: var(--accent-soft); border-color: transparent; }
-.session-title { font-size: 14px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.session-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.session-title { max-width: 100%; overflow: hidden; font-size: 14px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+.session-meta { color: var(--muted); font-size: 11px; }
+
+@media (max-width: 768px) {
+  .chat-layout { grid-template-columns: 1fr; }
+  .chat-side { display: none; }
+  .session-select { display: block; }
+  .chat-new-mobile { display: inline-flex; }
+  .chat-main { min-height: 62vh; }
+  .messages { max-height: 52vh; padding: 16px; }
+  .msg { max-width: 92%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-cursor { animation: none; }
+}
 </style>

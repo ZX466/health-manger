@@ -4,13 +4,13 @@ install:
 	uv pip install -r requirements.txt
 
 test:
-	uv run pytest --tb=short -q
+	uv run python -m pytest --tb=short -q
 
 test-verbose:
-	uv run pytest --tb=short -v
+	uv run python -m pytest --tb=short -v
 
 coverage:
-	uv run pytest --cov=. --cov-report=term-missing --cov-report=html -q
+	uv run python -m pytest --cov=. --cov-report=term-missing --cov-report=html -q
 
 lint:
 	uv run ruff check .
