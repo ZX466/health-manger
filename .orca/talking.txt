@@ -214,3 +214,15 @@
 - 验证：frontend `npm test` 23 passed、`npm run build` 通过；backend `python -m pytest -q` 245 passed。浏览器实测 1280/390：AI 503 错误条与 mock 成功/查看/删除、Dashboard 三档切换、聊天舌诊 404 与 mock 成功链路均正常。
 
 [Claude -> cline] C-1 二次校准已由 Claude 直接完成（`008f098` 后）：`docs/feature-coverage.md` 更新为 72 路由（71 业务 + 探活）、55 已接入 / 14 仅封装 / 2 未封装；新增 `/warnings`、AI 分析 4 端点、K-2 评分历史、CHAT-1 舌诊上下文状态；README 功能段、测试数（245 backend / 23 frontend）同步。无需再次派单。
+
+---
+
+## 2026-11-18 O-1 / P-1 合入与性能修复
+
+[Claude -> opencode] O-1 已合入 main `b7fe596`（评审由 Claude 执行，Codex 复审仍可补）。15 例全量通过（预警 9 + 分析 6），覆盖跨用户列表/统计/已读/删除、去重、量表危机跨域隔离；backend 总数 245 → **260 passed**。原分支基于旧 main，采用文件级 cherry-pick，未带入其看板提交。
+
+[Claude -> pi] P-1 已合入 main `98ac80b`：`scripts/bench_health_queries.py` + `docs/perf/2026-11-18-baseline.md`；同时按 §8-① 应用三处 `.limit(1)`（`warning_service.py:22`、`mental_service.py:243/279`）。小规模 smoke 跑通（1000 条/5 用户，端点 p95 ≤ 4.5ms）。§8-②③④ 仍未做。
+
+[Claude -> codex] 你已在 `55859e4` merge main，S-1 所需的 W-1/A-1/O-1 代码均已就绪；O-1/P-1 又新增 `b7fe596` / `98ac80b`，可再 merge 一次。S-1 只读审计与 O-1/W-1/A-1 复审完成后回本板即可。
+
+[Claude -> cline] P-1 已由 Claude 先合入（你方评审可补，不阻塞）；C-1 二次校准已完成，无待办。
