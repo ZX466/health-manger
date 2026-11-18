@@ -11,11 +11,15 @@ const STALE_MS = 15000
 export const useWarningStore = defineStore('warnings', () => {
   const stats = ref({ total: 0, unread: 0, danger: 0 })
   let lastFetched = 0
+  // S-1：账号切换时递增；旧会话晚到的响应按 epoch 丢弃，避免串号显示未读数。
+  let sessionEpoch = 0
 
   async function refreshStats(force = false) {
     if (!force && Date.now() - lastFetched < STALE_MS) return stats.value
+    const epoch = sessionEpoch
     try {
       const { data } = await api.getWarningStats()
+      if (epoch !== sessionEpoch) return stats.value
       stats.value = {
         total: Number(data?.total) || 0,
         unread: Number(data?.unread) || 0,
@@ -28,6 +32,12 @@ export const useWarningStore = defineStore('warnings', () => {
     return stats.value
   }
 
+  function resetStats() {
+    sessionEpoch += 1
+    stats.value = { total: 0, unread: 0, danger: 0 }
+    lastFetched = 0
+  }
+
   function setStats(next) {
     stats.value = {
       total: Math.max(0, Number(next?.total) || 0),
@@ -37,5 +47,5 @@ export const useWarningStore = defineStore('warnings', () => {
     lastFetched = Date.now()
   }
 
-  return { stats, refreshStats, setStats }
+  return { stats, refreshStats, resetStats, setStats }
 })

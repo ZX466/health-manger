@@ -90,11 +90,21 @@
               基于最新体检记录生成，补充规则评分看不到的生活建议。内容仅供参考，不替代医生诊断。
             </p>
           </div>
-          <button class="btn btn-ghost ai-refresh" :disabled="generating" @click="generateAnalysis">
+          <button
+            class="btn btn-ghost ai-refresh"
+            :disabled="generating"
+            aria-describedby="ai-data-notice"
+            @click="generateAnalysis"
+          >
             <AppIcon name="sparkles" :size="15" />
             {{ generating ? '生成中…' : activeAi ? '重新生成' : '生成分析' }}
           </button>
         </div>
+
+        <p id="ai-data-notice" class="ai-data-notice">
+          <strong>发送前请知悉：</strong>
+          生成时会将最新体检记录中的身高、体重、BMI、血压、心率、体温、睡眠、运动频率和饮食习惯，发送给你在「AI 设置」中选择的模型服务商（默认智谱 GLM），仅用于生成本次健康解读；不会发送姓名或账号信息。内容仅供参考，不替代医生诊断。
+        </p>
 
         <div v-if="aiError" class="ai-notice" :class="`is-${aiError.kind}`" role="alert">
           <AppIcon name="alert" :size="16" />
@@ -730,6 +740,22 @@ export default {
 
 .ai-refresh {
   flex: 0 0 auto;
+}
+
+.ai-data-notice {
+  max-width: 76ch;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line-strong, var(--line));
+  background: var(--surface-2);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.ai-data-notice strong {
+  color: var(--fg);
+  font-weight: 650;
 }
 
 .ai-notice {

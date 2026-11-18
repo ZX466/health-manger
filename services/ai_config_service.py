@@ -83,6 +83,16 @@ def save_config(
         config = models.AIConfig(user_id=user_id)
         db.add(config)
 
+    # S-1：保存前校验出站地址与密钥绑定，避免自定义地址复用服务级密钥。
+    from services.llm_service import validate_llm_endpoint
+
+    effective_provider = provider or config.provider or DEFAULT_PROVIDER
+    effective_base_url = base_url or config.base_url
+    has_user_key = bool(api_key) or bool(config.api_key_encrypted)
+    validate_llm_endpoint(
+        effective_provider, effective_base_url, has_user_key=has_user_key
+    )
+
     # 聊天/分析模型
     if provider:
         config.provider = provider

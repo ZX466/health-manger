@@ -153,6 +153,7 @@ export default {
       return this.$route.path === path
     },
     logout() {
+      this.warningStore.resetStats()
       localStorage.removeItem('token')
       localStorage.removeItem('userName')
       this.$emit('navigate')

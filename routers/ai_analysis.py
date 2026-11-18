@@ -113,7 +113,7 @@ async def create_ai_analysis(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("AI 分析失败")
+        logger.error("AI 分析失败 (error=%s)", type(exc).__name__)
         raise _ai_failure(exc, "AI 分析") from exc
 
 
@@ -206,7 +206,7 @@ async def quick_health_analysis(
             )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
         except Exception as exc:
-            logger.exception("AI 快速分析失败")
+            logger.error("AI 快速分析失败 (error=%s)", type(exc).__name__)
             raise _ai_failure(exc, "AI 分析") from exc
 
     db_analysis = models.AIAnalysis(
@@ -274,7 +274,7 @@ async def llm_health_evaluation(
             )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
         except Exception as exc:
-            logger.exception("LLM 健康评价失败")
+            logger.error("LLM 健康评价失败 (error=%s)", type(exc).__name__)
             raise _ai_failure(exc, "健康评价") from exc
 
     db_eval = models.AIAnalysis(
@@ -408,19 +408,22 @@ def update_ai_config(
     db: Session = Depends(get_db),
 ):
     """保存用户 AI 配置（聊天 + 视觉 + 对话风格；api_key 为空则保留原值）。"""
-    cfg = save_config(
-        db,
-        current_user.id,
-        provider=payload.provider,
-        model=payload.model,
-        base_url=payload.base_url,
-        api_key=payload.api_key,
-        vision_provider=payload.vision_provider,
-        vision_model=payload.vision_model,
-        vision_base_url=payload.vision_base_url,
-        vision_api_key=payload.vision_api_key,
-        persona_style=payload.persona_style,
-    )
+    try:
+        cfg = save_config(
+            db,
+            current_user.id,
+            provider=payload.provider,
+            model=payload.model,
+            base_url=payload.base_url,
+            api_key=payload.api_key,
+            vision_provider=payload.vision_provider,
+            vision_model=payload.vision_model,
+            vision_base_url=payload.vision_base_url,
+            vision_api_key=payload.vision_api_key,
+            persona_style=payload.persona_style,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
     vision_masked = (
         mask_api_key(decrypt_api_key(cfg.vision_api_key_encrypted))
@@ -480,7 +483,7 @@ async def test_ai_config(
         )
         return schemas.AIConfigTestResponse(success=True, message="连接成功", model=payload.model)
     except Exception as e:
-        logger.info("AI 配置测试失败: %s", e)
+        logger.info("AI 配置测试失败 (error=%s)", type(e).__name__)
         return schemas.AIConfigTestResponse(
             success=False, message="连接失败：请检查 Base URL/API Key/模型名"
         )

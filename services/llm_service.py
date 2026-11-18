@@ -1,8 +1,10 @@
 import asyncio
+import ipaddress
 import json
 import logging
 import threading
 from collections.abc import AsyncIterator
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -15,6 +17,89 @@ ZHIPU_API_KEY = settings.ZHIPU_API_KEY
 ZHIPU_API_URL = settings.ZHIPU_API_URL
 DEFAULT_MODEL = settings.ZHIPU_MODEL
 DEFAULT_TIMEOUT = settings.LLM_TIMEOUT
+
+# S-1：供应商与默认地址由服务端固定，不能由用户提交的 base_url 反推。
+# 只有智谱默认地址允许使用服务级 ZHIPU_API_KEY；其他供应商/自定义地址
+# 必须使用用户自己保存的密钥，避免把服务端密钥发送到任意主机。
+_PROVIDER_DEFAULT_URLS = {
+    "openai": "https://api.openai.com/v1/chat/completions",
+    "ark": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+}
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _normalized_url(url: str | None) -> str:
+    return (url or "").strip().rstrip("/")
+
+
+def provider_default_url(provider: str) -> str:
+    """返回服务端认可的供应商默认地址；未知供应商返回空串。"""
+    if provider == "zhipu":
+        return _normalized_url(ZHIPU_API_URL)
+    return _normalized_url(_PROVIDER_DEFAULT_URLS.get(provider))
+
+
+def is_provider_default_url(provider: str, base_url: str | None) -> bool:
+    """判断地址是否为该供应商的默认地址（忽略末尾斜杠）。"""
+    default_url = provider_default_url(provider)
+    return bool(default_url) and _normalized_url(base_url) == default_url
+
+
+def _is_loopback_host(host: str) -> bool:
+    if host in _LOOPBACK_HOSTS:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_private_host(host: str) -> bool:
+    if _is_loopback_host(host):
+        return True
+    if host.endswith(".local"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_private or address.is_link_local or address.is_reserved
+
+
+def validate_llm_endpoint(
+    provider: str, base_url: str | None, *, has_user_key: bool
+) -> str:
+    """校验出站地址并返回规范化后的 URL。
+
+    - 仅允许 http(s)，且 http 只允许回环地址（本地开发）；
+    - 非默认地址必须由用户自己的密钥驱动，禁止服务级密钥外发；
+    - 非默认地址不得指向内网、链路本地或保留地址。
+    """
+    provider = (provider or "zhipu").strip().lower()
+    default_url = provider_default_url(provider)
+    if not default_url:
+        raise ValueError("不支持的 AI 供应商")
+
+    url = _normalized_url(base_url) or default_url
+    parsed = urlsplit(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("AI 服务地址必须以 http:// 或 https:// 开头")
+    if parsed.username or parsed.password:
+        raise ValueError("AI 服务地址不能包含账号或密码")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("AI 服务地址缺少主机名")
+
+    if parsed.scheme == "http" and not _is_loopback_host(host):
+        raise ValueError("AI 服务地址必须使用 HTTPS")
+
+    if not is_provider_default_url(provider, url):
+        if not has_user_key:
+            raise ValueError("自定义 AI 服务地址必须配置独立 API 密钥")
+        if _is_private_host(host) and not _is_loopback_host(host):
+            raise ValueError("AI 服务地址不能指向内网或保留地址")
+
+    return url
 
 # S14: httpx.AsyncClient 非线程安全。异步端点与 async_tasks 工作线程
 # （_run_llm_sync 新建 event loop）会并发调用，改用线程本地 client，
@@ -40,9 +125,9 @@ async def close_http_client() -> None:
 class LLMConfig:
     """LLM 调用配置。
 
-    provider/api_key/base_url 支持运行时覆盖（用户自定义 AI 配置）：
-    未指定时回退到默认智谱环境变量配置。所有 provider 均走
-    OpenAI 兼容 chat/completions 格式（zhipu/openai/ark 均支持）。
+    provider/api_key/base_url 支持运行时覆盖（用户自定义 AI 配置）。
+    服务级 ZHIPU_API_KEY 只绑定智谱默认地址；自定义地址必须自带密钥。
+    所有 provider 均走 OpenAI 兼容 chat/completions 格式（zhipu/openai/ark 均支持）。
     """
 
     def __init__(
@@ -59,9 +144,20 @@ class LLMConfig:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
-        self.provider = provider
-        self.api_key = api_key if api_key is not None else ZHIPU_API_KEY
-        self.base_url = base_url if base_url is not None else ZHIPU_API_URL
+        self.provider = (provider or "zhipu").strip().lower()
+        user_key = api_key.strip() if isinstance(api_key, str) else api_key
+        self.base_url = validate_llm_endpoint(
+            self.provider, base_url, has_user_key=bool(user_key)
+        )
+        if user_key:
+            self.api_key = user_key
+        elif self.provider == "zhipu" and is_provider_default_url(
+            self.provider, self.base_url
+        ):
+            self.api_key = ZHIPU_API_KEY
+        else:
+            # 不把服务级智谱密钥发给其他供应商或自定义地址
+            self.api_key = ""
 
 
 # Retry configuration
@@ -112,9 +208,8 @@ async def call_llm(messages: list, config: LLMConfig | None = None) -> tuple:
             )
 
             if response.status_code != 200:
-                raise RuntimeError(
-                    f"AI 服务调用失败 (HTTP {response.status_code})：{response.text}"
-                )
+                # S-1：上游响应体可能含内部细节/回显内容，只保留状态码。
+                raise RuntimeError(f"AI 服务调用失败 (HTTP {response.status_code})")
 
             result = response.json()
             content = result["choices"][0]["message"]["content"]
@@ -131,10 +226,10 @@ async def call_llm(messages: list, config: LLMConfig | None = None) -> tuple:
             # Transient network errors -- retry
             last_exception = exc
             logger.warning(
-                "LLM 请求超时或连接失败 (attempt=%d/%d): %s",
+                "LLM 请求超时或连接失败 (attempt=%d/%d, error=%s)",
                 attempt,
                 MAX_RETRIES,
-                exc,
+                type(exc).__name__,
             )
 
         except RuntimeError as exc:
@@ -144,30 +239,30 @@ async def call_llm(messages: list, config: LLMConfig | None = None) -> tuple:
             if is_server_error and attempt < MAX_RETRIES:
                 last_exception = exc
                 logger.warning(
-                    "LLM 服务端错误，将重试 (attempt=%d/%d): %s",
+                    "LLM 服务端错误，将重试 (attempt=%d/%d, error=%s)",
                     attempt,
                     MAX_RETRIES,
-                    exc,
+                    type(exc).__name__,
                 )
             else:
                 # 4xx or final attempt -- do not retry
                 logger.error(
-                    "LLM 请求失败 (attempt=%d/%d): %s",
+                    "LLM 请求失败 (attempt=%d/%d, error=%s)",
                     attempt,
                     MAX_RETRIES,
-                    exc,
+                    type(exc).__name__,
                 )
                 raise
 
         except (KeyError, IndexError) as exc:
             # Response parsing error -- likely a malformed API response, no retry
             logger.error(
-                "LLM 响应解析失败 (attempt=%d/%d): %s",
+                "LLM 响应解析失败 (attempt=%d/%d, error=%s)",
                 attempt,
                 MAX_RETRIES,
-                exc,
+                type(exc).__name__,
             )
-            raise RuntimeError(f"AI 服务返回数据格式异常：{exc}") from exc
+            raise RuntimeError("AI 服务返回数据格式异常") from exc
 
         # Exponential backoff before next attempt (skip delay after last attempt)
         if attempt < MAX_RETRIES:
@@ -180,9 +275,7 @@ async def call_llm(messages: list, config: LLMConfig | None = None) -> tuple:
         "LLM 请求在 %d 次重试后仍然失败",
         MAX_RETRIES,
     )
-    raise RuntimeError(
-        f"AI 服务在 {MAX_RETRIES} 次重试后仍然失败：{last_exception}"
-    ) from last_exception
+    raise RuntimeError(f"AI 服务在 {MAX_RETRIES} 次重试后仍然失败") from last_exception
 
 
 async def stream_llm(messages: list, config: LLMConfig | None = None) -> AsyncIterator[str]:
@@ -226,8 +319,8 @@ async def stream_llm(messages: list, config: LLMConfig | None = None) -> AsyncIt
             timeout=config.timeout,
         ) as response:
             if response.status_code != 200:
-                body = (await response.aread()).decode("utf-8", errors="replace")[:200]
-                raise RuntimeError(f"AI 服务调用失败 (HTTP {response.status_code})：{body}")
+                # S-1：不读取/回显上游响应体，避免内部错误细节进入 SSE 错误。
+                raise RuntimeError(f"AI 服务调用失败 (HTTP {response.status_code})")
 
             async for raw_line in response.aiter_lines():
                 line = raw_line.strip()

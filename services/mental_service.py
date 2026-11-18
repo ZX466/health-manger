@@ -259,18 +259,30 @@ def _health_rating_danger(db: Session, user_id: int, today: date) -> bool:
     )
 
 
+def serious_sources(db: Session, user_id: int, *, today: date | None = None) -> set[str]:
+    """返回触发严肃模式的来源集合：health_rating / scale。
+
+    预警文案需要区分生理评级与心理量表，不能把“健康评级危险”写成
+    “心理量表结果”。保留独立来源便于调用方选择合适措辞。
+    """
+    now = today or _today()
+    sources: set[str] = set()
+    if _health_rating_danger(db, user_id, now):
+        sources.add("health_rating")
+    if any(
+        _is_serious(latest_assessment(db, user_id, scale_type), now) for scale_type in SCALES
+    ):
+        sources.add("scale")
+    return sources
+
+
 def is_serious_mode(db: Session, user_id: int, *, today: date | None = None) -> bool:
     """是否需要后端强制严肃关怀 Prompt、前端隐藏玩梗文案（决策 6）。
 
     与 safety_service 的 high 来源对齐：量表危机/中重度以上、健康评级“危险”；
     保留 PHQ-9 15–19 的保守展示策略。
     """
-    now = today or _today()
-    if _health_rating_danger(db, user_id, now):
-        return True
-    return any(
-        _is_serious(latest_assessment(db, user_id, scale_type), now) for scale_type in SCALES
-    )
+    return bool(serious_sources(db, user_id, today=today))
 
 
 def summary(db: Session, user_id: int, *, today: date | None = None) -> dict:

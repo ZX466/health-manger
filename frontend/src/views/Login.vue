@@ -43,6 +43,7 @@
 <script>
 import api from '../api'
 import CharacterAvatar from '../components/CharacterAvatar.vue'
+import { useWarningStore } from '../stores/warnings'
 
 export default {
   name: 'Login',
@@ -63,6 +64,8 @@ export default {
         const response = await api.login(this.name, this.password)
         localStorage.setItem('token', response.data.access_token)
         localStorage.setItem('userName', this.name)
+        // 新会话从零开始，防止上一个账号的未读徽标/缓存串到当前用户
+        useWarningStore().resetStats()
         this.$router.push('/dashboard')
       } catch (err) {
         this.error = this.errorMessage(err, '登录失败，请检查用户名和密码')

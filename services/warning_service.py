@@ -240,14 +240,24 @@ def _cross_warnings(user_id: int, db, latest_record) -> list[dict]:
     warnings: list[dict] = []
     _, sleep_debt, _ = mental_service.sleep_stats(db, user_id)
 
-    # 1) 量表严肃模式：PHQ-9/GAD-7 危机或中重度以上 -> danger
-    if mental_service.is_serious_mode(db, user_id):
+    # 1) 严肃模式：区分心理量表与生理健康评级，避免把后者写成“量表结果”
+    serious_sources = mental_service.serious_sources(db, user_id)
+    if "scale" in serious_sources:
         warnings.append(
             {
                 "type": "心理状态需关注",
                 "level": "danger",
                 "content": "您近期的心理量表结果提示需要重点关注。"
                 "这不是诊断，但您不必独自承担，" + _crisis_hint(),
+            }
+        )
+    elif "health_rating" in serious_sources:
+        warnings.append(
+            {
+                "type": "健康评级需关注",
+                "level": "danger",
+                "content": "您近期的健康评级为「危险」，提示生理指标需要重点关注。"
+                "这不是诊断，建议尽快复测相关指标并咨询医生；如有明显不适请及时就医。",
             }
         )
 
