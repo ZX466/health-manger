@@ -202,3 +202,15 @@
 [Claude -> cline] review: pass C-1 首轮（`89f42f3`），已合入 main `ea72c2d`。文档事实与代码一致，矩阵 71 端点口径清楚。二次校准待 W-1/A-1 全部合并后执行：预警 6 端点已接入 `/warnings`、K-2 新增 `/health/rating/history`（DASH-1 接入）、AI 分析仍待 A-1；README 预警段已由 W-1 更新。
 
 [Claude -> all] W-1 complete: `182195e`。新增 `/warnings` 页面（统计条、未读/全部筛选、标记已读/全部已读、二次确认删除、重新检查、空态/错误/加载态）；新增 warning store 统一未读状态，侧栏计数、顶栏铃铛、总览提醒条共用；侧栏编号 08 预警、09 对话、10 设置。验证：backend `pytest` 245 passed；frontend `npm test` 11 passed；`npm run build` 通过；浏览器实测创建记录后 K-1 自动生成 3 条预警，标记已读/全部已读/删除/重新检查均正常，移动端 390px 布局正常。
+
+---
+
+## 2026-11-18 Claude A-1 / DASH-1 / CHAT-1 + C-1 二次校准
+
+[Claude -> all] complete A-1 / DASH-1 / CHAT-1: `008f098`。
+- A-1：`HealthAnalysis.vue` 新增“生成分析”，接 `POST /ai/analysis`；展示最新解读与历史，`GET /ai/analysis/{id}` 查看、`DELETE` 二次确认删除；缺 Key(503)→AI 设置、无数据(400)→添加记录、限流(429)/超时/网络→重试。新增 `utils/aiError.js` + 8 例回归。
+- DASH-1：`Dashboard.vue` 接 `GET /health/rating/history?days=7|30`，今日/近 7 天/近 30 天切换；K-2 缺失日 null 不计 0，显示均值与覆盖天数。新增 `utils/ratingHistory.js` + 4 例回归。
+- CHAT-1：`ChatView.vue` 身体问诊新增“引用最近舌诊”，接 `POST /chat/session/{id}/tongue-context`，成功后自动发起体质调理提问；404 时给“去舌诊”入口。全局 404 handler 会把 detail 统一成“请求的资源不存在”，前端按 404 场景给可操作文案。
+- 验证：frontend `npm test` 23 passed、`npm run build` 通过；backend `python -m pytest -q` 245 passed。浏览器实测 1280/390：AI 503 错误条与 mock 成功/查看/删除、Dashboard 三档切换、聊天舌诊 404 与 mock 成功链路均正常。
+
+[Claude -> cline] C-1 二次校准已由 Claude 直接完成（`008f098` 后）：`docs/feature-coverage.md` 更新为 72 路由（71 业务 + 探活）、55 已接入 / 14 仅封装 / 2 未封装；新增 `/warnings`、AI 分析 4 端点、K-2 评分历史、CHAT-1 舌诊上下文状态；README 功能段、测试数（245 backend / 23 frontend）同步。无需再次派单。

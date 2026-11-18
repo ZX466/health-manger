@@ -7,7 +7,7 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 - **认证**：邀请码注册、JWT 登录。
 - **健康记录**：问卷录入、BMI / 血压 / 心率 / 体温预警、综合评级、体检报告 OCR（草稿）。
 - **饮食 / 运动**：食物与运动库、记录统计、拍照识餐（草稿）。
-- **AI**：每用户自定义聊天 / 视觉模型、SSE 流式对话（含安全首帧）、中医舌诊；AI 健康分析后端接口已就绪（生成 / 历史 / 异步任务），前端生成入口开发中（A-1）。
+- **AI**：每用户自定义聊天 / 视觉模型、SSE 流式对话（含安全首帧）、中医舌诊；健康分析页可生成 AI 深度解读、查看 / 删除历史，并区分缺 Key、无数据、限流与超时；身体问诊可一键引用最近舌诊。首页评分支持今日 / 近 7 天 / 近 30 天真实切换。
 - **心理空间 `/mental`**：情绪打卡、睡眠趋势、PHQ-9 / GAD-7 初筛、危机资源、呼吸环 / 木鱼 / 人设卡。
 - **预警 `/warnings`**：保存健康记录或提交量表后自动检查（也可手动重新检查）；分级列表、未读徽标、标记已读 / 全部已读 / 删除，覆盖血压 / BMI / 心率异常、量表危机、睡眠债、情绪低落。总览页与顶栏同步未读入口。
 
@@ -17,7 +17,7 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 |---|---|---|
 | 小林 · 大一 | 连续熬夜，情绪 2/5，睡眠 5 小时 | 在 `/mental` 打卡 → 查看睡眠债 → 做 PHQ-9 → 用 4-4-6 呼吸环放松 → 去 `/chat` 聊睡眠 |
 | 阿哲 · 大三 | 考研压力大，PHQ-9 第 9 题阳性 | 量表结果标记危机 → 查看 120 / 110 与学校心理中心 → 聊天切换严肃关怀 → Dashboard 显示提醒 |
-| 小周 · 大二 | 健身、控制饮食 | 记录三餐和运动 → 查看热量 / 消耗统计与健康评级 → 配置 AI Key 后在 `/chat` 获取建议（AI 分析页入口开发中） |
+| 小周 · 大二 | 健身、控制饮食 | 记录三餐和运动 → 查看热量 / 消耗统计与健康评级 → 配置 AI Key 后在 `/chat` 获取建议，或在 `/health-analysis` 生成 AI 解读 |
 
 示例只用于说明功能路径，不对应真实用户；实际数据由各自账号录入。
 
@@ -30,7 +30,7 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 | 后端 | FastAPI、SQLAlchemy 2.0、SQLite、Alembic、JWT、bcrypt |
 | 前端 | Vue 3、Vite 5、Vue Router 4、Pinia、Axios |
 | AI | 默认智谱 GLM-4.5-Air；舌诊默认火山 ARK 豆包视觉模型，支持用户覆盖 |
-| 测试 | pytest（198 个用例）、pytest-asyncio、pytest-cov |
+| 测试 | pytest（245 个用例）、pytest-asyncio、pytest-cov；前端 node:test（23 个） |
 
 前端使用 modern-minimal 设计令牌、统一描线图标和响应式侧栏 / 移动端抽屉导航。
 
@@ -136,7 +136,7 @@ Invoke-RestMethod http://localhost:8420/api/health
 
 ## API
 
-完整参数与响应见 `/docs`（Swagger UI）或 `/redoc`。71 个端点的前后端覆盖矩阵与缺口见 [docs/feature-coverage.md](docs/feature-coverage.md)。
+完整参数与响应见 `/docs`（Swagger UI）或 `/redoc`。71 个业务端点的前后端覆盖矩阵与缺口见 [docs/feature-coverage.md](docs/feature-coverage.md)。
 
 | 前缀 | 功能 |
 |---|---|
@@ -160,7 +160,7 @@ routers/                  HTTP 路由
 services/                 业务逻辑（健康、心理、AI、安全等）
 alembic/                  数据库迁移
 scripts/                  初始化数据 / 测试用户
-tests/                    pytest 测试（198 个）
+tests/                    pytest 测试（245 个）
 frontend/src/             Vue 页面、组件、路由、API、样式
 static/                   前端构建产物
 uploads/                  用户上传文件

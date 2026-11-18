@@ -1,38 +1,40 @@
 # 功能覆盖矩阵（feature-coverage）
 
-> 基线：main `ef6c68f`（内容对齐至 `a967496`），2026-11-18 C-1 首轮。
-> 端点数为 FastAPI 路由表实测 **71**（含 `GET /api/health` 探活；派单口径 70 不含探活）。
+> 基线：main `008f098`（A-1 / DASH-1 / CHAT-1 合并后），2026-11-18 C-1 二次校准。
+> 端点数为 FastAPI 路由表实测 **72**（含 `GET /api/health` 探活；业务端点 **71**）。
 > 状态口径：**已接入** = 前端有 UI 调用链（证据到视图/组件/store）；**仅封装** = `frontend/src/api` 已封装但无 UI 调用；**未封装** = 前端无对应方法。
-> P0/P1/P2 为本轮派单优先级；P0（W-1/A-1/K-1）合并后本文档二次校准。
+> 本轮 P0（W-1 / A-1 / K-1）与 P1（K-2 / DASH-1 / CHAT-1）均已合并；剩余缺口见 §2。
 
 ## 1. 模块总览
 
 | 模块 | 路由文件 | 端点数 | 已接入 | 仅封装 | 未封装 | 前端入口 |
 |---|---|---|---|---|---|---|
 | 认证 | [routers/auth.py](../routers/auth.py) | 3 | 3 | 0 | 0 | `Login.vue` / `Register.vue` |
-| 健康数据 | [routers/health.py](../routers/health.py) | 8 | 7 | 1 | 0 | `/health-record`、`/health-analysis`、Dashboard |
+| 健康数据 | [routers/health.py](../routers/health.py) | 9 | 8 | 1 | 0 | `/health-record`、`/health-analysis`、Dashboard（7/30 天评分） |
 | 饮食 | [routers/food.py](../routers/food.py) | 11 | 7 | 3 | 1 | `/diet-management` |
 | 运动 | [routers/sport.py](../routers/sport.py) | 9 | 6 | 2 | 1 | `/sport-management` |
-| AI 分析与配置 | [routers/ai_analysis.py](../routers/ai_analysis.py) | 12 | 4 | 8 | 0 | `/ai-settings`（配置）；**分析无 UI（A-1）** |
-| 健康预警 | [routers/warning.py](../routers/warning.py) | 6 | 0 | 6 | 0 | **无页面（W-1）** |
+| AI 分析与配置 | [routers/ai_analysis.py](../routers/ai_analysis.py) | 12 | 8 | 4 | 0 | `/ai-settings`（配置）、`/health-analysis`（生成 / 历史 / 删除） |
+| 健康预警 | [routers/warning.py](../routers/warning.py) | 6 | 6 | 0 | 0 | `/warnings`（侧栏 / 顶栏 / Dashboard 未读入口） |
 | 舌诊 | [routers/tongue.py](../routers/tongue.py) | 7 | 5 | 2 | 0 | `/tongue-diagnosis` |
-| 聊天 | [routers/chat.py](../routers/chat.py) | 7 | 4 | 3 | 0 | `/chat` |
+| 聊天 | [routers/chat.py](../routers/chat.py) | 7 | 5 | 2 | 0 | `/chat`（身体问诊引用舌诊） |
 | 心理 | [routers/mental.py](../routers/mental.py) | 7 | 7 | 0 | 0 | `/mental` |
 | 探活 | [main.py](../main.py) | 1 | — | — | — | 运维 `GET /api/health` |
-| **合计** | 9 个路由文件 + main.py | **71** | **43** | **25** | **2** | 11 个视图 |
+| **合计** | 9 个路由文件 + main.py | **72**（业务 71） | **55** | **14** | **2** | 12 个视图 |
 
-前端视图 11 个（[frontend/src/router/index.js](../frontend/src/router/index.js)）：Login、Register、Dashboard、HealthRecord、HealthAnalysis、DietManagement、SportManagement、TongueDiagnosis、MentalView、ChatView、AISettings。无 `/warnings` 路由。
+前端视图 12 个（[frontend/src/router/index.js](../frontend/src/router/index.js)）：Login、Register、Dashboard、HealthRecord、HealthAnalysis、DietManagement、SportManagement、TongueDiagnosis、MentalView、ChatView、AISettings、WarningView。`/warnings` 已注册。
 
-## 2. P0 / P1 缺口（本轮任务映射）
+## 2. 本轮缺口收口与剩余
 
-| 缺口 | 端点 | 现状证据 | 任务 | 优先级 |
+| 缺口 | 端点 | 现状证据 | 任务 | 状态 |
 |---|---|---|---|---|
-| 预警前端闭环缺失 | `/api/warning/*` 全部 6 个 | 方法已封装（[api/index.js:83-99](../frontend/src/api/index.js)）但全仓库无 UI 调用；router 无 `/warnings` | W-1 | P0 |
-| AI 分析生成入口缺失 | `/api/ai/analysis`、`/analysis/history`、`/analysis/{id}` GET/DELETE、`/quick-analysis`、`/health-evaluation`、`/async-analysis`、`/task/{id}` 共 8 个 | 方法已封装（[api/index.js:58-79](../frontend/src/api/index.js)）但无 UI 调用；`HealthAnalysis.vue` 只读规则分析 `/health/analysis/*` | A-1（前端）、K-3（契约测试） | P0 / P1 |
-| 记录/量表提交后不自动触发预警 | `POST /health/records`、`POST /mental/scales/{type}/submit` | 两个路由提交后未调用 `check_health_warnings`；预警只能手动 `POST /warning/check`（也无 UI） | K-1 | P0 |
-| Dashboard 7/30 天评分为演示数据 | 需新端点 `GET /health/rating/history`（**尚未实现**） | Dashboard w7/m30 硬编码示例分数 | K-2 → DASH-1 | P1 |
-| 聊天引用舌诊无按钮 | `POST /chat/session/{id}/tongue-context` | `addTongueContext` 已封装（[api/chat.js:20-22](../frontend/src/api/chat.js)）无 UI 调用 | CHAT-1 | P2 |
-| 会话删除无入口 | `DELETE /chat/session/{id}` | `deleteChatSession` 已封装（[api/chat.js:24-26](../frontend/src/api/chat.js)）无 UI 调用 | 未派单（建议并入 W-1 后的前端收尾） | P2 |
+| 预警前端闭环 | `/api/warning/*` 全部 6 个 | `WarningView.vue` + `stores/warnings.js`；侧栏 / 顶栏 / Dashboard 未读入口 | W-1 | ✅ `182195e` |
+| AI 分析生成入口 | `/api/ai/analysis`、`/analysis/history`、`/analysis/{id}` GET/DELETE | `HealthAnalysis.vue` 生成 / 查看 / 删除；错误分缺 Key / 无数据 / 限流 / 超时 | A-1 | ✅ `008f098` |
+| 记录/量表提交后自动预警 | `POST /health/records`、`POST /mental/scales/{type}/submit` | 提交后调用 `safe_check_health_warnings`，失败不阻断主流程 | K-1 | ✅ `84d0bc3` |
+| Dashboard 7/30 天评分 | `GET /health/rating/history` | K-2 端点 + Dashboard 今日 / 近 7 天 / 近 30 天切换，缺失日不计 0 | K-2 → DASH-1 | ✅ `008f098` |
+| 聊天引用舌诊 | `POST /chat/session/{id}/tongue-context` | 身体问诊“引用最近舌诊”，无记录时跳转 `/tongue-diagnosis` | CHAT-1 | ✅ `008f098` |
+| AI 快捷 / 评价 / 异步分析 | `/quick-analysis`、`/health-evaluation`、`/async-analysis`、`/task/{id}` | 仅 `api/index.js` 封装，无 UI 调用 | 未派单 | 待补（P1） |
+| 会话删除 | `DELETE /chat/session/{id}` | `deleteChatSession` 已封装，无 UI 调用 | 未派单 | 待补（P2） |
+| 健康记录详情 | `GET /health/records/{id}` | `getHealthRecord` 已封装，无 UI 调用 | 未派单 | 待补（P2） |
 
 ## 3. 逐端点矩阵
 
@@ -44,20 +46,21 @@
 | POST /api/auth/login | [auth.py:45](../routers/auth.py) | index.js `login` | Login.vue | 已接入 |
 | GET /api/auth/me | [auth.py:72](../routers/auth.py) | index.js `getCurrentUser` | Dashboard / Diet / Sport | 已接入 |
 
-### 3.2 健康数据（7/8 已接入）
+### 3.2 健康数据（8/9 已接入）
 
 | 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
 |---|---|---|---|---|
-| POST /api/health/records | [health.py:26](../routers/health.py) | health.js `createHealthRecord` | HealthRecord.vue（含 OCR 草稿确认入库） | 已接入；K-1 补自动预警 |
-| GET /api/health/records | [health.py:35](../routers/health.py) | health.js `getHealthRecords` | Dashboard.vue:713 / HealthRecord.vue | 已接入 |
-| GET /api/health/records/{id} | [health.py:43](../routers/health.py) | health.js `getHealthRecord` | 无 | 仅封装（P2） |
-| DELETE /api/health/records/{id} | [health.py:52](../routers/health.py) | health.js `deleteHealthRecord` | HealthRecord.vue | 已接入 |
-| GET /api/health/analysis/latest | [health.py:61](../routers/health.py) | health.js `getLatestAnalysis` | Dashboard / HealthAnalysis.vue | 已接入 |
-| GET /api/health/analysis/history | [health.py:69](../routers/health.py) | health.js `getAnalysisHistory` | HealthAnalysis.vue | 已接入 |
-| GET /api/health/rating/latest | [health.py:77](../routers/health.py) | health.js `getLatestRating` | wellness.js / Dashboard / HealthRecord | 已接入 |
-| POST /api/health/reports/ocr | [health.py:99](../routers/health.py) | health.js `ocrHealthReport` | HealthRecord.vue | 已接入（草稿→确认入库） |
+| POST /api/health/records | [health.py:29](../routers/health.py) | health.js `createHealthRecord` | HealthRecord.vue（含 OCR 草稿确认入库） | 已接入；K-1 补自动预警 |
+| GET /api/health/records | [health.py:41](../routers/health.py) | health.js `getHealthRecords` | Dashboard.vue / HealthRecord.vue | 已接入 |
+| GET /api/health/records/{id} | [health.py:49](../routers/health.py) | health.js `getHealthRecord` | 无 | 仅封装（P2） |
+| DELETE /api/health/records/{id} | [health.py:58](../routers/health.py) | health.js `deleteHealthRecord` | HealthRecord.vue | 已接入 |
+| GET /api/health/analysis/latest | [health.py:67](../routers/health.py) | health.js `getLatestAnalysis` | Dashboard / HealthAnalysis.vue | 已接入 |
+| GET /api/health/analysis/history | [health.py:75](../routers/health.py) | health.js `getAnalysisHistory` | HealthAnalysis.vue | 已接入 |
+| GET /api/health/rating/latest | [health.py:83](../routers/health.py) | health.js `getLatestRating` | wellness.js / Dashboard / HealthRecord | 已接入 |
+| GET /api/health/rating/history | [health.py:105](../routers/health.py) | health.js `getRatingHistory` | Dashboard.vue（今日 / 7 天 / 30 天） | 已接入（K-2 → DASH-1） |
+| POST /api/health/reports/ocr | [health.py:117](../routers/health.py) | health.js `ocrHealthReport` | HealthRecord.vue | 已接入（草稿→确认入库） |
 
-注：`GET /health/rating/history`（7/30 天）为 K-2 待新增端点，当前不存在。
+注：`GET /health/rating/history` 缺失日返回 `score: null`；Dashboard 只对非空分数求均值，并显示覆盖天数。
 
 ### 3.3 饮食（7/11 已接入）
 
@@ -89,37 +92,37 @@
 | GET /api/sport/records/stats | [sport.py:91](../routers/sport.py) | index.js `getSportStats` | SportManagement.vue | 已接入 |
 | DELETE /api/sport/records/{id} | [sport.py:101](../routers/sport.py) | index.js `deleteSportRecord` | SportManagement.vue | 已接入 |
 
-### 3.5 AI 分析与配置（4/12 已接入；分析 8 个仅封装 → A-1）
+### 3.5 AI 分析与配置（8/12 已接入；4 个分析端点仅封装）
 
 | 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
 |---|---|---|---|---|
-| POST /api/ai/analysis | [ai_analysis.py:61](../routers/ai_analysis.py) | index.js `createAIAnalysis` | 无 | 仅封装（**P0 A-1**） |
-| GET /api/ai/analysis/history | [ai_analysis.py:110](../routers/ai_analysis.py) | index.js `getAIAnalysisHistory` | 无 | 仅封装（**P0 A-1**） |
-| GET /api/ai/analysis/{id} | [ai_analysis.py:127](../routers/ai_analysis.py) | index.js `getAIAnalysis` | 无 | 仅封装（**P0 A-1**） |
-| DELETE /api/ai/analysis/{id} | [ai_analysis.py:145](../routers/ai_analysis.py) | index.js `deleteAIAnalysis` | 无 | 仅封装（**P0 A-1**） |
-| POST /api/ai/quick-analysis | [ai_analysis.py:166](../routers/ai_analysis.py) | index.js `quickHealthAnalysis` | 无 | 仅封装（P1） |
-| POST /api/ai/health-evaluation | [ai_analysis.py:216](../routers/ai_analysis.py) | index.js `getHealthEvaluation` | 无 | 仅封装（P1） |
-| POST /api/ai/async-analysis | [ai_analysis.py:303](../routers/ai_analysis.py) | index.js `asyncAIAnalysis` | 无 | 仅封装（P1） |
-| GET /api/ai/task/{id} | [ai_analysis.py:343](../routers/ai_analysis.py) | index.js `getTaskStatus` | 无 | 仅封装（P1） |
-| GET /api/ai/config | [ai_analysis.py:360](../routers/ai_analysis.py) | index.js `getAiConfig` | AISettings / PersonaCard.vue | 已接入 |
-| PUT /api/ai/config | [ai_analysis.py:394](../routers/ai_analysis.py) | index.js `saveAiConfig` | AISettings / PersonaCard.vue | 已接入 |
-| DELETE /api/ai/config | [ai_analysis.py:435](../routers/ai_analysis.py) | index.js `deleteAiConfig` | AISettings.vue | 已接入 |
-| POST /api/ai/config/test | [ai_analysis.py:445](../routers/ai_analysis.py) | index.js `testAiConfig` | AISettings.vue | 已接入 |
+| POST /api/ai/analysis | [ai_analysis.py:71](../routers/ai_analysis.py) | index.js `createAIAnalysis` | HealthAnalysis.vue（生成分析） | 已接入（A-1） |
+| GET /api/ai/analysis/history | [ai_analysis.py:120](../routers/ai_analysis.py) | index.js `getAIAnalysisHistory` | HealthAnalysis.vue（AI 历史） | 已接入（A-1） |
+| GET /api/ai/analysis/{id} | [ai_analysis.py:137](../routers/ai_analysis.py) | index.js `getAIAnalysis` | HealthAnalysis.vue（点击查看） | 已接入（A-1） |
+| DELETE /api/ai/analysis/{id} | [ai_analysis.py:155](../routers/ai_analysis.py) | index.js `deleteAIAnalysis` | HealthAnalysis.vue（二次确认删除） | 已接入（A-1） |
+| POST /api/ai/quick-analysis | [ai_analysis.py:176](../routers/ai_analysis.py) | index.js `quickHealthAnalysis` | 无 | 仅封装（P1） |
+| POST /api/ai/health-evaluation | [ai_analysis.py:226](../routers/ai_analysis.py) | index.js `getHealthEvaluation` | 无 | 仅封装（P1） |
+| POST /api/ai/async-analysis | [ai_analysis.py:313](../routers/ai_analysis.py) | index.js `asyncAIAnalysis` | 无 | 仅封装（P1） |
+| GET /api/ai/task/{id} | [ai_analysis.py:353](../routers/ai_analysis.py) | index.js `getTaskStatus` | 无 | 仅封装（P1） |
+| GET /api/ai/config | [ai_analysis.py:370](../routers/ai_analysis.py) | index.js `getAiConfig` | AISettings / PersonaCard.vue | 已接入 |
+| PUT /api/ai/config | [ai_analysis.py:404](../routers/ai_analysis.py) | index.js `saveAiConfig` | AISettings / PersonaCard.vue | 已接入 |
+| DELETE /api/ai/config | [ai_analysis.py:445](../routers/ai_analysis.py) | index.js `deleteAiConfig` | AISettings.vue | 已接入 |
+| POST /api/ai/config/test | [ai_analysis.py:455](../routers/ai_analysis.py) | index.js `testAiConfig` | AISettings.vue | 已接入 |
 
-注：AI 分析 8 端点的契约/测试由 K-3 保障；`HealthAnalysis.vue` 当前展示的是规则引擎分析（`/health/analysis/*`），不是 LLM 分析。
+注：AI 分析 8 端点的契约/测试由 K-3 保障；`HealthAnalysis.vue` 同时展示规则引擎分析（`/health/analysis/*`）和 LLM 深度解读（`/ai/analysis/*`）。快捷分析、规则+LLM 评价、异步任务 4 个端点仍仅封装。
 
-### 3.6 健康预警（0/6 已接入 → W-1）
+### 3.6 健康预警（6/6 已接入 → W-1）
 
 | 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
 |---|---|---|---|---|
-| POST /api/warning/check | [warning.py:15](../routers/warning.py) | index.js `checkWarnings` | 无 | 仅封装（**P0 W-1**；K-1 后由提交自动触发） |
-| GET /api/warning/list | [warning.py:24](../routers/warning.py) | index.js `getWarnings` | 无 | 仅封装（**P0 W-1**） |
-| PUT /api/warning/read/{id} | [warning.py:40](../routers/warning.py) | index.js `markWarningAsRead` | 无 | 仅封装（**P0 W-1**） |
-| PUT /api/warning/read-all | [warning.py:65](../routers/warning.py) | index.js `markAllWarningsAsRead` | 无 | 仅封装（**P0 W-1**） |
-| DELETE /api/warning/{id} | [warning.py:77](../routers/warning.py) | index.js `deleteWarning` | 无 | 仅封装（**P0 W-1**） |
-| GET /api/warning/stats | [warning.py:100](../routers/warning.py) | index.js `getWarningStats` | 无 | 仅封装（**P0 W-1**，未读徽标） |
+| POST /api/warning/check | [warning.py:15](../routers/warning.py) | index.js `checkWarnings` | WarningView.vue（重新检查） | 已接入；K-1 后提交自动触发 |
+| GET /api/warning/list | [warning.py:24](../routers/warning.py) | index.js `getWarnings` | WarningView.vue | 已接入 |
+| PUT /api/warning/read/{id} | [warning.py:40](../routers/warning.py) | index.js `markWarningAsRead` | WarningView.vue | 已接入 |
+| PUT /api/warning/read-all | [warning.py:65](../routers/warning.py) | index.js `markAllWarningsAsRead` | WarningView.vue | 已接入 |
+| DELETE /api/warning/{id} | [warning.py:77](../routers/warning.py) | index.js `deleteWarning` | WarningView.vue（二次确认） | 已接入 |
+| GET /api/warning/stats | [warning.py:100](../routers/warning.py) | index.js `getWarningStats` | stores/warnings.js → 侧栏 / 顶栏 / Dashboard | 已接入（未读徽标） |
 
-注：后端预警闭环完整（含心理交叉预警，M-LOGIC1），缺口纯在前端；W-1 不改后端。
+注：后端预警闭环完整（含心理交叉预警，M-LOGIC1）；W-1 未改后端。
 
 ### 3.7 舌诊（5/7 已接入）
 
@@ -133,7 +136,7 @@
 | GET /api/tongue/{id} | [tongue.py:93](../routers/tongue.py) | index.js `getTongueDetail` | TongueDiagnosis.vue | 已接入 |
 | DELETE /api/tongue/{id} | [tongue.py:102](../routers/tongue.py) | index.js `deleteTongueRecord` | 无 | 仅封装（P2） |
 
-### 3.8 聊天（4/7 已接入）
+### 3.8 聊天（5/7 已接入）
 
 | 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
 |---|---|---|---|---|
@@ -142,7 +145,7 @@
 | GET /api/chat/session/{id}/messages | [chat.py:138](../routers/chat.py) | chat.js `getChatMessages` | ChatView.vue | 已接入 |
 | POST /api/chat/session/{id}/message | [chat.py:156](../routers/chat.py) | chat.js `sendChatMessage` | 无（v1 遗留封装，前端只走流式） | 仅封装（P2） |
 | POST /api/chat/session/{id}/stream | [chat.py:207](../routers/chat.py) | stream.js `streamChatMessage` | ChatView.vue（主路径，safety→delta*→done\|error） | 已接入 |
-| POST /api/chat/session/{id}/tongue-context | [chat.py:296](../routers/chat.py) | chat.js `addTongueContext` | 无 | 仅封装（**P2 CHAT-1**） |
+| POST /api/chat/session/{id}/tongue-context | [chat.py:296](../routers/chat.py) | chat.js `addTongueContext` | ChatView.vue（引用最近舌诊） | 已接入（CHAT-1） |
 | DELETE /api/chat/session/{id} | [chat.py:337](../routers/chat.py) | chat.js `deleteChatSession` | 无 | 仅封装（P2，未派单） |
 
 ### 3.9 心理（7/7 已接入）
@@ -165,7 +168,7 @@
 
 ## 4. 复核方法（可复现）
 
-1. 后端路由表：`uv run python -c "from main import app; ..."` 枚举 `app.routes`（需设 `SECRET_KEY`），共 71 个 `/api` 路由。
+1. 后端路由表：`uv run python -c "from main import app; ..."` 枚举 `app.routes`（需设 `SECRET_KEY`），共 72 个 `/api` 路由（71 业务 + 1 探活）。
 2. 前端封装：`frontend/src/api/*.js` 中 `http.get/post/put/delete` 调用逐一对照。
 3. UI 调用链：在 `frontend/src`（排除 `api/`）grep `api.<方法名>` 与别名（mental.js 尾部有 v1 别名导出）。
 4. 本文档只描述已实现功能；「待补」均对应本轮派单任务或明确标注未派单。
@@ -175,4 +178,4 @@
 | 日期 | 基线 | 说明 |
 |---|---|---|
 | 2026-11-18 | main `ef6c68f`（对齐 `a967496`） | C-1 首轮：43 已接入 / 25 仅封装 / 2 未封装 / 1 探活 |
-| 待补 | P0（W-1/A-1/K-1）合并后 | 二次校准：更新预警/AI 分析状态、K-2 新端点、README 功能段 |
+| 2026-11-18 | main `008f098` | C-1 二次校准：55 已接入 / 14 仅封装 / 2 未封装；72 路由含探活；新增 `/warnings`、AI 分析 4 端点、K-2 评分历史、CHAT-1 舌诊上下文 |
