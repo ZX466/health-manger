@@ -7,107 +7,97 @@
     aria-label="主导航"
     tabindex="-1"
   >
-    <router-link to="/dashboard" class="sidebar-logo" @click="$emit('navigate')">
-      <span class="logo-icon">慧</span>
-      <span class="logo-text">慧康</span>
+    <router-link to="/dashboard" class="brand" @click="$emit('navigate')">
+      <span class="brand-mark">慧</span>
+      <span class="brand-copy">
+        <strong>慧康</strong>
+        <small>HUIKANG / 02</small>
+      </span>
     </router-link>
-    <nav class="sidebar-nav">
-      <div class="nav-section">概览</div>
+
+    <nav class="nav">
+      <div class="nav-label">每日</div>
       <router-link
-        v-for="item in overviewLinks"
+        v-for="item in dailyLinks"
         :key="item.path"
         :to="item.path"
         class="nav-item"
         :class="{ active: isActive(item.path) }"
         @click="$emit('navigate')"
       >
-        <span v-html="item.icon" />
-        <span class="nav-label">{{ item.label }}</span>
+        <span class="nav-num">{{ item.num }}</span>
+        <AppIcon :name="item.icon" :size="18" />
+        <span class="nav-text">{{ item.label }}</span>
+        <span v-if="item.dot" class="nav-dot" aria-hidden="true" />
       </router-link>
 
-      <div class="nav-section">健康管理</div>
+      <div class="nav-label">档案</div>
       <router-link
-        v-for="item in healthLinks"
+        v-for="item in archiveLinks"
         :key="item.path"
         :to="item.path"
         class="nav-item"
         :class="{ active: isActive(item.path) }"
         @click="$emit('navigate')"
       >
-        <span v-html="item.icon" />
-        <span class="nav-label">{{ item.label }}</span>
+        <span class="nav-num">{{ item.num }}</span>
+        <AppIcon :name="item.icon" :size="18" />
+        <span class="nav-text">{{ item.label }}</span>
       </router-link>
 
-      <div class="nav-section">工具</div>
+      <div class="nav-label">助手</div>
       <router-link
-        v-for="item in toolLinks"
+        v-for="item in assistantLinks"
         :key="item.path"
         :to="item.path"
         class="nav-item"
         :class="{ active: isActive(item.path) }"
         @click="$emit('navigate')"
       >
-        <span v-html="item.icon" />
-        <span class="nav-label">{{ item.label }}</span>
+        <span class="nav-num">{{ item.num }}</span>
+        <AppIcon :name="item.icon" :size="18" />
+        <span class="nav-text">{{ item.label }}</span>
+        <span v-if="item.dot" class="nav-dot" aria-hidden="true" />
       </router-link>
     </nav>
-    <div class="sidebar-footer">
-      <div class="avatar">{{ userInitial }}</div>
-      <div class="user-info">
-        <div class="user-name">{{ userName }}</div>
-        <div class="user-role">在校大学生</div>
+
+    <div class="sidebar-foot">
+      <div class="user-avatar">{{ userInitial }}</div>
+      <div class="user-copy">
+        <strong>{{ userName }}</strong>
+        <small>在校大学生</small>
       </div>
+      <span class="user-status" aria-hidden="true" />
+    </div>
+    <div class="sidebar-tools">
       <button
-        class="logout-toggle"
+        class="sidebar-tool"
+        :title="soundEnabled ? '关闭音效' : '开启音效'"
+        :aria-label="soundEnabled ? '关闭音效' : '开启音效'"
+        @click="toggleSound"
+      >
+        <AppIcon name="volume" :size="15" />
+      </button>
+      <button
+        class="sidebar-tool danger"
         type="button"
         title="退出登录"
         aria-label="退出登录"
         @click="logout"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-          <path d="M16 17l5-5-5-5"/>
-          <path d="M21 12H9"/>
-        </svg>
-      </button>
-      <button
-        class="sound-toggle"
-        :class="{ muted: !soundEnabled }"
-        :title="soundEnabled ? '关闭音效' : '开启音效'"
-        @click="toggleSound"
-      >
-        <svg v-if="soundEnabled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M15.54 8.46a5 5 0 010 7.07"/>
-          <path d="M19.07 4.93a10 10 0 010 14.14"/>
-        </svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <line x1="23" y1="9" x2="17" y2="15"/>
-          <line x1="17" y1="9" x2="23" y2="15"/>
-        </svg>
+        <AppIcon name="logout" :size="15" />
       </button>
     </div>
   </aside>
 </template>
 
 <script>
+import AppIcon from './AppIcon.vue'
 import { useSound } from '../composables/useHealthU'
-
-const ICONS = {
-  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
-  healthRecord: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>',
-  diet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>',
-  sport: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="3"/><path d="M6.5 8h11M12 8v13M8 21l1.5-5M16 21l-1.5-5"/></svg>',
-  analysis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18M7 16l4-8 4 4 4-10"/></svg>',
-  ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
-  sliders: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
-  tongue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>',
-  mental: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>'
-}
 
 export default {
   name: 'AppSidebar',
+  components: { AppIcon },
   props: {
     mobileOpen: { type: Boolean, default: false },
     isMobile: { type: Boolean, default: false }
@@ -119,20 +109,20 @@ export default {
   },
   data() {
     return {
-      overviewLinks: [
-        { path: '/dashboard', label: '仪表盘', icon: ICONS.dashboard }
+      dailyLinks: [
+        { path: '/dashboard', label: '总览', num: '01', icon: 'home' },
+        { path: '/mental', label: '心理', num: '02', icon: 'heart', dot: true },
+        { path: '/diet-management', label: '饮食', num: '03', icon: 'diet' },
+        { path: '/sport-management', label: '运动', num: '04', icon: 'activity' }
       ],
-      healthLinks: [
-        { path: '/health-record', label: '健康记录', icon: ICONS.healthRecord },
-        { path: '/diet-management', label: '饮食管理', icon: ICONS.diet },
-        { path: '/sport-management', label: '运动管理', icon: ICONS.sport },
-        { path: '/health-analysis', label: '健康分析', icon: ICONS.analysis },
-        { path: '/mental', label: '心理空间', icon: ICONS.mental },
-        { path: '/chat', label: 'AI 对话', icon: ICONS.ai }
+      archiveLinks: [
+        { path: '/health-record', label: '体检', num: '05', icon: 'record' },
+        { path: '/health-analysis', label: '健康分析', num: '06', icon: 'chart' },
+        { path: '/tongue-diagnosis', label: '舌诊', num: '07', icon: 'tongue' }
       ],
-      toolLinks: [
-        { path: '/tongue-diagnosis', label: '中医舌诊', icon: ICONS.tongue },
-        { path: '/ai-settings', label: 'AI 设置', icon: ICONS.sliders }
+      assistantLinks: [
+        { path: '/chat', label: '对话', num: '08', icon: 'ai', dot: true },
+        { path: '/ai-settings', label: '设置', num: '09', icon: 'sliders' }
       ]
     }
   },

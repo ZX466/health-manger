@@ -2,28 +2,38 @@
   <header class="topbar">
     <div class="topbar-left">
       <button
-        class="mobile-menu-btn topbar-btn"
+        class="icon-btn topbar-more"
         type="button"
         :aria-label="mobileOpen ? '关闭导航菜单' : '打开导航菜单'"
         aria-controls="app-sidebar"
         :aria-expanded="mobileOpen"
         @click="$emit('toggle-mobile-menu')"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <path d="M4 7h16M4 12h16M4 17h16" />
-        </svg>
+        <AppIcon name="menu" :size="18" />
       </button>
-      <div class="topbar-titles">
-        <h1>{{ title }}</h1>
-        <p>{{ currentDate }}</p>
-      </div>
+      <span class="topbar-date">{{ currentDate }}</span>
+      <span class="topbar-sep" aria-hidden="true" />
+      <span class="topbar-title">{{ title }}</span>
+    </div>
+    <div class="topbar-right">
+      <router-link class="icon-btn" to="/health-record" aria-label="查看健康提醒">
+        <AppIcon name="alert" :size="18" />
+        <span class="notify-dot" aria-hidden="true" />
+      </router-link>
+      <span class="topbar-user">
+        <span class="user-avatar user-avatar--sm">{{ userInitial }}</span>
+        <span>{{ userName }}</span>
+      </span>
     </div>
   </header>
 </template>
 
 <script>
+import AppIcon from './AppIcon.vue'
+
 export default {
   name: 'AppTopbar',
+  components: { AppIcon },
   props: {
     title: { type: String, default: '' },
     mobileOpen: { type: Boolean, default: false }
@@ -34,21 +44,18 @@ export default {
       currentDate: ''
     }
   },
+  computed: {
+    userName() {
+      return localStorage.getItem('userName') || '同学'
+    },
+    userInitial() {
+      return this.userName.charAt(0)
+    }
+  },
   mounted() {
     const now = new Date()
-    this.currentDate = now.toLocaleDateString('zh-CN', {
-      year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-    })
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    this.currentDate = `${now.getMonth() + 1} 月 ${now.getDate()} 日 · ${weekdays[now.getDay()]}`
   }
 }
 </script>
-
-<style scoped>
-.topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.topbar-titles { min-width: 0; }
-.mobile-menu-btn { display: none; flex: 0 0 auto; }
-
-@media (max-width: 768px) {
-  .mobile-menu-btn { display: grid; }
-}
-</style>

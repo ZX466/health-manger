@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell">
+  <div class="app-shell v21">
     <AppSidebar
       ref="sidebar"
       :mobile-open="mobileOpen"
@@ -23,16 +23,18 @@
         <router-view />
       </div>
     </main>
+    <MobileTabs :inert="mobileOpen" @more="openMobile" />
   </div>
 </template>
 
 <script>
 import AppSidebar from '../components/AppSidebar.vue'
 import AppTopbar from '../components/AppTopbar.vue'
+import MobileTabs from '../components/MobileTabs.vue'
 
 export default {
   name: 'AppShell',
-  components: { AppSidebar, AppTopbar },
+  components: { AppSidebar, AppTopbar, MobileTabs },
   data() {
     return {
       mobileOpen: false,
@@ -72,6 +74,9 @@ export default {
       if (!this.isMobile) return
       if (this.mobileOpen) this.closeMobile()
       else this.mobileOpen = true
+    },
+    openMobile() {
+      if (this.isMobile) this.mobileOpen = true
     },
     closeMobile() {
       if (!this.mobileOpen) return
