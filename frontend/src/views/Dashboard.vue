@@ -1,234 +1,195 @@
 <template>
   <div class="dash">
-    <!-- ===== Hero ===== -->
-    <section class="hero" data-od-id="hero">
-      <div class="hero-left">
-        <p class="eyebrow">Dashboard · 今日概览</p>
-        <h1>{{ greeting }}{{ userName ? '，' + userName : '' }}</h1>
-        <p class="hero-date">{{ currentDate }}</p>
+    <header class="page-head">
+      <span class="folio" aria-hidden="true">01</span>
+      <div class="page-head-copy">
+        <p class="eyebrow">TODAY / {{ dateStamp }}</p>
+        <h1>身体简报<span class="title-dot">.</span></h1>
+        <p class="deck">{{ todayNarrative }}</p>
       </div>
-      <div class="hero-right">
-        <span class="mascot" role="img" aria-label="吉祥物小猫">
-          <svg width="34" height="34" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 27c-7 0-11.5-4.4-11.5-10S11 7 18 7s11.5 4.4 11.5 10S25 27 18 27z"/>
-            <path d="M9.5 10.5 12 13M26.5 10.5 24 13M6.8 12 3.5 9.5M29.2 12 32.5 9.5"/>
-            <circle cx="14.5" cy="15.5" r="1.1" fill="currentColor" stroke="none"/>
-            <circle cx="21.5" cy="15.5" r="1.1" fill="currentColor" stroke="none"/>
-            <path d="M14.5 20c2.3 1.8 4.7 1.8 7 0"/>
-          </svg>
+      <div class="page-actions">
+        <span class="status-chip">
+          <span class="status-dot" :class="statusDotClass"></span>
+          {{ statusLabel }}
         </span>
-        <span class="status-chip" v-if="latestRating">
-          <AppIcon name="check" :size="14" :stroke="2" />
-          {{ latestRating.rating || '今日状态良好' }}
-        </span>
-        <button class="btn btn-primary hero-record-btn" @click="openModal">
-          <AppIcon name="plus" :size="16" :stroke="2" />
-          快捷记录
-        </button>
+        <router-link class="btn btn-primary" to="/chat">找搭子聊聊</router-link>
       </div>
-    </section>
+    </header>
 
-    <section v-if="mentalSerious" class="mental-banner card" data-od-id="mental-banner">
-      <div class="mental-banner-copy">
-        <strong>最近的状态值得被认真对待</strong>
-        <span>不用一个人扛着。去心理空间做一次放松练习，或者预约学校心理咨询。</span>
-      </div>
-      <router-link class="btn btn-ghost" to="/mental">去心理空间</router-link>
-    </section>
-
-    <!-- ===== Overview: Score Ring + Metrics/Chart ===== -->
-    <section class="overview" data-od-id="overview">
-      <div class="card score-card" data-od-id="score-card">
-        <div class="card-head">
-          <h2 class="card-title">今日健康评分</h2>
-          <span class="card-sub">综合五维指标{{ hasRealRating ? '' : ' · 示例' }}</span>
+    <section v-if="mentalSerious" class="dash-care" aria-labelledby="care-title">
+      <div class="care-mark"><AppIcon name="heart" :size="20" /></div>
+      <div class="care-copy">
+        <h2 id="care-title">今天先照顾自己</h2>
+        <p>不用一个人扛着。去心理空间看看支持资源，或联系学校心理咨询中心。如有危机想法，请立即拨打 120 或 12356。</p>
+        <div class="care-lines">
+          <a href="tel:120">120</a>
+          <a href="tel:12356">12356</a>
+          <router-link class="btn btn-ghost" to="/mental">去心理空间</router-link>
         </div>
-        <div class="score-body">
-          <div class="ring-wrap" ref="ringWrap">
-            <svg class="ring-svg" width="220" height="220" viewBox="0 0 220 220" aria-hidden="true">
-              <circle class="ring-track" cx="110" cy="110" r="96" stroke-width="14"></circle>
-              <circle class="ring-bar" cx="110" cy="110" r="96" stroke-width="14"
-                :stroke-dasharray="ringCircumference" :stroke-dashoffset="ringOffset"></circle>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="score-panel" aria-labelledby="score-title">
+        <div class="score-panel-head">
+          <span class="micro micro--inverse">HEALTH SCORE</span>
+          <span class="score-delta">{{ hasRealRating ? '今日评分' : '示例数据' }}</span>
+        </div>
+        <div class="score-main">
+          <div class="score-ring" aria-hidden="true">
+            <svg viewBox="0 0 180 180">
+              <circle class="ring-track" cx="90" cy="90" r="72" />
+              <circle
+                class="ring-bar"
+                cx="90" cy="90" r="72"
+                :stroke-dasharray="ringCircumference"
+                :stroke-dashoffset="ringOffset"
+              />
             </svg>
-            <div class="ring-center">
-              <span class="ring-score">{{ ringScore }}</span>
-              <span class="ring-level">{{ ringLevel }}</span>
-              <span class="ring-delta">{{ ringDelta }}</span>
-            </div>
+            <div class="score-number"><strong>{{ ringScore }}</strong><span>/ 100</span></div>
           </div>
-          <div class="seg" role="group" aria-label="评分区间">
-            <button v-for="key in rangeKeys" :key="key"
-              class="seg-btn" :class="{ active: activeRange === key }"
-              @click="switchRange(key)">{{ rangeLabels[key] }}</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="right-stack">
-        <div class="metrics" data-od-id="metrics">
-          <div class="metric" v-for="m in displayMetrics" :key="m.key" :data-od-id="'metric-' + m.key">
-            <div class="metric-top">
-              <span class="metric-label">{{ m.label }}</span>
-              <span class="badge" :class="m.badgeClass">{{ m.badgeText }}</span>
-            </div>
-            <div class="metric-value">{{ m.value }}<span class="metric-unit" v-if="m.unit">{{ m.unit }}</span></div>
-            <div class="metric-foot">
-              <span v-if="m.trendIcon" :class="m.trendClass">{{ m.trendIcon }} {{ m.trendValue }}</span>
-              <span class="trend-flat">{{ m.trendNote }}</span>
+          <div class="score-copy">
+            <p class="micro micro--inverse" id="score-title">当前称号</p>
+            <h2>{{ statusLabel }}</h2>
+            <p>{{ scoreNarrative }}</p>
+            <div class="score-tags">
+              <span v-for="tag in scoreTags" :key="tag">{{ tag }}</span>
             </div>
           </div>
         </div>
-
-        <div class="card" data-od-id="trend-card">
-          <div class="card-head">
-            <h2 class="card-title">{{ chartReal ? '近 7 天健康记录趋势' : '近 7 天热量趋势' }}</h2>
-            <span class="card-sub">{{ chartReal ? '每日记录次数 · 真实数据' : '摄入 vs 运动消耗 · 示例数据' }}</span>
-          </div>
-          <div class="chart-box" ref="chartBox">
-            <div class="chart-legend" aria-hidden="true">
-              <span class="legend-item"><span class="legend-dot" style="background:var(--warn);"></span>{{ chartReal ? '每日记录数' : '热量摄入 kcal' }}</span>
-              <span v-if="!chartReal" class="legend-item"><span class="legend-dot" style="background:var(--success);"></span>运动消耗 kcal</span>
-              <span v-if="!chartReal" class="legend-item"><span class="legend-dot line" style="background:var(--muted);border-radius:2px;"></span>目标 2000</span>
-            </div>
-            <svg class="chart-svg" ref="trendChart" viewBox="0 0 600 260" role="img" :aria-label="chartReal ? '近7天健康记录趋势图，真实数据' : '近7天热量趋势图，数据为示例'"></svg>
-            <div class="chart-tip" ref="chartTip"></div>
-          </div>
+        <div class="score-foot">
+          <div><span>昨晚睡眠</span><strong>{{ todaySleepText }}</strong></div>
+          <div><span>静息心率</span><strong>{{ restingHeartRate }} <small>bpm</small></strong></div>
+          <div><span>7 天欠账</span><strong>{{ sleepDebtText }}</strong></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ===== Today Habits ===== -->
-    <section class="card" data-od-id="tasks-card">
-      <div class="card-head">
-        <h2 class="card-title">今日习惯</h2>
-        <span class="card-sub">完成度 {{ completedTasks }}/{{ tasks.length }} · 示例数据</span>
-      </div>
-      <div class="tasks">
-        <label class="task" v-for="(task, i) in tasks" :key="i">
-          <input type="checkbox" class="sr-only" v-model="task.done" />
-          <span class="task-check" aria-hidden="true">
-            <AppIcon name="check" :size="13" :stroke="3" />
-          </span>
-          <span class="task-icon" aria-hidden="true"><AppIcon :name="task.icon" :size="18" /></span>
-          <span class="task-body">
-            <span class="task-name">{{ task.name }}</span>
-            <span class="task-meta">{{ task.meta }}</span>
-            <span class="task-progress" v-if="task.progress">
-              <span class="task-progress-bar" :style="{ width: task.progress + '%' }"></span>
-            </span>
-          </span>
-        </label>
-      </div>
-    </section>
-
-    <!-- ===== Module Entries ===== -->
-    <section class="card" data-od-id="modules-card">
-      <div class="card-head">
-        <h2 class="card-title">功能模块</h2>
-        <span class="card-sub">全流程入口</span>
-      </div>
-      <div class="modules">
-        <button v-for="mod in moduleList" :key="mod.id"
-          class="module" :data-od-id="'module-' + mod.id"
-          @click="navigate(mod.path)">
-          <span class="module-icon" aria-hidden="true"><AppIcon :name="mod.icon" :size="20" /></span>
-          <span class="module-title">{{ mod.title }}</span>
-          <span class="module-desc">{{ mod.desc }}</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- ===== AI Health Analysis ===== -->
-    <section class="card" data-od-id="analysis-card" :aria-busy="analysisLoading">
-      <div class="card-head">
-        <h2 class="card-title">AI 健康分析</h2>
-        <span class="card-sub">{{ analysisLoading ? '加载中…' : '基于最新记录的自动解读' }}</span>
-      </div>
-      <div v-if="analysisLoading" class="analysis-skeleton">
-        <div class="skeleton sk-line" style="width:88%;"></div>
-        <div class="skeleton sk-line" style="width:64%;"></div>
-        <div class="skeleton sk-block"></div>
-      </div>
-      <div v-else class="analysis-body">
-        <ul class="analysis-list">
-          <li v-for="(item, i) in analysisItems" :key="i" class="analysis-line">
-            <AppIcon name="check" :size="18" :stroke="1.9" />
-            <span>{{ item }}</span>
+      <aside class="brief-panel" aria-labelledby="brief-title">
+        <div class="panel-head">
+          <span class="micro">TODAY, IN SHORT</span>
+          <span class="micro">{{ briefItems.length }} / 04</span>
+        </div>
+        <h2 class="sr-only" id="brief-title">今日简报</h2>
+        <ol class="brief-list">
+          <li v-for="item in briefItems" :key="item.index">
+            <span class="brief-index">{{ item.index }}</span>
+            <div>
+              <p class="brief-title">{{ item.title }}</p>
+              <p class="brief-note">{{ item.note }}</p>
+            </div>
+            <span class="brief-state" :class="{ 'brief-state--warn': item.warn }">{{ item.state }}</span>
           </li>
-        </ul>
-        <a class="link-more" href="#" @click.prevent="navigate('/health-analysis')">
-          查看完整分析
-          <AppIcon name="arrow" :size="15" :stroke="2" />
-        </a>
-        <div class="device-note">
-          <AppIcon name="device" :size="18" :stroke="1.7" />
-          <span>心率实时趋势需连接佩戴设备后启用。当前展示为示例数据。</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== Fun Section ===== -->
-    <section v-if="!mentalSerious" data-od-id="fun-card">
-      <button class="fun-toggle" @click="toggleFun" :aria-expanded="funOpen" aria-controls="funPanel">
-        <span class="btn-w-icon">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.5c1 1.4 2.3 2 3.5 2s2.5-.6 3.5-2"/><path d="M9 10h.01M15 10h.01"/></svg>
-          趣图乐一乐 · 今日份放松
-        </span>
-        <AppIcon class="chev" name="chevron" :size="18" :stroke="1.8" />
-      </button>
-      <div class="fun-panel" v-show="funOpen" id="funPanel">
-        <div class="fun-inner">
-          <MemeGallery source="memes" title="奶龙表情包" :count="3" :cols="3" />
-          <AudioPlayer />
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== Quick Record Modal ===== -->
-    <div class="modal-backdrop" v-show="modalOpen" @click.self="closeModal">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1" ref="modalEl" @keydown.esc.prevent="closeModal">
-        <div class="modal-head">
+        </ol>
+        <div class="companion">
+          <div class="mascot" aria-hidden="true">
+            <MiniNailong :animation="reduced ? 'none' : 'float'" />
+          </div>
           <div>
-            <h2 class="modal-title" id="modalTitle">快捷记录</h2>
-            <p class="modal-sub">保存后将出现在今日记录中</p>
+            <p class="micro">{{ avatarBubbleTitle }}</p>
+            <p class="companion-text">{{ avatarBubble }}</p>
           </div>
-          <button class="icon-btn" @click="closeModal" aria-label="关闭">
-            <AppIcon name="close" :size="18" :stroke="1.8" />
-          </button>
         </div>
-        <form @submit.prevent="submitRecord" novalidate>
-          <div class="field">
-            <label class="field-label" for="recType">记录类型</label>
-            <select class="field-select" id="recType" v-model="modalType" @change="updateUnit">
-              <option value="weight">体重</option>
-              <option value="bp">血压</option>
-              <option value="hr">心率</option>
-              <option value="sleep">睡眠时长</option>
-            </select>
-          </div>
-          <div class="field" :class="{ 'field-error': modalError }">
-            <label class="field-label" for="recValue">数值<span class="field-note">{{ modalUnit }}</span></label>
-            <div class="unit-suffix" :data-unit="modalUnit">
-              <input class="field-input" id="recValue" type="number" inputmode="decimal" step="0.1" min="0" v-model="modalValue" placeholder="输入数值" ref="recValueInput" />
-            </div>
-            <p class="error-msg">请输入有效的数值</p>
-          </div>
-          <div class="field">
-            <label class="field-label" for="recNote">备注（可选）</label>
-            <textarea class="field-area" id="recNote" v-model="modalNote" placeholder="如：晨起空腹测量"></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn-primary" :disabled="modalSaving">
-              <span v-if="modalSaving" class="spinner" aria-hidden="true"></span>
-              {{ modalSaving ? '保存中' : '保存记录' }}
-            </button>
-          </div>
-        </form>
-      </div>
+      </aside>
     </div>
 
-    <!-- ===== Toast ===== -->
+    <div class="dashboard-lower">
+      <section class="trend-panel" aria-labelledby="trend-title">
+        <div class="panel-head">
+          <span class="micro">LAST 7 DAYS</span>
+          <span class="micro">睡眠 / 精神</span>
+        </div>
+        <div class="panel-title-row">
+          <h2 id="trend-title">这一周，身体在说什么</h2>
+          <span class="trend-note">{{ trendNote }}</span>
+        </div>
+        <div v-if="trendReady" class="chart-wrap">
+          <svg class="chart chart--dashboard" viewBox="0 0 720 220" role="img" aria-label="近七天睡眠时长与精神状态趋势">
+            <g class="chart-grid">
+              <path d="M44 32H690M44 84H690M44 136H690M44 188H690" />
+              <path d="M44 32V188M150 32V188M256 32V188M362 32V188M468 32V188M574 32V188M690 32V188" />
+            </g>
+            <g class="chart-axis chart-axis-y">
+              <text x="32" y="36">8h</text>
+              <text x="32" y="88">7h</text>
+              <text x="32" y="140">6h</text>
+              <text x="32" y="192">5h</text>
+            </g>
+            <g class="chart-axis chart-axis-x">
+              <text
+                v-for="label in trendLabels"
+                :key="label.text"
+                :x="label.x"
+                y="208"
+                :text-anchor="label.anchor"
+              >{{ label.text }}</text>
+            </g>
+            <path v-if="sleepPath" class="chart-line chart-line--sleep" :d="sleepPath" />
+            <path v-if="moodPath" class="chart-line chart-line--mood" :d="moodPath" />
+            <g class="chart-dots chart-dots--sleep">
+              <circle v-for="p in sleepPoints" :key="'s' + p.x" :cx="p.x" :cy="p.y" r="3.5" />
+            </g>
+            <g class="chart-dots chart-dots--mood">
+              <circle v-for="p in moodPoints" :key="'m' + p.x" :cx="p.x" :cy="p.y" r="3" />
+            </g>
+          </svg>
+        </div>
+        <div v-else class="chart-empty">还没有足够的睡眠与心情记录。今晚打卡后，这里会长出第一条曲线。</div>
+        <div class="legend">
+          <span class="legend-item"><i class="legend-line" />睡眠时长</span>
+          <span class="legend-item"><i class="legend-line legend-line--mood" />精神状态</span>
+          <span class="legend-item legend-item--note">目标睡眠 8h</span>
+        </div>
+      </section>
+
+      <section v-if="!mentalSerious && persona.canShare" class="persona-panel" aria-labelledby="persona-title">
+        <div class="panel-head">
+          <span class="micro">TODAY'S PERSONA</span>
+          <span class="micro">{{ personaDate }}</span>
+        </div>
+        <p class="persona-kicker">今日人设</p>
+        <h2 id="persona-title">{{ persona.title }}</h2>
+        <p class="persona-short">{{ persona.short }}</p>
+        <div class="persona-tags"><span v-for="tag in persona.tags" :key="tag">{{ tag }}</span></div>
+        <p class="persona-share">{{ personaSharePreview }}</p>
+        <div class="persona-actions">
+          <button class="btn btn-primary" type="button" @click="copyPersona">
+            <AppIcon name="copy" :size="15" />{{ copied ? '已复制' : '复制分享文案' }}
+          </button>
+          <router-link class="btn btn-ghost" to="/mental">去心理空间</router-link>
+        </div>
+      </section>
+      <section v-else class="persona-panel" aria-labelledby="persona-title">
+        <div class="panel-head">
+          <span class="micro">TODAY'S PERSONA</span>
+          <span class="micro">—</span>
+        </div>
+        <p class="persona-kicker">今日人设</p>
+        <h2 id="persona-title">今天不玩梗</h2>
+        <p class="persona-short">检测到身体或情绪指标明显异常。先把今天过稳，再谈人设。</p>
+        <p v-if="!mentalSerious" class="persona-share">建议查看健康记录，必要时前往校医院或联系辅导员。</p>
+        <p v-else class="persona-share">支持资源在心理空间。你不需要一个人扛。</p>
+        <div class="persona-actions">
+          <router-link class="btn btn-primary" to="/health-record">查看健康记录</router-link>
+          <router-link class="btn btn-ghost" to="/mental">去心理空间</router-link>
+        </div>
+      </section>
+    </div>
+
+    <nav class="quick-row" aria-label="快捷入口">
+      <router-link class="quick-link" to="/mental">
+        <span class="micro">02 / MOOD</span><strong>今天心情怎么样</strong><AppIcon name="arrow" :size="16" />
+      </router-link>
+      <router-link class="quick-link" to="/diet-management">
+        <span class="micro">03 / FOOD</span><strong>拍一张，算算热量</strong><AppIcon name="arrow" :size="16" />
+      </router-link>
+      <router-link class="quick-link" to="/health-record">
+        <span class="micro">05 / RECORD</span><strong>体检单自动填入</strong><AppIcon name="arrow" :size="16" />
+      </router-link>
+      <router-link class="quick-link" to="/chat">
+        <span class="micro">08 / CHAT</span><strong>身体问诊 / 心理树洞</strong><AppIcon name="arrow" :size="16" />
+      </router-link>
+    </nav>
+
     <div class="toast" :class="{ show: toastVisible }" role="status" aria-live="polite">
       <AppIcon name="check" :size="16" :stroke="2.2" />
       <span>{{ toastMsg }}</span>
@@ -241,10 +202,14 @@ import api from '../api'
 import MemeGallery from '../components/MemeGallery.vue'
 import AudioPlayer from '../components/AudioPlayer.vue'
 import AppIcon from '../components/AppIcon.vue'
+import MiniNailong from '../components/mascots/MiniNailong.vue'
+import { buildPersonaCard, getHealthTier, moodTitle } from '../constants/copywriting'
+import { formatShortDate, localDateKey } from '../utils/date'
+import { useWellnessStore } from '../stores/wellness'
 
 export default {
   name: 'Dashboard',
-  components: { MemeGallery, AudioPlayer, AppIcon },
+  components: { MemeGallery, AudioPlayer, AppIcon, MiniNailong },
   data() {
     return {
       userName: '',
@@ -257,7 +222,7 @@ export default {
       hasRealRating: false,
 
       // score ring
-      ringCircumference: 2 * Math.PI * 96,
+      ringCircumference: 2 * Math.PI * 72,
       ringScore: 0,
       ringOffset: 2 * Math.PI * 96,
       ringLevel: '—',
@@ -267,8 +232,8 @@ export default {
       rangeLabels: { today: '今日', w7: '近 7 天', m30: '近 30 天' },
       ranges: {
         today: { score: 0, level: '—', delta: '暂无评分' },
-        w7:    { score: 82, level: '良好', delta: '近 7 天均值 · 示例' },
-        m30:   { score: 78, level: '良好', delta: '近 30 天均值 · 示例' }
+        w7:    { score: 82, level: '状态在线', delta: '近 7 天均值 · 示例' },
+        m30:   { score: 78, level: '脆皮预警', delta: '近 30 天均值 · 示例' }
       },
 
       // chart
@@ -299,6 +264,13 @@ export default {
 
       // mental
       mentalSerious: false,
+      mentalSummary: null,
+      mentalTrend: { dates: [], mood_score: [], sleep_hours: [] },
+      trendLoaded: false,
+      wellness: null,
+      personaGenerated: false,
+      copied: false,
+      copyTimer: null,
 
       // fun
       funOpen: false,
@@ -373,6 +345,273 @@ export default {
       if (this.latestAnalysis.blood_pressure_advice) items.push(this.latestAnalysis.blood_pressure_advice)
       if (this.latestAnalysis.overall_advice) items.push(this.latestAnalysis.overall_advice)
       return items.length > 0 ? items : ['暂无分析建议']
+    },
+    persona() {
+      const w = this.wellness
+      return buildPersonaCard({
+        score: this.latestRating?.score,
+        rating: this.latestRating?.rating,
+        bedtimeHour: w?.bedtimeHour,
+        moodLevel: w?.moodLevel,
+        stressTags: w?.stressTags,
+        sleepHours: w?.sleepHours ?? this.latestRecord?.sleep_hours,
+        hasSport: w?.hasSportToday,
+        isHighRisk: this.mentalSerious || !!w?.isHighRisk
+      })
+    },
+    statusLabel() {
+      if (this.mentalSerious) return '先照顾自己'
+      if (this.latestRating?.rating === '危险') return '重点关怀'
+      return this.persona.tier.title
+    },
+    todayMoodRecord() {
+      const latest = this.mentalSummary?.latest_mood
+      if (!latest?.record_date) return null
+      const key = String(latest.record_date).slice(0, 10)
+      return key === localDateKey() ? latest : null
+    },
+    todayMoodLevel() {
+      const level = this.todayMoodRecord?.mood_score ?? this.wellness?.moodLevel
+      const value = Number(level)
+      return Number.isFinite(value) ? Math.min(5, Math.max(1, value)) : null
+    },
+    todayMoodText() {
+      if (!this.todayMoodLevel) return '还没打卡'
+      if (this.mentalSerious) {
+        return { 1: '很难受', 2: '有些低落', 3: '一般', 4: '尚可', 5: '稳定' }[this.todayMoodLevel]
+      }
+      return moodTitle(this.todayMoodLevel)
+    },
+    todayMoodTone() {
+      if (!this.todayMoodLevel) return 'none'
+      if (this.todayMoodLevel <= 2) return 'low'
+      if (this.todayMoodLevel >= 4) return 'good'
+      return 'mid'
+    },
+    todaySleepHours() {
+      const value = this.todayMoodRecord?.sleep_hours
+      return value == null ? null : Number(value)
+    },
+    todaySleepText() {
+      return this.todaySleepHours == null ? '—' : `${this.todaySleepHours.toFixed(1)}h`
+    },
+    sleepAvgValue() {
+      const value = this.mentalSummary?.sleep_avg_7d
+      const number = Number(value)
+      return value == null || !Number.isFinite(number) ? null : number
+    },
+    sleepDebtValue() {
+      const value = this.mentalSummary?.sleep_debt_7d
+      const number = Number(value)
+      return value == null || !Number.isFinite(number) ? null : number
+    },
+    sleepAvgText() {
+      return this.sleepAvgValue == null ? '—' : `${this.sleepAvgValue.toFixed(1)}h`
+    },
+    sleepDebtText() {
+      return this.sleepDebtValue == null ? '—' : `${this.sleepDebtValue.toFixed(1)}h`
+    },
+    moodTags() {
+      const tags = this.wellness?.stressTags
+      return Array.isArray(tags) ? tags.filter(tag => typeof tag === 'string' && tag).slice(0, 3) : []
+    },
+    avatarBubble() {
+      if (this.mentalSerious) {
+        return '今天先不玩梗。愿意的话，去心理空间看看支持资源。'
+      }
+      return this.wellness?.avatarBubble || '今天也在认真照顾自己，慢一点也没关系。'
+    },
+    avatarBubbleTitle() {
+      const state = this.wellness?.avatarState
+      if (state === 'night_owl') return '修仙中'
+      if (state === 'low_mood') return '电量偏低'
+      if (state === 'energetic') return '状态在线'
+      return '慢慢来'
+    },
+    todayHeadline() {
+      if (this.mentalSerious) return '今天先照顾自己'
+      if (this.sleepAvgValue != null && this.sleepAvgValue < 7) {
+        return `近 7 天平均睡眠 ${this.sleepAvgText}，今晚早点休息`
+      }
+      if (this.sleepDebtValue != null && this.sleepDebtValue >= 1.5) {
+        return `近 7 天睡眠欠账 ${this.sleepDebtText}，今晚补一补`
+      }
+      if (this.todayMoodLevel != null && this.todayMoodLevel <= 2) {
+        return '情绪电量偏低，先做一件小事就好'
+      }
+      if (this.ringScore >= 85) return '状态在线，保持今天的节奏'
+      if (this.ringScore > 0) return '状态一般，先把睡眠和情绪照顾好'
+      return '从一条健康记录开始，慢慢了解自己'
+    },
+    todayNarrative() {
+      if (this.mentalSerious) {
+        return '不用一个人扛着。需要的话，去心理空间看看支持资源，或联系学校心理咨询中心。'
+      }
+      const parts = []
+      if (this.todayMoodLevel) parts.push(`今天的心情是「${this.todayMoodText}」`)
+      else parts.push('今天还没有心情打卡')
+      if (this.todaySleepHours != null) parts.push(`昨晚睡了 ${this.todaySleepText}`)
+      else if (this.sleepAvgValue != null) parts.push(`近 7 天平均睡眠 ${this.sleepAvgText}`)
+      return `${parts.join('，')}。`
+    },
+    dateStamp() {
+      const now = new Date()
+      const pad = value => String(value).padStart(2, '0')
+      return `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}`
+    },
+    personaSharePreview() {
+      if (!this.persona?.canShare) return ''
+      return `${this.persona.title} ${this.persona.short}`.trim()
+    },
+    personaDate() {
+      const now = new Date()
+      return `${String(now.getMonth() + 1).padStart(2, '0')} / ${String(now.getDate()).padStart(2, '0')}`
+    },
+    statusDotClass() {
+      if (this.mentalSerious) return 'status-dot--danger'
+      if (this.persona.canShare) return 'status-dot--success'
+      return 'status-dot--accent'
+    },
+    scoreNarrative() {
+      if (this.mentalSerious) return '今天先不追求满分。把支持资源放在手边，先照顾好自己。'
+      return this.todayHeadline
+    },
+    scoreTags() {
+      const tags = []
+      if (this.sleepDebtValue != null) tags.push(`睡眠债 ${this.sleepDebtText}`)
+      if (this.todayMoodLevel) tags.push(`心情 ${this.todayMoodText}`)
+      if (this.wellness?.hasSportToday) tags.push('今日已运动')
+      else tags.push('待运动')
+      if (!tags.length) tags.push(`睡眠 ${this.sleepAvgText}`)
+      return tags.slice(0, 3)
+    },
+    restingHeartRate() {
+      const value = this.latestRecord?.heart_rate
+      return value == null ? '—' : String(value)
+    },
+    briefItems() {
+      const sleep = this.todaySleepHours
+      const hasMood = !!this.todayMoodRecord
+      const hasSport = !!this.wellness?.hasSportToday
+      const recordDate = this.latestRecord?.record_date
+      return [
+        {
+          index: '01',
+          title: '睡眠',
+          note: sleep == null ? '昨晚还没有睡眠记录 · 目标 8h' : `昨晚 ${this.todaySleepText} · 目标 8h`,
+          state: sleep == null ? '未记录' : sleep < 7 ? '偏低' : '达标',
+          warn: sleep == null || sleep < 7
+        },
+        {
+          index: '02',
+          title: '心情',
+          note: hasMood ? `今天已记录「${this.todayMoodText}」` : '今天还没有打卡',
+          state: hasMood ? '已记录' : '待打卡',
+          warn: !hasMood
+        },
+        {
+          index: '03',
+          title: '运动',
+          note: hasSport ? '今天已完成运动打卡' : '今天还没有运动记录',
+          state: hasSport ? '已打卡' : '待运动',
+          warn: !hasSport
+        },
+        {
+          index: '04',
+          title: '体检',
+          note: recordDate ? `最近记录 ${formatShortDate(recordDate)}` : '还没有体检记录',
+          state: recordDate ? '有记录' : '待记录',
+          warn: !recordDate
+        }
+      ]
+    },
+    trendSeries() {
+      const dates = Array.isArray(this.mentalTrend?.dates) ? this.mentalTrend.dates : []
+      const moods = Array.isArray(this.mentalTrend?.mood_score) ? this.mentalTrend.mood_score : []
+      const sleeps = Array.isArray(this.mentalTrend?.sleep_hours) ? this.mentalTrend.sleep_hours : []
+      const xAt = index => 44 + index * (646 / 6)
+      const sleepY = hours => 188 - ((Math.min(8, Math.max(5, Number(hours))) - 5) / 3) * 156
+      const moodY = level => 188 - ((Math.min(5, Math.max(1, Number(level))) - 1) / 4) * 156
+      const build = (values, toY) => {
+        const points = []
+        let path = ''
+        let open = false
+        values.slice(0, 7).forEach((value, index) => {
+          if (value == null || !Number.isFinite(Number(value))) {
+            open = false
+            return
+          }
+          const point = { x: xAt(index), y: toY(value) }
+          points.push(point)
+          path += `${open ? ' L' : ' M'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`
+          open = true
+        })
+        return { points, path: path.trim() }
+      }
+      const sleep = build(sleeps, sleepY)
+      const mood = build(moods, moodY)
+      return {
+        dates: dates.slice(0, 7),
+        sleepPoints: sleep.points,
+        moodPoints: mood.points,
+        sleepPath: sleep.points.length > 1 ? sleep.path : '',
+        moodPath: mood.points.length > 1 ? mood.path : '',
+        recorded: dates.slice(0, 7).filter((_, index) => sleeps[index] != null || moods[index] != null).length
+      }
+    },
+    trendReady() {
+      const series = this.trendSeries
+      return series.sleepPoints.length > 0 || series.moodPoints.length > 0
+    },
+    sleepPoints() {
+      return this.trendSeries.sleepPoints
+    },
+    moodPoints() {
+      return this.trendSeries.moodPoints
+    },
+    sleepPath() {
+      return this.trendSeries.sleepPath
+    },
+    moodPath() {
+      return this.trendSeries.moodPath
+    },
+    trendLabels() {
+      const dates = this.trendSeries.dates
+      return dates.map((date, index) => {
+        const parsed = new Date(`${date}T00:00:00`)
+        const text = Number.isNaN(parsed.getTime())
+          ? String(date).slice(5).replace('-', '/')
+          : `${parsed.getMonth() + 1}/${parsed.getDate()}`
+        return {
+          text,
+          x: (44 + index * (646 / 6)).toFixed(1),
+          anchor: index === 0 ? 'start' : index === dates.length - 1 ? 'end' : 'middle'
+        }
+      })
+    },
+    trendNote() {
+      if (!this.trendReady) return '等待记录'
+      const count = this.trendSeries.recorded
+      return count >= 4 ? `已记录 ${count} 天` : `刚开始记录 · ${count} 天`
+    },
+    scaleSummaries() {
+      const build = (key, title, item) => {
+        if (!item) return { key, title, result: '还没测过', tone: 'muted', has: false }
+        const score = item.score != null ? `${item.score} 分` : ''
+        const label = item.label || ''
+        const date = item.created_at ? ` · ${formatShortDate(item.created_at)}` : ''
+        return {
+          key,
+          title,
+          result: [score, label].filter(Boolean).join(' · ') + date || '已完成',
+          tone: item.crisis_flag ? 'danger' : 'normal',
+          has: true
+        }
+      }
+      return [
+        build('PHQ-9', '情绪晴雨表', this.mentalSummary?.latest_phq9),
+        build('GAD-7', '焦虑自测', this.mentalSummary?.latest_gad7)
+      ]
     }
   },
   async mounted() {
@@ -391,10 +630,11 @@ export default {
     await this.loadUserInfo()
     await this.loadStats()
     await this.loadMentalSummary()
+    await this.loadTrend()
+    await this.loadWellness()
 
-    // render chart and paint ring after data is ready
+    // paint ring after data is ready
     this.$nextTick(() => {
-      this.renderChart()
       this.paintRange(this.activeRange)
     })
   },
@@ -408,8 +648,65 @@ export default {
     async loadMentalSummary() {
       try {
         const res = await api.getMentalSummary()
+        this.mentalSummary = res.data || null
         this.mentalSerious = !!res.data?.serious_mode
       } catch (e) { /* 心理摘要不可用不影响首页 */ }
+    },
+    async loadWellness() {
+      try {
+        const wellness = useWellnessStore()
+        wellness.hydrateLocal()
+        await wellness.load()
+        this.wellness = wellness
+        if (wellness.isHighRisk) this.mentalSerious = true
+      } catch (e) { /* 状态源不可用时人设卡退化为评分文案 */ }
+    },
+    async loadTrend() {
+      try {
+        const res = await api.getMentalTrend({ days: 7 })
+        const data = res.data || {}
+        this.mentalTrend = {
+          dates: Array.isArray(data.dates) ? data.dates : [],
+          mood_score: Array.isArray(data.mood_score) ? data.mood_score : [],
+          sleep_hours: Array.isArray(data.sleep_hours) ? data.sleep_hours : []
+        }
+      } catch (e) {
+        this.mentalTrend = { dates: [], mood_score: [], sleep_hours: [] }
+      }
+      this.trendLoaded = true
+    },
+    generatePersona() {
+      const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      this.personaGenerated = true
+      if (!reduced) {
+        requestAnimationFrame(() => {
+          this.$el?.querySelector('.persona-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
+      }
+      this.showToast('今日人设卡已生成')
+    },
+    async copyPersona() {
+      if (!this.persona.canShare) {
+        this.showToast('今天先不分享，照顾好自己更重要')
+        return
+      }
+      const text = this.persona.shareText
+      try {
+        await navigator.clipboard.writeText(text)
+      } catch (e) {
+        const area = document.createElement('textarea')
+        area.value = text
+        area.style.position = 'fixed'
+        area.style.opacity = '0'
+        document.body.appendChild(area)
+        area.select()
+        document.execCommand('copy')
+        area.remove()
+      }
+      this.copied = true
+      clearTimeout(this.copyTimer)
+      this.copyTimer = setTimeout(() => { this.copied = false }, 2000)
+      this.showToast('文案已复制，去发朋友圈吧')
     },
     async loadStats() {
       try {
@@ -446,7 +743,10 @@ export default {
           this.hasRealRating = true
           this.ranges.today = {
             score: ratingRes.data.score,
-            level: ratingRes.data.rating || '—',
+            level: getHealthTier({
+              score: ratingRes.data.score,
+              rating: ratingRes.data.rating
+            }).title,
             delta: '今日评分'
           }
         }
@@ -621,181 +921,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
-/* ===== root layout ===== */
-.dash { display: flex; flex-direction: column; gap: 20px; }
-@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.dash > * { animation: page-in 0.28s ease both; }
-.dash > *:nth-child(2) { animation-delay: 0.04s; }
-.dash > *:nth-child(3) { animation-delay: 0.08s; }
-
-/* ===== hero ===== */
-.hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 4px 8px; }
-.mental-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--warn-soft); }
-.mental-banner-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.mental-banner-copy strong { font-size: 14px; }
-.mental-banner-copy span { color: var(--muted); font-size: 12.5px; }
-.eyebrow { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-.hero h1 { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.3; margin-top: 2px; }
-.hero-date { font-size: 12.5px; color: var(--muted-strong); margin-top: 2px; }
-.hero-right { display: flex; align-items: center; gap: 14px; }
-.mascot { width: 52px; height: 52px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: grid; place-items: center; }
-.status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: var(--success-soft); color: var(--success); font-size: 12.5px; font-weight: 600; }
-.hero-record-btn { min-height: 40px; padding: 0 16px; font-size: 13px; }
-
-/* ===== overview grid ===== */
-.overview { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: stretch; }
-.right-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-
-/* ===== card overrides ===== */
-.card { padding: 20px; }
-.card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; }
-.card-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
-.card-sub { font-size: 12px; color: var(--muted-strong); }
-
-/* ===== score ring ===== */
-.score-body { display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px; }
-.ring-wrap { position: relative; width: 220px; height: 220px; }
-.ring-svg { transform: rotate(-90deg); }
-.ring-track { fill: none; stroke: var(--border); }
-.ring-bar { fill: none; stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.9s cubic-bezier(0.22,0.8,0.3,1); }
-.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.ring-score { font-size: 52px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.ring-level { font-size: 13px; font-weight: 600; color: var(--muted-strong); margin-top: 6px; }
-.ring-delta { font-size: 12px; color: var(--muted-strong); margin-top: 2px; }
-.seg { display: flex; gap: 6px; margin-top: 18px; }
-.seg-btn { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 12.5px; font-weight: 500; color: var(--muted-strong); transition: background 0.15s, color 0.15s, border-color 0.15s; min-height: 36px; }
-.seg-btn:hover { color: var(--fg); background: var(--hover); }
-.seg-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
-
-/* ===== metrics ===== */
-.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.metric { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; transition: background 0.15s; }
-.metric:hover { background: var(--hover); }
-.metric-top { display: flex; align-items: center; justify-content: space-between; }
-.metric-label { font-size: 12.5px; color: var(--muted-strong); font-weight: 500; }
-.metric-value { font-size: 26px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.metric-unit { font-size: 13px; color: var(--muted-strong); font-weight: 500; margin-left: 2px; }
-.metric-foot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-strong); }
-.trend-up { color: var(--success); display: inline-flex; align-items: center; gap: 2px; font-weight: 600; }
-.trend-flat { color: var(--muted-strong); }
-.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.badge-ok { background: var(--success-soft); color: var(--success); }
-.badge-warn { background: var(--warn-soft); color: var(--warn); }
-.badge-info { background: var(--info-soft); color: var(--info); }
-
-/* ===== chart ===== */
-.chart-box { position: relative; min-width: 0; }
-.chart-legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-strong); }
-.legend-dot { width: 9px; height: 9px; border-radius: 3px; }
-.legend-dot.line { height: 3px; border-radius: 2px; }
-.chart-svg { width: 100%; height: auto; }
-.chart-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--fg); color: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.6; opacity: 0; transform: translateY(4px); transition: opacity 0.15s, transform 0.15s; box-shadow: 0 8px 20px rgba(26, 26, 46, 0.2); box-shadow: 0 8px 20px oklch(22% 0.02 250 / 0.2); white-space: nowrap; }
-.chart-tip.show { opacity: 1; transform: translateY(0); }
-
-/* ===== modules ===== */
-.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; }
-.module { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: background 0.15s, border-color 0.15s; text-align: left; }
-.module:hover { background: var(--hover); border-color: #e6e6f0; border-color: oklch(88% 0.006 250); }
-.module:active { transform: translateY(1px); }
-.module-icon { width: 40px; height: 40px; border-radius: 11px; background: var(--bg); border: 1px solid var(--border); display: grid; place-items: center; color: var(--fg); }
-.module-icon svg { width: 20px; height: 20px; }
-.module-title { font-size: 13.5px; font-weight: 600; }
-.module-desc { font-size: 11.5px; color: var(--muted-strong); line-height: 1.55; }
-
-/* ===== tasks ===== */
-.tasks { display: flex; flex-direction: column; gap: 4px; }
-.task { display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; min-height: 52px; }
-.task:hover { background: var(--hover); }
-.task-check { width: 22px; height: 22px; border-radius: 7px; flex: 0 0 22px; border: 1.5px solid var(--border); color: transparent; display: grid; place-items: center; transition: background 0.15s, border-color 0.15s, color 0.15s; }
-.task input:checked ~ .task-check { background: var(--success); border-color: var(--success); color: #fff; }
-.task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; transition: color 0.15s; }
-.task-name { font-size: 13.5px; font-weight: 550; }
-.task-meta { font-size: 12px; color: var(--muted-strong); }
-.task input:checked ~ .task-body { color: var(--muted); }
-.task input:checked ~ .task-body .task-name { text-decoration: line-through; text-decoration-color: var(--muted); }
-.task-icon { color: var(--muted-strong); flex: 0 0 22px; }
-.task-icon svg { width: 20px; height: 20px; }
-.task-progress { width: 100%; height: 5px; border-radius: 999px; background: var(--border); margin-top: 8px; overflow: hidden; }
-.task-progress-bar { height: 100%; border-radius: 999px; background: var(--success); }
-
-/* ===== analysis ===== */
-.analysis-body { display: flex; flex-direction: column; gap: 14px; }
-.analysis-list { list-style: none; display: flex; flex-direction: column; gap: 12px; padding: 0; }
-.analysis-line { display: flex; gap: 10px; align-items: flex-start; color: var(--fg); font-size: 13.5px; line-height: 1.7; }
-.analysis-line svg { flex: 0 0 18px; color: var(--success); margin-top: 3px; }
-.link-more { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--fg); min-height: 40px; padding: 0 4px; border-radius: 8px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border); }
-.link-more:hover { text-decoration-color: var(--fg); }
-.link-more svg { transition: transform 0.15s; }
-.link-more:hover svg { transform: translateX(2px); }
-.device-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--bg); border: 1px dashed var(--border); font-size: 12.5px; color: var(--muted-strong); }
-
-/* ===== skeleton ===== */
-.sk-line { height: 13px; margin-bottom: 10px; }
-.sk-block { height: 120px; }
-
-/* ===== fun ===== */
-.fun-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-weight: 600; text-align: left; transition: background 0.15s; min-height: 56px; }
-.fun-toggle:hover { background: var(--hover); }
-.btn-w-icon { display: inline-flex; align-items: center; gap: 8px; }
-.fun-toggle .chev { transition: transform 0.2s; color: var(--muted); }
-.fun-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
-.fun-panel { border: 1px solid var(--border); border-top: 0; border-radius: 0 0 var(--radius) var(--radius); background: var(--surface); }
-.fun-inner { padding: 20px; }
-
-/* ===== modal ===== */
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(26, 26, 46, 0.42); background: oklch(16% 0.012 250 / 0.42); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal { width: 100%; max-width: 460px; max-height: calc(100vh - 48px); overflow: auto; background: var(--surface); border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-modal); padding: 24px; }
-.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
-.modal-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; }
-.modal-sub { font-size: 12.5px; color: var(--muted-strong); margin-top: 2px; }
-.icon-btn { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--muted-strong); transition: background 0.15s, color 0.15s; }
-.icon-btn:hover { background: var(--hover); color: var(--fg); }
-.field { margin-bottom: 16px; }
-.field-label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
-.field-note { font-size: 11.5px; color: var(--muted); margin-left: 6px; font-weight: 400; }
-.field-input, .field-select, .field-area { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); padding: 0 14px; font-size: 14px; transition: border-color 0.15s; }
-.field-area { padding: 10px 14px; min-height: 84px; resize: vertical; line-height: 1.6; }
-.field-input:focus, .field-select:focus, .field-area:focus { border-color: var(--accent); outline: none; }
-.field-error .field-input { border-color: var(--danger); }
-.error-msg { display: none; font-size: 12px; color: var(--danger); margin-top: 6px; }
-.field-error .error-msg { display: block; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
-.unit-suffix { position: relative; }
-.unit-suffix .field-input { padding-right: 56px; }
-.unit-suffix::after { content: attr(data-unit); position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12.5px; color: var(--muted-strong); }
-.spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.45); border: 2px solid color-mix(in oklch, #fff 45%, transparent); border-top-color: #fff; animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ===== toast ===== */
-.toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 8px); z-index: 150; display: flex; align-items: center; gap: 9px; background: var(--fg); color: var(--bg); border-radius: 999px; padding: 12px 18px; font-size: 13px; font-weight: 550; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; box-shadow: 0 14px 34px rgba(26, 26, 46, 0.3); box-shadow: 0 14px 34px oklch(22% 0.02 250 / 0.3); max-width: calc(100vw - 32px); }
-.toast.show { opacity: 1; transform: translate(-50%, 0); }
-.toast svg { color: #4ade80; color: oklch(78% 0.11 155); flex: 0 0 17px; }
-
-/* ===== responsive ===== */
-@media (max-width: 1100px) { .modules { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 820px) { .overview { grid-template-columns: 1fr; } }
-@media (max-width: 767px) {
-  .hero { padding: 16px 0 4px; align-items: flex-start; flex-direction: column; gap: 12px; }
-  .mental-banner { flex-direction: column; align-items: flex-start; }
-  .hero h1 { font-size: 22px; }
-  .mascot { width: 44px; height: 44px; }
-  .overview { gap: 16px; }
-  .right-stack { gap: 16px; }
-  .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .modules { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .module { padding: 14px 12px; }
-  .card { padding: 16px; }
-  .ring-wrap { width: 200px; height: 200px; }
-}
-
-/* ===== reduced motion ===== */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .dash > * { animation: none; }
-}
-</style>
