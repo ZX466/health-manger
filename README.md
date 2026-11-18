@@ -78,7 +78,7 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uv run python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-AI 模型（供应商 / Base URL / 模型 ID / API Key）在登录后的「AI 设置」页按用户配置，不写入 `.env`。
+AI 模型（供应商 / Base URL / 模型 ID / API Key）在登录后的「AI 设置」页按用户配置，不写入 `.env`。自定义 Base URL 必须同时配置该服务的独立 API Key；服务级 `ZHIPU_API_KEY` 只用于默认智谱地址，不会发送到自定义主机。
 
 ### 3. 初始化数据库（首次）
 
