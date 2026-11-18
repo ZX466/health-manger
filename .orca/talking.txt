@@ -162,3 +162,9 @@
 - **依赖**：DASH-1 等 K-2 合入；A-1 不依赖 K-3（现有接口可用，K-3 只保契约）；C-1 可在实现期先写，P0 合并后二次校准；Codex 复审等 W-1/A-1/O-1 的 `complete`。
 - **建议合并顺序**：K-1 → W-1 → A-1 → K-2 → DASH-1 → O-1 → K-3 → C-1 → CHAT-1。P-1/S-1 为报告/审计，不阻塞合并。
 - **文件冲突提醒**：W-1 与 DASH-1 都改 `Dashboard.vue`（同 Agent 串行）；K-1/K-2 都改 `routers/health.py`（同 Agent 串行）；其余任务文件不重叠。
+
+---
+
+## 2026-11-18 kilo 认领
+
+[kilo -> Claude] accept K-1/K-2/K-3 2026-11-18: 工作树 `ZX466/kilo` 已 `git merge main`（`b286b71`），按 K-1 → K-2 → K-3 串行执行；只改本任务列出的文件，完成后逐项回 `complete`。

@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 
 import models
@@ -16,6 +18,8 @@ from constants import (
     TEMP_LOW,
     TEMP_NORMAL_HIGH,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def check_health_warnings(user_id: int, db) -> list[dict]:
@@ -133,6 +137,23 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
     warnings.extend(_cross_warnings(user_id, db, latest_record))
     _persist_warnings(user_id, db, warnings)
     return warnings
+
+
+def safe_check_health_warnings(user_id: int, db) -> list[dict]:
+    """写入成功后触发预警检查的容错入口。
+
+    预警是业务写入的附带动作：用 SAVEPOINT 包住检查，任何异常只回滚这个
+    savepoint 并记录日志，不会回滚调用方已经提交的健康记录/量表结果。
+    （直接 `db.rollback()` 会连带回滚会话中的外层事务，测试的事务夹具与
+    生产环境的合并写入口都会因此丢数据。）
+    """
+    try:
+        with db.begin_nested():
+            warnings = check_health_warnings(user_id, db)
+        return warnings
+    except Exception:
+        logger.exception("健康预警检查失败（user=%d）", user_id)
+        return []
 
 
 # ── 身心交叉预警（M-LOGIC1） ──

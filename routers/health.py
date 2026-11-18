@@ -16,6 +16,7 @@ from services.health_record_service import (
     get_records,
 )
 from services.security_service import check_rate_limit
+from services.warning_service import safe_check_health_warnings
 
 router = APIRouter(prefix="/api/health", tags=["健康数据"])
 
@@ -29,7 +30,10 @@ def create_health_record(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return create_record(record, current_user.id, db)
+    """保存健康记录后触发预警检查；预警失败只记日志，不影响已保存的记录。"""
+    saved = create_record(record, current_user.id, db)
+    safe_check_health_warnings(current_user.id, db)
+    return saved
 
 
 @router.get("/records", response_model=list[schemas.HealthRecordResponse])
