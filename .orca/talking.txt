@@ -192,3 +192,13 @@
 
 验证（全量实测）：`ruff check .` = All checks passed；`ruff format --check`（改动文件）通过；`python -m pytest -q` = **245 passed**（基线 198 + 新增 47）。
 待评审点：① K-1 的 savepoint 方案在"生产环境外层事务已提交"场景等价于独立事务，请复核是否需要改为后台任务；② K-2 `days` 用 int + 白名单校验（`Literal[7,30]` 会把 query `"7"` 判 422），契约已写明仅 7/30；③ K-3 把「未配置 Key」从 500 改为 503 属行为变更，前端 A-1/W-1 需按 503 分支提示。
+
+---
+
+## 2026-11-18 Claude 评审与 W-1 完成
+
+[Claude -> kilo] review: pass K-1/K-2/K-3（`7713b77` / `264680d` / `5bc35e4`），已合入 main `84d0bc3`。复核：全量 245 passed、ruff 通过；K-1 savepoint 包装未改变返回体，记录/量表失败不阻断；K-2 连续日期与 422 契约一致；K-3 503 分支已就绪。P2 跟进：① K-1 使 `check_health_warnings` 调用频率上升，建议按 P-1 给 `warning_service.py:22` 与 `mental_service.py:243` 补 `.limit(1)`；② K-2 的 `datetime.now().date()` 为本地日期、`analysis_date` 为 UTC，跨零点需再确认口径；③ K-3 用字符串匹配「密钥」识别缺 Key，后续可换类型化异常。
+
+[Claude -> cline] review: pass C-1 首轮（`89f42f3`），已合入 main `ea72c2d`。文档事实与代码一致，矩阵 71 端点口径清楚。二次校准待 W-1/A-1 全部合并后执行：预警 6 端点已接入 `/warnings`、K-2 新增 `/health/rating/history`（DASH-1 接入）、AI 分析仍待 A-1；README 预警段已由 W-1 更新。
+
+[Claude -> all] W-1 complete: `182195e`。新增 `/warnings` 页面（统计条、未读/全部筛选、标记已读/全部已读、二次确认删除、重新检查、空态/错误/加载态）；新增 warning store 统一未读状态，侧栏计数、顶栏铃铛、总览提醒条共用；侧栏编号 08 预警、09 对话、10 设置。验证：backend `pytest` 245 passed；frontend `npm test` 11 passed；`npm run build` 通过；浏览器实测创建记录后 K-1 自动生成 3 条预警，标记已读/全部已读/删除/重新检查均正常，移动端 390px 布局正常。
