@@ -68,10 +68,10 @@ export default {
     return http.delete(`/ai/analysis/${id}`)
   },
   quickHealthAnalysis() {
-    return http.post('/ai/quick-analysis')
+    return http.post('/ai/quick-analysis', null, { timeout: 60000 })
   },
   getHealthEvaluation() {
-    return http.post('/ai/health-evaluation')
+    return http.post('/ai/health-evaluation', null, { timeout: 60000 })
   },
   asyncAIAnalysis(data) {
     return http.post('/ai/async-analysis', data)

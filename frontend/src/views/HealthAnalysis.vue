@@ -13,7 +13,7 @@
         </span>
         <button
           class="btn btn-primary"
-          :disabled="generating || !latestAnalysis"
+          :disabled="aiToolBusy || !latestAnalysis"
           :title="latestAnalysis ? '' : '请先添加一条含 BMI 的体检记录'"
           @click="generateAnalysis"
         >
@@ -92,7 +92,7 @@
           </div>
           <button
             class="btn btn-ghost ai-refresh"
-            :disabled="generating"
+            :disabled="aiToolBusy"
             aria-describedby="ai-data-notice"
             @click="generateAnalysis"
           >
@@ -105,6 +105,54 @@
           <strong>发送前请知悉：</strong>
           生成时会将最新体检记录中的身高、体重、BMI、血压、心率、体温、睡眠、运动频率和饮食习惯，发送给你在「AI 设置」中选择的模型服务商（默认智谱 GLM），仅用于生成本次健康解读；不会发送姓名或账号信息。内容仅供参考，不替代医生诊断。
         </p>
+
+        <div class="ai-tools">
+          <div class="ai-tools-copy">
+            <span class="micro">ANALYSIS / MODES</span>
+            <p>快速结论、规则 + AI 综合评价，或提交后台任务稍后读取。</p>
+          </div>
+          <div class="ai-tools-actions">
+            <button
+              type="button"
+              class="btn btn-ghost ai-tool"
+              :disabled="aiToolBusy || !latestAnalysis"
+              @click="runQuickAnalysis"
+            >
+              <AppIcon name="sparkles" :size="14" />
+              {{ toolBusy === 'quick' ? '分析中…' : '快速分析' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost ai-tool"
+              :disabled="aiToolBusy || !latestAnalysis"
+              @click="runHealthEvaluation"
+            >
+              <AppIcon name="chart" :size="14" />
+              {{ toolBusy === 'evaluation' ? '评价中…' : '规则 + AI 评价' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost ai-tool"
+              :disabled="aiToolBusy || !latestAnalysis"
+              @click="runAsyncAnalysis"
+            >
+              <AppIcon name="ai" :size="14" />
+              {{ toolBusy === 'async' ? '后台处理中…' : '后台分析' }}
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-if="asyncTask"
+          class="ai-task"
+          :class="`is-${asyncTask.status}`"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="ai-task-dot" aria-hidden="true"></span>
+          <span>后台分析{{ asyncStatusText }}</span>
+          <code v-if="asyncTask.task_id">{{ asyncTask.task_id }}</code>
+        </div>
 
         <div v-if="aiError" class="ai-notice" :class="`is-${aiError.kind}`" role="alert">
           <AppIcon name="alert" :size="16" />
@@ -127,7 +175,7 @@
             v-else-if="aiError.action === 'retry'"
             type="button"
             class="ai-notice-action"
-            @click="generateAnalysis"
+            @click="retryAi"
           >
             重试
           </button>
@@ -141,6 +189,9 @@
         <article v-else-if="activeAi" class="ai-reading">
           <div class="ai-reading-meta">
             <span class="mini-tag mini-tag--score">{{ activeAi.analysis_type || '健康咨询' }}</span>
+            <span v-if="activeAi.rule_score != null" class="mini-tag mini-tag--score">
+              规则 {{ activeAi.rule_score }} · {{ activeAi.rule_rating || '—' }}
+            </span>
             <span class="micro">
               {{ formatDateTime(activeAi.created_at) }}
               <span v-if="activeAi.tokens_used"> · {{ activeAi.tokens_used }} tokens</span>
@@ -271,6 +322,7 @@ import AppIcon from '../components/AppIcon.vue'
 import MiniCat from '../components/mascots/MiniCat.vue'
 import MiniNailong from '../components/mascots/MiniNailong.vue'
 import { aiErrorInfo } from '../utils/aiError'
+import { asyncStatusLabel, normalizeTaskResult } from '../utils/aiModes'
 
 const DEFAULT_AI_PROMPT =
   '请结合我最新的健康记录，给出整体健康解读、需要关注的风险点，以及 3 条可执行的改善建议，控制在 400 字以内。'
@@ -297,13 +349,23 @@ export default {
       aiDeletingId: null,
       aiError: null,
       aiNotice: '',
-      noticeTimer: null
+      noticeTimer: null,
+      toolBusy: '',
+      asyncTask: null,
+      asyncPollTimer: null,
+      lastAiAction: 'deep'
     }
   },
   computed: {
     displayScore() {
       const score = Number(this.latestAnalysis?.health_score)
       return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0
+    },
+    aiToolBusy() {
+      return this.generating || Boolean(this.toolBusy)
+    },
+    asyncStatusText() {
+      return asyncStatusLabel(this.asyncTask?.status)
     }
   },
   async mounted() {
@@ -311,6 +373,7 @@ export default {
   },
   beforeUnmount() {
     if (this.noticeTimer) clearTimeout(this.noticeTimer)
+    this.clearAsyncPoll()
   },
   methods: {
     async loadAnalysis() {
@@ -329,7 +392,8 @@ export default {
       }
     },
     async generateAnalysis() {
-      if (this.generating) return
+      if (this.generating || this.toolBusy) return
+      this.lastAiAction = 'deep'
       this.generating = true
       this.aiError = null
       this.aiNotice = ''
@@ -343,6 +407,168 @@ export default {
       } finally {
         this.generating = false
       }
+    },
+    async runQuickAnalysis() {
+      if (this.aiToolBusy) return
+      this.lastAiAction = 'quick'
+      this.toolBusy = 'quick'
+      this.aiError = null
+      this.aiNotice = ''
+      try {
+        const { data } = await api.quickHealthAnalysis()
+        const detail = await api.getAIAnalysis(data.analysis_id)
+        this.activeAi = detail.data
+        await this.loadAiHistory(data.analysis_id)
+        this.flashNotice(data.cached ? '快速分析已生成（命中缓存）' : '快速分析已生成')
+      } catch (err) {
+        this.aiError = aiErrorInfo(err)
+      } finally {
+        this.toolBusy = ''
+      }
+    },
+    async runHealthEvaluation() {
+      if (this.aiToolBusy) return
+      this.lastAiAction = 'evaluation'
+      this.toolBusy = 'evaluation'
+      this.aiError = null
+      this.aiNotice = ''
+      try {
+        const { data } = await api.getHealthEvaluation()
+        this.activeAi = {
+          id: data.analysis_id,
+          analysis_type: 'LLM 健康评价',
+          response_content: data.llm_evaluation,
+          tokens_used: data.tokens_used,
+          created_at: new Date().toISOString(),
+          rule_score: data.rule_score,
+          rule_rating: data.rule_rating
+        }
+        await this.loadAiHistory(data.analysis_id)
+        if (this.activeAi && this.activeAi.id === data.analysis_id) {
+          this.activeAi = {
+            ...this.activeAi,
+            rule_score: data.rule_score,
+            rule_rating: data.rule_rating
+          }
+        }
+        this.flashNotice(data.cached ? '健康评价已生成（命中缓存）' : '健康评价已生成')
+      } catch (err) {
+        this.aiError = aiErrorInfo(err)
+      } finally {
+        this.toolBusy = ''
+      }
+    },
+    async runAsyncAnalysis() {
+      if (this.aiToolBusy) return
+      this.lastAiAction = 'async'
+      this.toolBusy = 'async'
+      this.aiError = null
+      this.aiNotice = ''
+      this.clearAsyncPoll()
+      this.asyncTask = { task_id: '', status: 'submitting' }
+      try {
+        const { data } = await api.asyncAIAnalysis({ request_content: DEFAULT_AI_PROMPT })
+        this.asyncTask = { task_id: data.task_id, status: data.status || 'pending' }
+        this.startAsyncPolling()
+      } catch (err) {
+        this.toolBusy = ''
+        this.asyncTask = null
+        this.aiError = aiErrorInfo(err)
+      }
+    },
+    startAsyncPolling() {
+      this.clearAsyncPoll()
+      const startedAt = Date.now()
+      const poll = async () => {
+        const taskId = this.asyncTask?.task_id
+        if (!taskId) return
+        try {
+          const { data } = await api.getTaskStatus(taskId)
+          this.asyncTask = { ...this.asyncTask, ...data }
+          if (data.status === 'completed') {
+            await this.handleAsyncCompleted(data)
+            return
+          }
+          if (data.status === 'failed') {
+            this.toolBusy = ''
+            this.aiError = {
+              kind: 'server',
+              message: data.error || '后台分析失败，请稍后重试。',
+              action: 'retry'
+            }
+            return
+          }
+        } catch (err) {
+          this.toolBusy = ''
+          if (this.asyncTask) this.asyncTask = { ...this.asyncTask, status: 'failed' }
+          this.aiError =
+            err?.response?.status === 404
+              ? { kind: 'server', message: '后台任务已过期，请重新提交。', action: 'retry' }
+              : aiErrorInfo(err)
+          return
+        }
+        if (Date.now() - startedAt > 120000) {
+          this.toolBusy = ''
+          if (this.asyncTask) this.asyncTask = { ...this.asyncTask, status: 'failed' }
+          this.aiError = {
+            kind: 'timeout',
+            message: '后台分析超时，请稍后重试。',
+            action: 'retry'
+          }
+          return
+        }
+        this.asyncPollTimer = setTimeout(poll, 1500)
+      }
+      this.asyncPollTimer = setTimeout(poll, 500)
+    },
+    async handleAsyncCompleted(data) {
+      const parsed = normalizeTaskResult(data?.result)
+      this.toolBusy = ''
+      if (!parsed.content) {
+        if (this.asyncTask) this.asyncTask = { ...this.asyncTask, status: 'failed' }
+        this.aiError = {
+          kind: 'server',
+          message: '后台分析没有返回内容，请重试。',
+          action: 'retry'
+        }
+        return
+      }
+      if (parsed.analysisId) {
+        try {
+          const detail = await api.getAIAnalysis(parsed.analysisId)
+          this.activeAi = detail.data
+        } catch (err) {
+          this.activeAi = {
+            id: parsed.analysisId,
+            analysis_type: 'AI 异步分析',
+            response_content: parsed.content,
+            tokens_used: parsed.tokensUsed,
+            created_at: new Date().toISOString()
+          }
+        }
+        await this.loadAiHistory(parsed.analysisId)
+      } else {
+        this.activeAi = {
+          id: null,
+          analysis_type: 'AI 异步分析',
+          response_content: parsed.content,
+          tokens_used: parsed.tokensUsed,
+          created_at: new Date().toISOString()
+        }
+      }
+      this.flashNotice('后台分析已完成')
+    },
+    clearAsyncPoll() {
+      if (this.asyncPollTimer) {
+        clearTimeout(this.asyncPollTimer)
+        this.asyncPollTimer = null
+      }
+    },
+    retryAi() {
+      if (this.lastAiAction === 'quick') this.runQuickAnalysis()
+      else if (this.lastAiAction === 'evaluation') this.runHealthEvaluation()
+      else if (this.lastAiAction === 'async') this.runAsyncAnalysis()
+      else this.generateAnalysis()
     },
     async loadAiHistory(preserveId = null) {
       this.aiHistoryLoading = true
@@ -758,6 +984,71 @@ export default {
   font-weight: 650;
 }
 
+.ai-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.ai-tools-copy p {
+  max-width: 52ch;
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.ai-tools-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-tool {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.ai-task {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ai-task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.ai-task.is-submitting .ai-task-dot,
+.ai-task.is-pending .ai-task-dot,
+.ai-task.is-running .ai-task-dot {
+  background: var(--accent);
+  animation: ai-pulse 900ms ease-in-out infinite alternate;
+}
+
+.ai-task.is-completed .ai-task-dot { background: var(--success); }
+.ai-task.is-failed .ai-task-dot { background: var(--danger); }
+
+.ai-task code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
 .ai-notice {
   display: flex;
   align-items: flex-start;
@@ -1055,6 +1346,21 @@ export default {
   }
 
   .ai-refresh {
+    width: 100%;
+  }
+
+  .ai-tools {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-tools-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-tool {
     width: 100%;
   }
 

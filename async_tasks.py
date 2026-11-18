@@ -213,6 +213,15 @@ class AsyncTaskQueue:
                 return self.results[task_id].result
         return None
 
+    def update_result(self, task_id: str, result: dict[str, Any]) -> bool:
+        """已完成的异步任务补充结果字段（如落库后的 analysis_id）。"""
+        with self.lock:
+            task = self.results.get(task_id)
+            if task is None or task.status != TaskStatus.COMPLETED:
+                return False
+            task.result = result
+            return True
+
     def cleanup_old_tasks(self, max_age_seconds: int = 3600):
         """清理过期任务：已完成/失败按完成时间，悬空（pending/running）按创建时间"""
         now = datetime.now()

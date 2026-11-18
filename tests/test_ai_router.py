@@ -310,3 +310,47 @@ async def test_async_analysis_submits_and_status_is_pollable(client, db, test_us
 async def test_task_status_unknown_id_returns_404(client):
     resp = await client.get("/api/ai/task/not-a-task")
     assert resp.status_code == 404
+
+
+def test_run_llm_sync_returns_json_serializable_result(monkeypatch):
+    from routers import ai_analysis
+
+    async def fake_call_llm(messages, config):
+        return "同步包装结果", 7
+
+    monkeypatch.setattr(ai_analysis, "call_llm", fake_call_llm)
+    result = ai_analysis._run_llm_sync([], object())
+    assert result == {"content": "同步包装结果", "tokens_used": 7}
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_completed_task_result_is_persisted_once(client, db, test_user):
+    from async_tasks import TaskResult, task_queue
+
+    task_id = "async-persist-test"
+    result = TaskResult(task_id, user_id=test_user.id)
+    result.set_completed({"content": "异步健康建议", "tokens_used": 9})
+    task_queue.results[task_id] = result
+    try:
+        first = await client.get(f"/api/ai/task/{task_id}")
+        assert first.status_code == 200
+        body = first.json()
+        assert body["result"]["content"] == "异步健康建议"
+        analysis_id = body["result"]["analysis_id"]
+        assert analysis_id
+
+        second = await client.get(f"/api/ai/task/{task_id}")
+        assert second.status_code == 200
+        assert second.json()["result"]["analysis_id"] == analysis_id
+
+        rows = (
+            db.query(models.AIAnalysis)
+            .filter(models.AIAnalysis.user_id == test_user.id)
+            .all()
+        )
+        assert len(rows) == 1
+        assert rows[0].response_content == "异步健康建议"
+        assert rows[0].analysis_type == "AI 异步分析"
+    finally:
+        task_queue.results.pop(task_id, None)
