@@ -12,6 +12,21 @@
         @update:form="chatForm = $event" @test="testChat" @save="saveChat" @reset="resetChat" />
     </section>
 
+    <!-- 对话风格 -->
+    <section class="style-section">
+      <div class="section-head">
+        <h2>对话风格</h2>
+        <span class="pill" :class="seriousMode ? 'pill--warn' : 'pill--ok'">
+          {{ seriousMode ? '关怀模式优先' : '可随时切换' }}
+        </span>
+      </div>
+      <p class="hint">
+        幽默宿舍搭子会接梗、偶尔吐槽；严谨校医会收起玩笑、先给可执行建议。
+        检测到高危状态时，玩梗风格会自动禁用并让位给安全支持。
+      </p>
+      <PersonaCard :serious="seriousMode" />
+    </section>
+
     <!-- 舌诊视觉模型 -->
     <section class="card" style="margin-top:16px">
       <div class="section-head">
@@ -29,6 +44,7 @@
 <script>
 import api from '../api'
 import AiModelForm from '../components/AiModelForm.vue'
+import PersonaCard from '../components/mental/PersonaCard.vue'
 
 const CHAT_PROVIDERS = [
   { key: 'zhipu', label: '智谱 GLM', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', defaultModel: 'glm-4.5-Air' },
@@ -43,11 +59,12 @@ const VISION_PROVIDERS = [
 
 export default {
   name: 'AISettings',
-  components: { AiModelForm },
+  components: { AiModelForm, PersonaCard },
   data() {
     return {
       providers: CHAT_PROVIDERS,
       visionProviders: VISION_PROVIDERS,
+      seriousMode: false,
       chatForm: { provider: 'zhipu', base_url: '', model: '', api_key: '' },
       visionForm: { provider: 'ark', base_url: '', model: '', api_key: '' },
       chatSaved: false, visionSaved: false,
@@ -57,9 +74,15 @@ export default {
     }
   },
   async mounted() {
-    await this.loadConfig()
+    await Promise.allSettled([this.loadConfig(), this.loadSeriousMode()])
   },
   methods: {
+    async loadSeriousMode() {
+      try {
+        const { data } = await api.getMentalSummary()
+        this.seriousMode = !!data?.serious_mode
+      } catch (e) { /* 摘要不可用时不阻塞设置 */ }
+    },
     async loadConfig() {
       try {
         const r = await api.getAiConfig()
@@ -159,4 +182,7 @@ export default {
 <style scoped>
 .ai-settings { max-width: 640px; }
 .hint { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.style-section { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.style-section .section-head { margin-bottom: 0; }
+.style-section .hint { margin: 0 0 2px; }
 </style>

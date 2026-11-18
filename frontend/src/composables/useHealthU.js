@@ -38,21 +38,30 @@ export function playSound(type) {
   } catch (e) { /* ignore */ }
 }
 
-// 木鱼合成音：不依赖新增音频文件；首次点击时也尊重 localStorage 里的静音开关。
+// 合成音：不依赖新增音频文件；首次点击时也尊重 localStorage 里的静音开关。
 let audioContext = null
 
-export function playWoodfish() {
-  if (!soundEnabled.value) return
+function getAudioContext () {
+  if (soundEnabled.value === false) return null
   try {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('hk-sound') === '0') return
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('hk-sound') === '0') return null
     const AudioCtx = window.AudioContext || window.webkitAudioContext
-    if (!AudioCtx) return
+    if (!AudioCtx) return null
     if (!audioContext) audioContext = new AudioCtx()
     if (audioContext.state === 'suspended') audioContext.resume()
+    return audioContext
+  } catch (e) {
+    return null
+  }
+}
 
-    const now = audioContext.currentTime
-    const osc = audioContext.createOscillator()
-    const gain = audioContext.createGain()
+export function playWoodfish() {
+  const ctx = getAudioContext()
+  if (!ctx) return
+  try {
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
     osc.type = 'triangle'
     osc.frequency.setValueAtTime(520, now)
     osc.frequency.exponentialRampToValueAtTime(180, now + 0.09)
@@ -60,8 +69,29 @@ export function playWoodfish() {
     gain.gain.exponentialRampToValueAtTime(0.16, now + 0.005)
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18)
     osc.connect(gain)
-    gain.connect(audioContext.destination)
+    gain.connect(ctx.destination)
     osc.start(now)
     osc.stop(now + 0.2)
+  } catch (e) { /* ignore */ }
+}
+
+/** 4-7-8 呼吸训练的轻柔节拍提示音。 */
+export function playBreathCue(phase = 'inhale') {
+  const ctx = getAudioContext()
+  if (!ctx) return
+  try {
+    const now = ctx.currentTime
+    const freq = phase === 'inhale' ? 392 : phase === 'hold' ? 330 : 262
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, now)
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(0.07, now + 0.04)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + 0.46)
   } catch (e) { /* ignore */ }
 }

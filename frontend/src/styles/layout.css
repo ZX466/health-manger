@@ -84,7 +84,7 @@ img, svg { display: block; }
   font-size: 13px; font-weight: 700; color: var(--fg);
   overflow: hidden; flex-shrink: 0;
 }
-.sound-toggle {
+.sound-toggle, .logout-toggle {
   width: 28px; height: 28px;
   border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface);
@@ -92,9 +92,10 @@ img, svg { display: block; }
   color: var(--muted); transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
-.sound-toggle:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
+.sound-toggle:hover, .logout-toggle:hover { background: #eeeeef; background: color-mix(in oklch, var(--bg), var(--fg) 5%); color: var(--fg); }
+.logout-toggle:hover { color: var(--danger); }
 .sound-toggle.muted { opacity: 0.45; }
-.sound-toggle svg { width: 14px; height: 14px; }
+.sound-toggle svg, .logout-toggle svg { width: 14px; height: 14px; }
 
 /* ── 顶栏：唯一允许的 frosted 层（导航 chrome） ───────── */
 .app-topbar, .topbar {

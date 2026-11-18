@@ -48,6 +48,7 @@
             type="button"
             role="radio"
             :aria-checked="answers[current] === option.score"
+            :disabled="submitting"
             @click="choose(option.score, $event)"
           >
             <span class="answer-score">{{ option.score }}</span>
@@ -93,7 +94,7 @@
           <strong>{{ result.score }}<small>/{{ result.max_score }}</small></strong>
         </div>
         <div class="risk-block">
-          <span class="risk-pill" :class="`risk-${result.risk_level}`">{{ result.label }}</span>
+          <span class="risk-pill" :class="resultRiskClass">{{ resultLabel }}</span>
           <p>{{ riskAdvice }}</p>
         </div>
       </div>
@@ -126,6 +127,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import api from '../../api'
 import SafetyNotice from './SafetyNotice.vue'
+import { scaleRiskAdvice } from '../../utils/scaleAdvice'
 
 const props = defineProps({
   /** GET /mental/scales 的单项：{ key, name, questions: string[], options: [{score,label}], max_score } */
@@ -140,31 +142,32 @@ const answers = ref([])
 const submitting = ref(false)
 const error = ref('')
 const result = ref(null)
+// 提交时的答案快照：结果文案必须绑定本次请求的作答，而非提交后仍可修改的实时答案。
+const resultAnswers = ref(null)
 let advanceTimer = null
 
 const total = computed(() => props.scale?.questions?.length || 0)
 const answeredCount = computed(() => answers.value.filter(value => value != null).length)
 const progressPercent = computed(() => total.value ? ((current.value + 1) / total.value) * 100 : 0)
 const needsSupport = computed(() =>
+  result.value?.crisis_flag ||
   ['moderate', 'moderately_severe', 'severe'].includes(result.value?.risk_level)
 )
+const resultLabel = computed(() =>
+  result.value?.crisis_flag ? '需要立即关注' : (result.value?.label || '已记录')
+)
+const resultRiskClass = computed(() =>
+  result.value?.crisis_flag ? 'risk-severe' : `risk-${result.value?.risk_level || 'minimal'}`
+)
 
-const riskAdvice = computed(() => {
-  const level = result.value?.risk_level
-  if (level === 'minimal') return '目前没有明显症状。继续保持规律作息；如果之后状态变化，可以再测一次。'
-  if (level === 'mild') return '有一些轻度困扰。先从睡眠、运动和和人聊聊开始；如果持续两周以上，建议预约咨询。'
-  if (level === 'moderate') return '困扰已经比较明显。建议尽快预约学校心理咨询中心，和专业人员聊一聊。'
-  if (level === 'moderately_severe' || level === 'severe') {
-    return '建议尽快联系学校心理咨询中心或医疗机构。如果出现伤害自己的念头，请立刻寻求紧急帮助。'
-  }
-  return '结果仅供参考，不构成诊断。'
-})
+const riskAdvice = computed(() => scaleRiskAdvice(result.value, resultAnswers.value))
 
 function resetAnswers () {
   answers.value = Array(total.value).fill(null)
   current.value = 0
   started.value = false
   result.value = null
+  resultAnswers.value = null
   error.value = ''
   submitting.value = false
   clearAdvance()
@@ -183,6 +186,7 @@ function clearAdvance () {
 }
 
 function choose (score, event) {
+  if (submitting.value) return
   answers.value = answers.value.map((value, index) => index === current.value ? score : value)
   error.value = ''
   clearAdvance()
@@ -212,8 +216,10 @@ async function submit () {
     return
   }
   submitting.value = true
+  const submittedAnswers = [...answers.value]
   try {
-    const { data } = await api.submitMentalScale(props.scale.key, { answers: answers.value })
+    const { data } = await api.submitMentalScale(props.scale.key, { answers: submittedAnswers })
+    resultAnswers.value = submittedAnswers
     result.value = data
     emit('submitted', data)
   } catch (e) {

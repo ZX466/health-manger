@@ -1,263 +1,140 @@
-import axios from 'axios'
-import { streamChatMessage as streamChat } from './stream'
-
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 30000
-})
-
-api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
-api.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userName')
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login'
-      }
-    }
-    return Promise.reject(error)
-  }
-)
+import http from './http'
+import foodApi from './food'
+import healthApi from './health'
+import chatApi from './chat'
+import mentalApi from './mental'
 
 export default {
+  // 认证
   register(data) {
-    return api.post('/auth/register', data)
+    return http.post('/auth/register', data)
   },
   login(username, password) {
     const params = new URLSearchParams()
     params.append('username', username)
     params.append('password', password)
-    return api.post('/auth/login', params, {
+    return http.post('/auth/login', params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
   },
   getCurrentUser() {
-    return api.get('/auth/me')
-  },
-  createHealthRecord(data) {
-    return api.post('/health/records', data)
-  },
-  getHealthRecords() {
-    return api.get('/health/records')
-  },
-  getHealthRecord(id) {
-    return api.get(`/health/records/${id}`)
-  },
-  deleteHealthRecord(id) {
-    return api.delete(`/health/records/${id}`)
-  },
-  getLatestAnalysis() {
-    return api.get('/health/analysis/latest')
-  },
-  getAnalysisHistory() {
-    return api.get('/health/analysis/history')
-  },
-  
-  // 食物管理
-  getFoods(params) {
-    return api.get('/food/foods', { params })
-  },
-  getFood(id) {
-    return api.get(`/food/foods/${id}`)
-  },
-  createFood(data) {
-    return api.post('/food/foods', data)
-  },
-  updateFood(id, data) {
-    return api.put(`/food/foods/${id}`, data)
+    return http.get('/auth/me')
   },
 
-  // 饮食记录
-  createFoodRecord(data) {
-    return api.post('/food/records', data)
-  },
-  getFoodRecords(params) {
-    return api.get('/food/records', { params })
-  },
-  getFoodStats(params) {
-    return api.get('/food/records/stats', { params })
-  },
-  deleteFoodRecord(id) {
-    return api.delete(`/food/records/${id}`)
-  },
-  
+  // 饮食 / 健康 / 心理 / 对话（模块化）
+  ...foodApi,
+  ...healthApi,
+  ...chatApi,
+  ...mentalApi,
+
   // 运动管理
   getSports(params) {
-    return api.get('/sport/sports', { params })
+    return http.get('/sport/sports', { params })
   },
   getSport(id) {
-    return api.get(`/sport/sports/${id}`)
+    return http.get(`/sport/sports/${id}`)
   },
   createSport(data) {
-    return api.post('/sport/sports', data)
+    return http.post('/sport/sports', data)
   },
   updateSport(id, data) {
-    return api.put(`/sport/sports/${id}`, data)
+    return http.put(`/sport/sports/${id}`, data)
   },
-
-  // 运动记录
   createSportRecord(data) {
-    return api.post('/sport/records', data)
+    return http.post('/sport/records', data)
   },
   getSportRecords(params) {
-    return api.get('/sport/records', { params })
+    return http.get('/sport/records', { params })
   },
   getSportStats(params) {
-    return api.get('/sport/records/stats', { params })
+    return http.get('/sport/records/stats', { params })
   },
   deleteSportRecord(id) {
-    return api.delete(`/sport/records/${id}`)
-  },
-  
-  // AI 健康分析
-  createAIAnalysis(data) {
-    return api.post('/ai/analysis', data)
-  },
-  getAIAnalysisHistory(limit = 10) {
-    return api.get('/ai/analysis/history', { params: { limit } })
-  },
-  getAIAnalysis(id) {
-    return api.get(`/ai/analysis/${id}`)
-  },
-  deleteAIAnalysis(id) {
-    return api.delete(`/ai/analysis/${id}`)
-  },
-  quickHealthAnalysis() {
-    return api.post('/ai/quick-analysis')
-  },
-  
-  // 健康预警
-  checkWarnings() {
-    return api.post('/warning/check')
-  },
-  getWarnings(params) {
-    return api.get('/warning/list', { params })
-  },
-  markWarningAsRead(id) {
-    return api.put(`/warning/read/${id}`)
-  },
-  markAllWarningsAsRead() {
-    return api.put('/warning/read-all')
-  },
-  deleteWarning(id) {
-    return api.delete(`/warning/${id}`)
+    return http.delete(`/sport/records/${id}`)
   },
 
-  // 健康评级
-  getLatestRating() {
-    return api.get('/health/rating/latest')
+  // AI 健康分析
+  createAIAnalysis(data) {
+    return http.post('/ai/analysis', data)
+  },
+  getAIAnalysisHistory(limit = 10) {
+    return http.get('/ai/analysis/history', { params: { limit } })
+  },
+  getAIAnalysis(id) {
+    return http.get(`/ai/analysis/${id}`)
+  },
+  deleteAIAnalysis(id) {
+    return http.delete(`/ai/analysis/${id}`)
+  },
+  quickHealthAnalysis() {
+    return http.post('/ai/quick-analysis')
+  },
+  getHealthEvaluation() {
+    return http.post('/ai/health-evaluation')
+  },
+  asyncAIAnalysis(data) {
+    return http.post('/ai/async-analysis', data)
+  },
+  getTaskStatus(taskId) {
+    return http.get(`/ai/task/${taskId}`)
+  },
+
+  // 健康预警
+  checkWarnings() {
+    return http.post('/warning/check')
+  },
+  getWarnings(params) {
+    return http.get('/warning/list', { params })
+  },
+  markWarningAsRead(id) {
+    return http.put(`/warning/read/${id}`)
+  },
+  markAllWarningsAsRead() {
+    return http.put('/warning/read-all')
+  },
+  deleteWarning(id) {
+    return http.delete(`/warning/${id}`)
+  },
+  getWarningStats() {
+    return http.get('/warning/stats')
   },
 
   // 舌诊分析
   uploadTongueImage(formData) {
-    return api.post('/tongue/upload', formData, {
+    return http.post('/tongue/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
   getTongueList(params) {
-    return api.get('/tongue/list', { params })
+    return http.get('/tongue/list', { params })
   },
   getTongueDetail(id) {
-    return api.get(`/tongue/${id}`)
+    return http.get(`/tongue/${id}`)
   },
   getTongueImage(id) {
-    return api.get(`/tongue/image/${id}`, { responseType: 'blob' })
+    return http.get(`/tongue/image/${id}`, { responseType: 'blob' })
   },
   getLatestTongueResult() {
-    return api.get('/tongue/latest/result')
+    return http.get('/tongue/latest/result')
   },
   deleteTongueRecord(id) {
-    return api.delete(`/tongue/${id}`)
+    return http.delete(`/tongue/${id}`)
   },
   getTongueStats() {
-    return api.get('/tongue/stats/summary')
-  },
-
-// AI 健康分析（kilo I-N1 补齐）
-  getHealthEvaluation() {
-    return api.post('/ai/health-evaluation')
-  },
-  asyncAIAnalysis(data) {
-    return api.post('/ai/async-analysis', data)
-  },
-  getTaskStatus(taskId) {
-    return api.get(`/ai/task/${taskId}`)
-  },
-  getWarningStats() {
-    return api.get('/warning/stats')
-  },
-
-  // 心理健康（M-FE1）
-  getMentalMood(params) {
-    return api.get('/mental/mood', { params })
-  },
-  saveMentalMood(data) {
-    return api.post('/mental/mood', data)
-  },
-  getMentalTrend(params) {
-    return api.get('/mental/trend', { params })
-  },
-  getMentalScales() {
-    return api.get('/mental/scales')
-  },
-  getMentalScaleHistory(params) {
-    return api.get('/mental/scales/history', { params })
-  },
-  submitMentalScale(scaleType, data) {
-    return api.post(`/mental/scales/${scaleType}/submit`, data)
-  },
-  getMentalSummary() {
-    return api.get('/mental/summary')
-  },
-
-  // AI 对话（Claude F-N1）
-  createChatSession(data) {
-    return api.post('/chat/session', data)
-  },
-  getChatSessions(params) {
-    return api.get('/chat/sessions', { params })
-  },
-  getChatMessages(sessionId, params) {
-    return api.get(`/chat/session/${sessionId}/messages`, { params })
-  },
-  sendChatMessage(sessionId, data) {
-    return api.post(`/chat/session/${sessionId}/message`, data)
-  },
-  streamChatMessage(sessionId, content, options) {
-    return streamChat(sessionId, content, options)
-  },
-  addTongueContext(sessionId) {
-    return api.post(`/chat/session/${sessionId}/tongue-context`)
-  },
-  deleteChatSession(sessionId) {
-    return api.delete(`/chat/session/${sessionId}`)
+    return http.get('/tongue/stats/summary')
   },
 
   // AI 配置（自定义供应商/模型）
   getAiConfig() {
-    return api.get('/ai/config')
+    return http.get('/ai/config')
   },
   saveAiConfig(data) {
-    return api.put('/ai/config', data)
+    return http.put('/ai/config', data)
   },
   deleteAiConfig() {
-    return api.delete('/ai/config')
+    return http.delete('/ai/config')
   },
   testAiConfig(data) {
-    return api.post('/ai/config/test', data)
+    return http.post('/ai/config/test', data)
   }
 }

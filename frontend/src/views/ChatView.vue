@@ -5,7 +5,7 @@
       <aside class="chat-side card" aria-label="会话列表">
         <div class="section-head">
           <h2>会话</h2>
-          <button class="btn btn--primary btn-sm" type="button" @click="createSession">＋ 新建</button>
+          <button class="btn btn--primary btn-sm" type="button" :disabled="creating" @click="createSession">＋ 新建</button>
         </div>
         <ul class="session-list">
           <li v-for="s in sessions" :key="s.id">
@@ -31,13 +31,14 @@
         <div class="chat-top">
           <div class="chat-title">
             <span class="chat-dot" aria-hidden="true"></span>
-            <span>和 AI 聊聊</span>
+            <span>{{ modeMeta.label }}</span>
             <span v-if="safetyBadge" class="serious-pill">{{ safetyBadge }}</span>
           </div>
           <div class="chat-actions">
             <button
               class="btn btn--primary btn-sm chat-new-mobile"
               type="button"
+              :disabled="creating"
               @click="createSession"
             >
               ＋ 新建
@@ -53,6 +54,22 @@
             </button>
           </div>
         </div>
+
+        <div class="mode-switch" role="group" aria-label="对话模式">
+          <button
+            v-for="item in modeOptions"
+            :key="item.key"
+            class="mode-btn"
+            :class="{ active: mode === item.key }"
+            type="button"
+            :aria-pressed="mode === item.key"
+            @click="setMode(item.key)"
+          >
+            <AppIcon :name="item.icon" :size="15" />
+            {{ item.label }}
+          </button>
+        </div>
+        <p class="mode-hint">{{ modeMeta.hint }}</p>
 
         <div class="chat-persona">
           <PersonaCard compact :serious="personaSerious" />
@@ -93,8 +110,8 @@
           :aria-busy="sending"
         >
           <div v-if="!messages.length" class="empty chat-empty">
-            <p class="empty-title">{{ seriousMode ? '今天想从哪里开始？' : '开始聊点什么' }}</p>
-            <p>{{ seriousMode ? '不用组织好语言，想到哪说到哪。' : '健康、睡眠、压力，或者只是今天有点累。' }}</p>
+            <p class="empty-title">{{ personaSerious ? '今天想从哪里开始？' : modeMeta.emptyTitle }}</p>
+            <p>{{ personaSerious ? '不用组织好语言，想到哪说到哪。' : modeMeta.emptyText }}</p>
             <div class="prompt-chips">
               <button
                 v-for="prompt in quickPrompts"
@@ -119,8 +136,8 @@
           <input
             v-model="input"
             class="field-input"
-            :placeholder="activeId ? '输入你想说的…' : '直接说点什么，发送时自动新建会话'"
-            :disabled="sending"
+            :placeholder="activeId ? modeMeta.placeholder : `${modeMeta.placeholder}，发送时自动新建会话`"
+            :disabled="sending || creating"
             maxlength="2000"
             aria-label="消息内容"
           />
@@ -136,7 +153,7 @@
             v-else
             class="btn btn--primary"
             type="submit"
-            :disabled="!input.trim()"
+            :disabled="!input.trim() || creating"
           >
             发送
           </button>
@@ -148,6 +165,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import PersonaCard from '../components/mental/PersonaCard.vue'
@@ -159,20 +177,66 @@ const activeId = ref(null)
 const messages = ref([])
 const input = ref('')
 const sending = ref(false)
+const creating = ref(false)
+let disposed = false
 const notice = ref('')
+const route = useRoute()
 const showHelp = ref(false)
 const seriousMode = ref(false)
+const mode = ref(route.query.mode === 'mental' ? 'mental' : 'body')
 const msgBox = ref(null)
 const currentSafety = ref({ level: 'normal', crisis: false, resources: [] })
 
 let controller = null
 let loadToken = 0
 let streamToken = 0
+let messageSeq = 0
 
-const quickPrompts = computed(() => seriousMode.value
-  ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
-  : ['最近总是睡不好', '压力有点大', '帮我看看今天的记录']
-)
+const modeOptions = [
+  { key: 'body', label: '身体问诊', icon: 'activity' },
+  { key: 'mental', label: '心理树洞', icon: 'mood' }
+]
+
+const MODE_META = {
+  body: {
+    label: '身体问诊',
+    hint: '说清楚哪里不舒服、多久了；AI 会结合你的健康记录给建议，不替代医生诊断。',
+    emptyTitle: '身体哪里不太对劲？',
+    emptyText: '睡眠、肠胃、头疼、体检单上的箭头，都可以直接说。',
+    placeholder: '描述一下身体的不舒服…'
+  },
+  mental: {
+    label: '心理树洞',
+    hint: '这里不评判、不催你振作。想骂人、想哭、想沉默一会儿都可以。',
+    emptyTitle: '今天心里堵着什么？',
+    emptyText: '不用组织好语言，想到哪说到哪。有风险时，安全支持会先接管。',
+    placeholder: '想说什么就说什么…'
+  }
+}
+
+const modeMeta = computed(() => {
+  if (personaSerious.value) {
+    return {
+      ...MODE_META[mode.value],
+      hint: '最近的状态值得被认真对待。这里不玩梗，也不用一个人扛。',
+      emptyTitle: '今天想从哪里开始？',
+      emptyText: '不用组织好语言，想到哪说到哪。'
+    }
+  }
+  return MODE_META[mode.value]
+})
+
+const quickPrompts = computed(() => {
+  // 与人设使用同一有效安全状态：摘要失败但 SSE 已报 high/crisis 时也不能出现玩梗快捷词。
+  if (mode.value === 'mental') {
+    return personaSerious.value
+      ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
+      : ['今天有点破防', '压力大到不想说话', '想找个地方倒垃圾']
+  }
+  return personaSerious.value
+    ? ['我最近总是睡不好', '身体一直不太舒服', '想找人说说']
+    : ['最近总是睡不好', '吃完饭胃不舒服', '帮我看看今天的记录']
+})
 
 const isCrisis = computed(() => currentSafety.value.crisis || currentSafety.value.level === 'crisis')
 const safetyLevel = computed(() => {
@@ -184,6 +248,7 @@ const safetyLevel = computed(() => {
 
 const showSafety = computed(() =>
   showHelp.value ||
+  seriousMode.value ||
   isCrisis.value ||
   currentSafety.value.level === 'high' ||
   currentSafety.value.level === 'elevated'
@@ -223,6 +288,14 @@ async function loadSeriousMode () {
   } catch (e) { /* 摘要失败不阻塞聊天 */ }
 }
 
+function setMode (next) {
+  if (mode.value === next) return
+  mode.value = next
+  notice.value = next === 'mental'
+    ? '已切到心理树洞。新会话会套用树洞引导，当前会话内容不会丢。'
+    : '已切到身体问诊。新会话会优先结合健康记录。'
+}
+
 function detachStream () {
   streamToken += 1
   if (controller) controller.abort()
@@ -231,10 +304,15 @@ function detachStream () {
 }
 
 async function createSession () {
+  if (creating.value) return
+  creating.value = true
   if (sending.value) detachStream()
   loadToken += 1
   try {
-    const { data } = await api.createChatSession({ title: '新会话', context_type: 'general' })
+    const contextType = mode.value === 'body' ? 'health' : 'general'
+    const title = mode.value === 'body' ? '身体问诊 · 新会话' : '心理树洞 · 新会话'
+    const { data } = await api.createChatSession({ title, context_type: contextType })
+    if (disposed) return
     loadToken += 1
     sessions.value = [data, ...sessions.value]
     activeId.value = data.id
@@ -245,6 +323,8 @@ async function createSession () {
     scrollBottom(true)
   } catch (e) {
     notice.value = '创建会话失败，请稍后重试'
+  } finally {
+    creating.value = false
   }
 }
 
@@ -288,27 +368,34 @@ function scrollBottom (force = false) {
 
 async function send () {
   const content = input.value.trim()
-  if (!content || sending.value) return
+  if (!content || sending.value || creating.value) return
 
   if (!activeId.value) {
     await createSession()
-    if (!activeId.value) return
+    // 等待建会话期间已离开页面：本次发送作废，不能继续发起流式请求。
+    if (disposed || !activeId.value) return
   }
 
+  // 发送会接管当前会话：作废尚未返回的历史请求，避免它覆盖刚发出的消息。
+  loadToken += 1
   input.value = ''
   notice.value = ''
   const token = ++streamToken
+  const replyId = `local-${++messageSeq}`
   messages.value.push({ role: 'user', content })
-  messages.value.push({ role: 'assistant', content: '', streaming: true })
+  messages.value.push({ role: 'assistant', content: '', streaming: true, id: replyId })
   sending.value = true
   // 不在每次发送时清空安全状态：上一轮的高风险/危机提示要保留到新事件覆盖。
-  controller = new AbortController()
+  const requestController = new AbortController()
+  controller = requestController
   await nextTick()
   scrollBottom(true)
 
+  const findReply = () => messages.value.find(m => m.id === replyId)
+
   try {
     await api.streamChatMessage(activeId.value, content, {
-      signal: controller.signal,
+      signal: requestController.signal,
       onEvent: (event, data) => {
         if (token !== streamToken) return
         if (event === 'safety') {
@@ -319,20 +406,22 @@ async function send () {
           }
           if (data?.crisis) showHelp.value = true
         } else if (event === 'delta') {
-          const last = messages.value[messages.value.length - 1]
-          if (last?.role === 'assistant') last.content += data?.content || ''
-          scrollBottom()
+          const reply = findReply()
+          if (reply) {
+            reply.content += data?.content || ''
+            scrollBottom()
+          }
         } else if (event === 'done') {
-          const last = messages.value[messages.value.length - 1]
-          if (last?.role === 'assistant') {
-            last.streaming = false
-            if (!last.content) last.content = '（没有收到内容，再试一次吧）'
+          const reply = findReply()
+          if (reply) {
+            reply.streaming = false
+            if (!reply.content) reply.content = '（没有收到内容，再试一次吧）'
           }
         } else if (event === 'error') {
-          const last = messages.value[messages.value.length - 1]
-          if (last?.role === 'assistant') {
-            last.streaming = false
-            last.content = data?.detail || 'AI 响应失败，请稍后重试'
+          const reply = findReply()
+          if (reply) {
+            reply.streaming = false
+            reply.content = data?.detail || 'AI 响应失败，请稍后重试'
           }
           notice.value = data?.detail || 'AI 响应失败，请稍后重试'
         }
@@ -340,26 +429,33 @@ async function send () {
     })
   } catch (e) {
     if (token !== streamToken) return
-    const last = messages.value[messages.value.length - 1]
+    const reply = findReply()
     if (e?.name === 'AbortError') {
-      if (last?.role === 'assistant') {
-        last.streaming = false
-        if (last.content) last.content += '\n\n（已停止生成，本次回复未保存）'
-        else last.content = '（已停止生成，本次回复未保存）'
+      if (reply) {
+        reply.streaming = false
+        if (reply.content) reply.content += '\n\n（已停止生成，本次回复未保存）'
+        else reply.content = '（已停止生成，本次回复未保存）'
       }
+    } else if (e?.code === 'STREAM_INCOMPLETE' || e?.name === 'StreamIncompleteError') {
+      if (reply) {
+        reply.streaming = false
+        if (reply.content) reply.content += '\n\n（连接中断，本次回复未保存）'
+        else reply.content = '连接中断，未收到完整回复，请再试一次。'
+      }
+      notice.value = '连接中断，未收到完整回复'
     } else {
-      if (last?.role === 'assistant') {
-        last.streaming = false
-        last.content = e?.detail || e?.message || '发送失败，请稍后重试'
+      if (reply) {
+        reply.streaming = false
+        reply.content = e?.detail || e?.message || '发送失败，请稍后重试'
       }
       notice.value = e?.detail || e?.message || '发送失败，请稍后重试'
     }
   } finally {
     if (token === streamToken) {
-      const last = messages.value[messages.value.length - 1]
-      if (last?.role === 'assistant') last.streaming = false
+      const reply = findReply()
+      if (reply) reply.streaming = false
       sending.value = false
-      controller = null
+      if (controller === requestController) controller = null
       await nextTick()
       scrollBottom()
     }
@@ -382,6 +478,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  disposed = true
   if (controller) controller.abort()
 })
 </script>
@@ -445,6 +542,49 @@ onUnmounted(() => {
 .help-toggle:hover {
   border-color: var(--accent);
   color: var(--accent-strong);
+}
+
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  margin: 10px 16px 0;
+  padding: 4px;
+  border: var(--border-hairline);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.mode-btn:hover { color: var(--fg); }
+
+.mode-btn.active {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-hint {
+  margin: 6px 18px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .chat-persona {

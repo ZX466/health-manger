@@ -1,17 +1,15 @@
 <template>
   <div class="health-record">
 
-    <div class="page-header">
-      <div class="header-left">
-        <h1> 健康记录管理</h1>
-        <p class="header-subtitle">记录你的身体状况，获取健康评级</p>
-      </div>
-      <div class="mascot-companion mascot-cat-companion">
-        <CharacterAvatar type="hajimi" :animated="true" style="width:50px;height:50px" />
-      </div>
-      <div class="header-actions">
+    <PageHead
+      folio="05"
+      eyebrow="RECORD / CHECKUP"
+      title="健康记录"
+      deck="把体检数字留在这里，趋势才有地方生长。每一条记录都会成为健康分析的依据。"
+    >
+      <template #actions>
         <div class="selection-mode">
-          <span class="mode-label">选择模式:</span>
+          <span class="mode-label">选择模式</span>
           <button
             :class="['mode-btn', { active: selectionMode === 'single' }]"
             @click="setSelectionMode('single')"
@@ -25,8 +23,8 @@
             多选
           </button>
         </div>
-      </div>
-    </div>
+      </template>
+    </PageHead>
 
     <!-- 健康评级横幅 -->
     <div class="rating-banner" :class="ratingClass" v-if="latestRating">
@@ -61,12 +59,38 @@
       </div>
     </div>
 
-    <div class="content">
+    <div class="record-layout">
       <div class="form-section">
         <div class="form-header">
           <h2> 填写健康问卷</h2>
           <p class="form-hint">填写越多，评级越准确</p>
         </div>
+
+        <div class="ocr-bar">
+          <input
+            ref="ocrInput"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            class="sr-only"
+            @change="onOcrFile"
+          />
+          <button class="ocr-btn" type="button" :disabled="ocrLoading" @click="pickOcrFile">
+            <AppIcon name="camera" :size="16" />
+            {{ ocrLoading ? '正在识别体检单…' : '拍体检单自动填' }}
+          </button>
+          <div class="ocr-copy">
+            <p v-if="ocrMessage" :class="['ocr-message', `ocr-message--${ocrType}`]">
+              {{ ocrMessage }}
+              <span v-if="ocrConfidence != null"> · 置信度 {{ Math.round(ocrConfidence * 100) }}%</span>
+            </p>
+            <p v-else class="ocr-hint">拍一张体检单或化验单，只会回填能认出的数字，确认前不会提交。</p>
+            <div v-if="ocrAbnormal.length" class="ocr-abnormal">
+              <span v-for="item in ocrAbnormal" :key="item">{{ item }}</span>
+            </div>
+          </div>
+        </div>
+
         <form @submit.prevent="handleSubmit" class="record-form">
 
           <!-- 身体基本指标 -->
@@ -282,13 +306,13 @@
 
             <div class="record-actions" @click.stop>
               <button class="icon-btn view" @click="viewDetail(record)" title="查看详情">
-                
+                <AppIcon name="eye" :size="15" />
               </button>
               <button class="icon-btn export-single" @click="exportSingle(record)" title="导出">
-                
+                <AppIcon name="download" :size="15" />
               </button>
               <button class="icon-btn delete-single" @click="confirmDeleteSingle(record)" title="删除">
-                
+                <AppIcon name="trash" :size="15" />
               </button>
             </div>
           </div>
@@ -413,13 +437,15 @@
 
 <script>
 import api from '../api'
+import AppIcon from '../components/AppIcon.vue'
+import PageHead from '../components/PageHead.vue'
 import CharacterAvatar from '../components/CharacterAvatar.vue'
 import MiniCat from '../components/mascots/MiniCat.vue'
 import MiniNailong from '../components/mascots/MiniNailong.vue'
 
 export default {
   name: 'HealthRecord',
-  components: { CharacterAvatar, MiniCat, MiniNailong },
+  components: { AppIcon, PageHead, CharacterAvatar, MiniCat, MiniNailong },
   data() {
     return {
       form: {
@@ -451,6 +477,12 @@ export default {
 
       latestRating: null,
       showRatingResult: false,
+
+      ocrLoading: false,
+      ocrMessage: '',
+      ocrType: '',
+      ocrAbnormal: [],
+      ocrConfidence: null,
 
       operationLogs: []
     }
@@ -486,6 +518,66 @@ export default {
         this.latestRating = response.data
       } catch (err) {
         this.latestRating = null
+      }
+    },
+
+    pickOcrFile() {
+      this.$refs.ocrInput?.click()
+    },
+    onOcrFile(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+      if (!file.type.startsWith('image/')) {
+        this.ocrType = 'error'
+        this.ocrMessage = '请选择一张图片'
+        return
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        this.ocrType = 'error'
+        this.ocrMessage = '图片别超过 10MB，压一下再试'
+        return
+      }
+      this.runOcr(file)
+      event.target.value = ''
+    },
+    async runOcr(file) {
+      this.ocrLoading = true
+      this.ocrMessage = ''
+      this.ocrType = ''
+      this.ocrAbnormal = []
+      this.ocrConfidence = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const { data } = await api.ocrHealthReport(formData)
+        const fields = data?.fields || {}
+        const keys = [
+          'height', 'weight',
+          'blood_pressure_systolic', 'blood_pressure_diastolic',
+          'heart_rate', 'temperature', 'vision_left', 'vision_right'
+        ]
+        let filled = 0
+        keys.forEach(key => {
+          const value = fields[key]
+          if (value !== null && value !== undefined && value !== '') {
+            this.form[key] = value
+            filled += 1
+          }
+        })
+        this.ocrAbnormal = Array.isArray(data?.abnormal) ? data.abnormal.slice(0, 10) : []
+        this.ocrConfidence = typeof data?.confidence === 'number' ? data.confidence : null
+        if (filled) {
+          this.ocrType = 'success'
+          this.ocrMessage = `已回填 ${filled} 项指标，请核对后再提交`
+        } else {
+          this.ocrType = 'error'
+          this.ocrMessage = '这张单子没识别出可回填的指标，换一张更清楚的试试'
+        }
+      } catch (err) {
+        this.ocrType = 'error'
+        this.ocrMessage = this.extractErrorMessage(err) || '识别失败，稍后再试'
+      } finally {
+        this.ocrLoading = false
       }
     },
 
@@ -921,6 +1013,54 @@ export default {
   font-size: 13px;
   margin: 0;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.ocr-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.ocr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in oklch, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ocr-btn:disabled { opacity: 0.65; cursor: progress; }
+.ocr-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ocr-hint,
+.ocr-message { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
+.ocr-message--success { color: var(--success); }
+.ocr-message--error { color: var(--danger); }
+.ocr-abnormal { display: flex; flex-wrap: wrap; gap: 5px; }
+.ocr-abnormal span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 10px;
+}
 .survey-group {
   background: var(--warn-soft);
   border: 1px solid var(--border);
@@ -1016,7 +1156,7 @@ export default {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.content {
+.record-layout {
   max-width: 1400px;
   margin: 0 auto;
   padding: 30px;
@@ -1026,8 +1166,18 @@ export default {
 }
 
 @media (max-width: 1100px) {
-  .content {
+  .record-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ocr-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ocr-btn {
+    justify-content: center;
   }
 }
 

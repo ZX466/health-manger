@@ -1,32 +1,30 @@
 <template>
   <div class="mental">
-    <section class="mental-hero card">
-      <div class="hero-copy">
-        <p class="eyebrow">Mental space</p>
-        <h1>心理空间</h1>
-        <p class="hero-sub">把心情、睡眠和压力放在一个安全的地方。慢慢来，今天只做一小步。</p>
-        <div class="hero-chips">
-          <span
-            v-for="chip in heroChips"
-            :key="chip.label"
-            class="hero-chip"
-            :class="`hero-chip--${chip.tone}`"
-          >
-            {{ chip.label }}
-          </span>
-        </div>
-      </div>
-      <div class="hero-side">
-        <div v-if="!seriousMode" class="hero-mascot" aria-hidden="true">
-          <MiniNailong size="large" animation="float" />
-        </div>
-        <RouterLink class="btn btn-primary hero-chat" to="/chat">
-          去聊聊
-          <AppIcon name="arrow" :size="15" />
-        </RouterLink>
-        <span class="hero-fine">随时可以退出，不用解释</span>
-      </div>
-    </section>
+    <PageHead
+      folio="02"
+      eyebrow="MENTAL / CARE"
+      title="心理空间"
+      deck="不用每天都很稳定。先记录一下今天，再决定要不要做点什么。"
+    >
+      <template #actions>
+        <span v-if="displayMood" class="status-chip">
+          <span class="status-dot status-dot--success"></span>
+          今日已打卡
+        </span>
+        <RouterLink class="btn" to="/chat?mode=mental">去聊聊</RouterLink>
+      </template>
+    </PageHead>
+
+    <div class="mental-chips" aria-label="今日心理摘要">
+      <span
+        v-for="chip in heroChips"
+        :key="chip.label"
+        class="status-chip"
+        :class="`status-chip--${chip.tone}`"
+      >
+        {{ chip.label }}
+      </span>
+    </div>
 
     <div v-if="loadError" class="load-error" role="status">
       <span>部分模块没加载出来。</span>
@@ -35,11 +33,25 @@
 
     <section v-if="seriousMode && !loading" class="card serious-banner">
       <div class="serious-copy">
-        <p class="eyebrow">Care first</p>
+        <p class="eyebrow">Care first · 关怀优先</p>
         <h2>先把玩梗放一边</h2>
         <p>最近的状态值得被认真对待。木鱼和玩梗先收起来，先照顾自己，必要时联系学校心理咨询中心。</p>
+        <div class="crisis-lines">
+          <a class="crisis-line" href="tel:4001619995">
+            <span>全国 24 小时心理援助</span>
+            <strong>400-161-9995</strong>
+          </a>
+          <a class="crisis-line" href="tel:12356">
+            <span>全国心理援助热线</span>
+            <strong>12356</strong>
+          </a>
+          <span class="crisis-line crisis-line--school">
+            <span>校医院 / 心理咨询中心</span>
+            <strong>工作日可预约</strong>
+          </span>
+        </div>
       </div>
-      <SafetyNotice serious context="general" compact />
+      <SafetyNotice serious context="general" compact :resources="localCrisisResources" />
     </section>
 
     <div v-if="loading" class="mental-grid" aria-busy="true">
@@ -50,24 +62,42 @@
 
     <template v-else>
       <div class="mental-grid">
-        <MoodCheckIn class="span-7" :today="displayMood" @saved="onMoodSaved" />
-        <MoodTrend class="span-5" :trend="trend" :summary="summary" />
-        <BreathingRing :class="seriousMode ? 'span-6' : 'span-5'" />
-        <WoodenFish v-if="!seriousMode" class="span-3" />
-        <PersonaCard
-          :class="seriousMode ? 'span-6' : 'span-4'"
-          :serious="seriousMode"
-          @change="onPersonaChange"
-        />
+        <MoodCheckIn class="span-7" :today="displayMood" :serious="seriousMode" @saved="onMoodSaved" />
+        <MoodTrend class="span-5" :trend="trend" :summary="summary" :serious="seriousMode" />
       </div>
 
-      <section ref="scaleSection" class="scales-section">
+      <section class="toolbox-section v21-panel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Screening</p>
-            <h2>心理测评</h2>
+            <p class="eyebrow">TOOLBOX</p>
+            <h2>随身减压</h2>
           </div>
-          <span class="section-hint">PHQ-9 / GAD-7 · 初筛不构成诊断</span>
+          <span class="section-hint">4-7-8 呼吸 · 电子木鱼 · 烦恼粉碎机</span>
+        </div>
+
+        <div class="toolbox-grid" :class="{ 'toolbox-grid--single': seriousMode }">
+          <div class="card breathing-card">
+            <div class="tool-card-head">
+              <div>
+                <h3>4-7-8 减压呼吸</h3>
+                <p>吸气 4 秒 · 屏息 7 秒 · 呼气 8 秒</p>
+              </div>
+              <AppIcon name="breathe" :size="18" />
+            </div>
+            <RingGauge mode="breathe" :size="188" />
+          </div>
+
+          <StressShredder v-if="!seriousMode" class="toolbox-shredder" />
+        </div>
+      </section>
+
+      <section ref="scaleSection" class="scales-section v21-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">SELF-ASSESSMENT</p>
+            <h2>心理量表自评</h2>
+          </div>
+          <span class="section-hint">PHQ-9 情绪晴雨表 / GAD-7 焦虑自测 · 初筛不构成诊断</span>
         </div>
 
         <ScaleRunner
@@ -88,11 +118,11 @@
             <span class="scale-top">
               <span class="scale-key">{{ scale.key.toUpperCase() }}</span>
               <span v-if="latestFor(scale.key)" class="scale-latest">
-                上次 {{ latestFor(scale.key).label || riskLabel(latestFor(scale.key).risk_level) }}
+                上次 {{ scaleResultLabel(latestFor(scale.key)) }}
               </span>
             </span>
-            <h3>{{ scale.name }}</h3>
-            <p>{{ scale.questions.length }} 题 · 最高 {{ scale.max_score }} 分</p>
+            <h3>{{ scaleTitle(scale.key) }} <small>{{ scaleName(scale.key) }}</small></h3>
+            <p>{{ scale.questions.length }} 题 · 最高 {{ scale.max_score }} 分 · 约 3 分钟</p>
             <span class="scale-cta">
               开始
               <AppIcon name="arrow" :size="14" />
@@ -103,6 +133,20 @@
           </p>
         </div>
 
+        <div v-if="history.length" class="card history-trend-card">
+          <div class="history-head">
+            <div>
+              <h3>历史趋势</h3>
+              <span>分数越低越轻，断点表示当天未测</span>
+            </div>
+            <div class="trend-legend" aria-hidden="true">
+              <span><i class="dot dot--accent"></i>PHQ-9</span>
+              <span><i class="dot dot--teal"></i>GAD-7</span>
+            </div>
+          </div>
+          <TrendChart :series="historySeries" :height="160" />
+        </div>
+
         <div v-if="history.length" class="card history-card">
           <div class="history-head">
             <h3>最近测评</h3>
@@ -111,8 +155,8 @@
           <div class="history-list">
             <div v-for="item in history" :key="item.id" class="history-row">
               <span class="history-name">{{ scaleName(item.scale_type) }}</span>
-              <span class="risk-pill" :class="`risk-${item.risk_level}`">
-                {{ item.label || riskLabel(item.risk_level) }}
+              <span class="risk-pill" :class="scaleRiskClass(item)">
+                {{ scaleResultLabel(item) }}
               </span>
               <span class="history-score">{{ item.score }}<small>/{{ item.max_score }}</small></span>
               <time class="history-time">{{ formatScaleDate(item.created_at) }}</time>
@@ -141,15 +185,16 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
-import MiniNailong from '../components/mascots/MiniNailong.vue'
+import PageHead from '../components/PageHead.vue'
+import RingGauge from '../components/RingGauge.vue'
+import StressShredder from '../components/StressShredder.vue'
+import TrendChart from '../components/TrendChart.vue'
 import MoodCheckIn from '../components/mental/MoodCheckIn.vue'
 import MoodTrend from '../components/mental/MoodTrend.vue'
-import BreathingRing from '../components/mental/BreathingRing.vue'
-import WoodenFish from '../components/mental/WoodenFish.vue'
-import PersonaCard from '../components/mental/PersonaCard.vue'
 import ScaleRunner from '../components/mental/ScaleRunner.vue'
 import SafetyNotice from '../components/mental/SafetyNotice.vue'
 import { formatScaleDate, localDateKey, parseServerDate } from '../utils/date'
+import { useWellnessStore } from '../stores/wellness'
 
 const loading = ref(true)
 const summary = ref(null)
@@ -160,11 +205,14 @@ const history = ref([])
 const activeScale = ref(null)
 const scaleSection = ref(null)
 const toast = ref('')
+const localCrisis = ref(false)
+const localCrisisResources = ref([])
 const errors = reactive({ summary: '', trend: '', mood: '', scales: '', history: '' })
 
 let toastTimer = null
 
-const seriousMode = computed(() => !!summary.value?.serious_mode)
+// 一旦看到过危机结果或 serious_mode，本次页面会话不再因刷新失败而降级。
+const seriousMode = computed(() => localCrisis.value || !!summary.value?.serious_mode)
 const loadError = computed(() => Object.values(errors).some(Boolean))
 
 const displayMood = computed(() => {
@@ -186,11 +234,12 @@ const heroChips = computed(() => {
     chips.push({ label: `7 天平均睡眠 ${Number(summary.value.sleep_avg_7d).toFixed(1)}h`, tone: 'muted' })
   }
 
-  const latestScale = summary.value?.latest_phq9 || summary.value?.latest_gad7
+  const latestScales = [summary.value?.latest_phq9, summary.value?.latest_gad7].filter(Boolean)
+  const latestScale = latestScales.find(item => item.crisis_flag) || latestScales[0]
   if (latestScale) {
     chips.push({
-      label: `${scaleName(latestScale.scale_type)} ${latestScale.label || riskLabel(latestScale.risk_level)}`,
-      tone: 'muted'
+      label: `${scaleName(latestScale.scale_type)} ${scaleResultLabel(latestScale)}`,
+      tone: latestScale.crisis_flag ? 'warn' : 'muted'
     })
   }
 
@@ -202,6 +251,7 @@ const heroChips = computed(() => {
 })
 
 const MOOD_LABELS = { 1: '很难受', 2: '有点丧', 3: '还行', 4: '不错', 5: '很好' }
+const SERIOUS_MOOD_LABELS = { 1: '很难受', 2: '有些低落', 3: '一般', 4: '尚可', 5: '稳定' }
 const RISK_LABELS = {
   minimal: '无明显症状',
   mild: '轻度',
@@ -210,18 +260,57 @@ const RISK_LABELS = {
   severe: '重度'
 }
 const SCALE_NAMES = { phq9: 'PHQ-9', gad7: 'GAD-7' }
+const SCALE_TITLES = { phq9: '情绪晴雨表', gad7: '焦虑自测' }
 
 function moodLabel (score) {
-  return MOOD_LABELS[score] || '已记录'
+  return (seriousMode.value ? SERIOUS_MOOD_LABELS : MOOD_LABELS)[score] || '已记录'
 }
 
 function riskLabel (risk) {
   return RISK_LABELS[risk] || risk || '已记录'
 }
 
+function scaleResultLabel (item) {
+  if (!item) return '已记录'
+  return item.crisis_flag ? '需要立即关注' : (item.label || riskLabel(item.risk_level))
+}
+
+function scaleRiskClass (item) {
+  return item?.crisis_flag ? 'risk-severe' : `risk-${item?.risk_level || 'minimal'}`
+}
+
 function scaleName (type) {
   return SCALE_NAMES[type] || String(type || '').toUpperCase()
 }
+
+function scaleTitle (type) {
+  return SCALE_TITLES[type] || scaleName(type)
+}
+
+function historyKey (item) {
+  const parsed = parseServerDate(item?.created_at)
+  return parsed ? localDateKey(parsed) : String(item?.created_at || '').slice(0, 10)
+}
+
+const historyDates = computed(() => {
+  const keys = [...new Set(history.value.map(historyKey).filter(Boolean))]
+  return keys.sort()
+})
+
+function historySeriesData (type) {
+  return historyDates.value.map(date => {
+    const match = history.value.find(item => item.scale_type === type && historyKey(item) === date)
+    return { label: date.slice(5).replace('-', '/'), value: match ? match.score : null }
+  })
+}
+
+const historySeries = computed(() => {
+  if (!historyDates.value.length) return []
+  return [
+    { name: 'PHQ-9', color: 'var(--accent)', unit: '分', max: 27, data: historySeriesData('phq9') },
+    { name: 'GAD-7', color: 'var(--teal)', unit: '分', max: 21, data: historySeriesData('gad7') }
+  ]
+})
 
 function isToday (value) {
   if (!value) return false
@@ -251,10 +340,11 @@ function errorText (e, fallback) {
 async function loadSummary () {
   const { data } = await api.getMentalSummary()
   summary.value = data
+  if (data?.serious_mode) localCrisis.value = true
 }
 
 async function loadTrend () {
-  const { data } = await api.getMentalTrend({ days: 14 })
+  const { data } = await api.getMentalTrend({ days: 7 })
   trend.value = data || { dates: [], mood_score: [], sleep_hours: [] }
 }
 
@@ -317,15 +407,21 @@ async function onMoodSaved (record) {
 }
 
 async function onScaleSubmitted (result) {
+  if (result?.crisis_flag) {
+    // 先把危机状态和本次返回的资源锁在本地；刷新失败也不能退回玩梗模式。
+    localCrisis.value = true
+    localCrisisResources.value = Array.isArray(result.resources) ? result.resources : []
+  }
   showToast(result?.crisis_flag ? '结果已保存，请先看看下面的支持信息' : '测评结果已保存')
   await Promise.allSettled([loadSummary(), loadHistory()])
 }
 
-function onPersonaChange () {
-  showToast('已保存你的人设偏好')
-}
-
-onMounted(loadAll)
+onMounted(() => {
+  const wellness = useWellnessStore()
+  wellness.hydrateLocal()
+  wellness.load()
+  loadAll()
+})
 onUnmounted(() => {
   if (toastTimer) clearTimeout(toastTimer)
 })
@@ -449,11 +545,46 @@ onUnmounted(() => {
   font-size: 18px;
 }
 
-.serious-copy p:last-child {
+.serious-copy > p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.7;
+}
+
+.crisis-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.crisis-line {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 132px;
+  padding: 8px 11px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.crisis-line span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.crisis-line strong {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.crisis-line--school {
+  border-style: dashed;
 }
 
 .mental-grid {
@@ -468,6 +599,57 @@ onUnmounted(() => {
 .span-6 { grid-column: span 6; }
 .span-7 { grid-column: span 7; }
 .span-12 { grid-column: span 12; }
+
+.toolbox-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toolbox-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.toolbox-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.breathing-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+}
+
+.tool-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  color: var(--accent-strong);
+}
+
+.tool-card-head h3 {
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.tool-card-head p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.toolbox-shredder {
+  min-width: 0;
+}
 
 .skeleton {
   min-height: 170px;
@@ -560,6 +742,15 @@ onUnmounted(() => {
   font-size: 16px;
 }
 
+.scale-card h3 small {
+  margin-left: 4px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
 .scale-card p {
   margin: 0;
   color: var(--muted);
@@ -586,6 +777,42 @@ onUnmounted(() => {
   font-size: 13px;
   text-align: center;
 }
+
+.history-trend-card {
+  padding: 16px 18px 10px;
+}
+
+.history-trend-card .history-head {
+  align-items: flex-start;
+}
+
+.history-trend-card .history-head > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trend-legend {
+  display: flex;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.trend-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot--accent { background: var(--accent); }
+.dot--teal { background: var(--teal); }
 
 .history-card {
   padding: 16px 18px;
@@ -694,6 +921,10 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .serious-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbox-grid {
     grid-template-columns: 1fr;
   }
 
