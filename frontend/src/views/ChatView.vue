@@ -31,7 +31,7 @@
         <div class="chat-top">
           <div class="chat-title">
             <span class="chat-dot" aria-hidden="true"></span>
-            <span>和 AI 聊聊</span>
+            <span>{{ modeMeta.label }}</span>
             <span v-if="safetyBadge" class="serious-pill">{{ safetyBadge }}</span>
           </div>
           <div class="chat-actions">
@@ -54,6 +54,22 @@
             </button>
           </div>
         </div>
+
+        <div class="mode-switch" role="group" aria-label="对话模式">
+          <button
+            v-for="item in modeOptions"
+            :key="item.key"
+            class="mode-btn"
+            :class="{ active: mode === item.key }"
+            type="button"
+            :aria-pressed="mode === item.key"
+            @click="setMode(item.key)"
+          >
+            <AppIcon :name="item.icon" :size="15" />
+            {{ item.label }}
+          </button>
+        </div>
+        <p class="mode-hint">{{ modeMeta.hint }}</p>
 
         <div class="chat-persona">
           <PersonaCard compact :serious="personaSerious" />
@@ -94,8 +110,8 @@
           :aria-busy="sending"
         >
           <div v-if="!messages.length" class="empty chat-empty">
-            <p class="empty-title">{{ seriousMode ? '今天想从哪里开始？' : '开始聊点什么' }}</p>
-            <p>{{ seriousMode ? '不用组织好语言，想到哪说到哪。' : '健康、睡眠、压力，或者只是今天有点累。' }}</p>
+            <p class="empty-title">{{ seriousMode ? '今天想从哪里开始？' : modeMeta.emptyTitle }}</p>
+            <p>{{ seriousMode ? '不用组织好语言，想到哪说到哪。' : modeMeta.emptyText }}</p>
             <div class="prompt-chips">
               <button
                 v-for="prompt in quickPrompts"
@@ -120,7 +136,7 @@
           <input
             v-model="input"
             class="field-input"
-            :placeholder="activeId ? '输入你想说的…' : '直接说点什么，发送时自动新建会话'"
+            :placeholder="activeId ? modeMeta.placeholder : `${modeMeta.placeholder}，发送时自动新建会话`"
             :disabled="sending || creating"
             maxlength="2000"
             aria-label="消息内容"
@@ -149,6 +165,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import PersonaCard from '../components/mental/PersonaCard.vue'
@@ -162,8 +179,10 @@ const input = ref('')
 const sending = ref(false)
 const creating = ref(false)
 const notice = ref('')
+const route = useRoute()
 const showHelp = ref(false)
 const seriousMode = ref(false)
+const mode = ref(route.query.mode === 'mental' ? 'mental' : 'body')
 const msgBox = ref(null)
 const currentSafety = ref({ level: 'normal', crisis: false, resources: [] })
 
@@ -172,10 +191,50 @@ let loadToken = 0
 let streamToken = 0
 let messageSeq = 0
 
-const quickPrompts = computed(() => seriousMode.value
-  ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
-  : ['最近总是睡不好', '压力有点大', '帮我看看今天的记录']
-)
+const modeOptions = [
+  { key: 'body', label: '身体问诊', icon: 'activity' },
+  { key: 'mental', label: '心理树洞', icon: 'mood' }
+]
+
+const MODE_META = {
+  body: {
+    label: '身体问诊',
+    hint: '说清楚哪里不舒服、多久了；AI 会结合你的健康记录给建议，不替代医生诊断。',
+    emptyTitle: '身体哪里不太对劲？',
+    emptyText: '睡眠、肠胃、头疼、体检单上的箭头，都可以直接说。',
+    placeholder: '描述一下身体的不舒服…'
+  },
+  mental: {
+    label: '心理树洞',
+    hint: '这里不评判、不催你振作。想骂人、想哭、想沉默一会儿都可以。',
+    emptyTitle: '今天心里堵着什么？',
+    emptyText: '不用组织好语言，想到哪说到哪。有风险时，安全支持会先接管。',
+    placeholder: '想说什么就说什么…'
+  }
+}
+
+const modeMeta = computed(() => {
+  if (seriousMode.value) {
+    return {
+      ...MODE_META[mode.value],
+      hint: '最近的状态值得被认真对待。这里不玩梗，也不用一个人扛。',
+      emptyTitle: '今天想从哪里开始？',
+      emptyText: '不用组织好语言，想到哪说到哪。'
+    }
+  }
+  return MODE_META[mode.value]
+})
+
+const quickPrompts = computed(() => {
+  if (mode.value === 'mental') {
+    return seriousMode.value
+      ? ['我最近总是睡不好', '脑子里停不下来', '想找人说说']
+      : ['今天有点破防', '压力大到不想说话', '想找个地方倒垃圾']
+  }
+  return seriousMode.value
+    ? ['我最近总是睡不好', '身体一直不太舒服', '想找人说说']
+    : ['最近总是睡不好', '吃完饭胃不舒服', '帮我看看今天的记录']
+})
 
 const isCrisis = computed(() => currentSafety.value.crisis || currentSafety.value.level === 'crisis')
 const safetyLevel = computed(() => {
@@ -187,6 +246,7 @@ const safetyLevel = computed(() => {
 
 const showSafety = computed(() =>
   showHelp.value ||
+  seriousMode.value ||
   isCrisis.value ||
   currentSafety.value.level === 'high' ||
   currentSafety.value.level === 'elevated'
@@ -226,6 +286,14 @@ async function loadSeriousMode () {
   } catch (e) { /* 摘要失败不阻塞聊天 */ }
 }
 
+function setMode (next) {
+  if (mode.value === next) return
+  mode.value = next
+  notice.value = next === 'mental'
+    ? '已切到心理树洞。新会话会套用树洞引导，当前会话内容不会丢。'
+    : '已切到身体问诊。新会话会优先结合健康记录。'
+}
+
 function detachStream () {
   streamToken += 1
   if (controller) controller.abort()
@@ -239,7 +307,9 @@ async function createSession () {
   if (sending.value) detachStream()
   loadToken += 1
   try {
-    const { data } = await api.createChatSession({ title: '新会话', context_type: 'general' })
+    const contextType = mode.value === 'body' ? 'health' : 'general'
+    const title = mode.value === 'body' ? '身体问诊 · 新会话' : '心理树洞 · 新会话'
+    const { data } = await api.createChatSession({ title, context_type: contextType })
     loadToken += 1
     sessions.value = [data, ...sessions.value]
     activeId.value = data.id
@@ -467,6 +537,49 @@ onUnmounted(() => {
 .help-toggle:hover {
   border-color: var(--accent);
   color: var(--accent-strong);
+}
+
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  margin: 10px 16px 0;
+  padding: 4px;
+  border: var(--border-hairline);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.mode-btn:hover { color: var(--fg); }
+
+.mode-btn.active {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-hint {
+  margin: 6px 18px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .chat-persona {
