@@ -54,7 +54,20 @@
       <section class="score-panel" aria-labelledby="score-title">
         <div class="score-panel-head">
           <span class="micro micro--inverse">HEALTH SCORE</span>
-          <span class="score-delta">{{ hasRealRating ? '今日评分' : '示例数据' }}</span>
+          <div class="score-ranges" role="group" aria-label="评分时间范围">
+            <button
+              v-for="key in rangeKeys"
+              :key="key"
+              type="button"
+              class="score-range"
+              :class="{ 'is-active': activeRange === key }"
+              :aria-pressed="activeRange === key"
+              @click="switchRange(key)"
+            >
+              {{ rangeLabels[key] }}
+            </button>
+          </div>
+          <span class="score-delta">{{ rangeStatusText }}</span>
         </div>
         <div class="score-main">
           <div class="score-ring" aria-hidden="true">
@@ -226,6 +239,7 @@ import AppIcon from '../components/AppIcon.vue'
 import MiniNailong from '../components/mascots/MiniNailong.vue'
 import { buildPersonaCard, getHealthTier, moodTitle } from '../constants/copywriting'
 import { formatShortDate, localDateKey } from '../utils/date'
+import { summarizeRatingHistory } from '../utils/ratingHistory'
 import { useWellnessStore } from '../stores/wellness'
 import { useWarningStore } from '../stores/warnings'
 
@@ -244,7 +258,6 @@ export default {
       latestAnalysis: null,
       latestRating: null,
       analysisLoading: true,
-      hasRealRating: false,
 
       // score ring
       ringCircumference: 2 * Math.PI * 72,
@@ -256,9 +269,9 @@ export default {
       rangeKeys: ['today', 'w7', 'm30'],
       rangeLabels: { today: '今日', w7: '近 7 天', m30: '近 30 天' },
       ranges: {
-        today: { score: 0, level: '—', delta: '暂无评分' },
-        w7:    { score: 82, level: '状态在线', delta: '近 7 天均值 · 示例' },
-        m30:   { score: 78, level: '脆皮预警', delta: '近 30 天均值 · 示例' }
+        today: { score: 0, level: '—', delta: '暂无评分', hasScore: false, recorded: 0, days: 1 },
+        w7:    { score: 0, level: '暂无评分', delta: '近 7 天暂无评分', hasScore: false, recorded: 0, days: 7 },
+        m30:   { score: 0, level: '暂无评分', delta: '近 30 天暂无评分', hasScore: false, recorded: 0, days: 30 }
       },
 
       // chart
@@ -385,9 +398,21 @@ export default {
       })
     },
     statusLabel() {
+      if (this.activeRange !== 'today') {
+        const range = this.ranges[this.activeRange]
+        return range?.hasScore ? range.level : '暂无评分'
+      }
       if (this.mentalSerious) return '先照顾自己'
       if (this.latestRating?.rating === '危险') return '重点关怀'
       return this.persona.tier.title
+    },
+    rangeStatusText() {
+      const range = this.ranges[this.activeRange]
+      if (!range) return ''
+      if (!range.hasScore) {
+        return this.activeRange === 'today' ? '暂无评分' : `近 ${range.days} 天暂无评分`
+      }
+      return range.delta
     },
     todayMoodRecord() {
       const latest = this.mentalSummary?.latest_mood
@@ -498,10 +523,25 @@ export default {
       return 'status-dot--accent'
     },
     scoreNarrative() {
+      if (this.activeRange !== 'today') {
+        const range = this.ranges[this.activeRange]
+        if (!range?.hasScore) {
+          return `近 ${range?.days || ''} 天还没有评分记录。先记录一次体检，这里会慢慢长出趋势。`
+        }
+        const coverage = range.recorded === range.days
+          ? `${range.days} 天都有记录`
+          : `${range.days} 天里记录了 ${range.recorded} 天`
+        return `近 ${range.days} 天平均 ${range.score} 分，${coverage}。`
+      }
       if (this.mentalSerious) return '今天先不追求满分。把支持资源放在手边，先照顾好自己。'
       return this.todayHeadline
     },
     scoreTags() {
+      if (this.activeRange !== 'today') {
+        const range = this.ranges[this.activeRange]
+        if (!range?.hasScore) return ['等待记录', '先做一次体检']
+        return [`${range.days} 天均值`, `${range.recorded}/${range.days} 天记录`, range.level]
+      }
       const tags = []
       if (this.sleepDebtValue != null) tags.push(`睡眠债 ${this.sleepDebtText}`)
       if (this.todayMoodLevel) tags.push(`心情 ${this.todayMoodText}`)
@@ -764,24 +804,56 @@ export default {
 
       try {
         const ratingRes = await api.getLatestRating()
-        if (ratingRes.data && ratingRes.data.score) {
+        if (ratingRes.data && ratingRes.data.score != null) {
           this.latestRating = ratingRes.data
-          this.hasRealRating = true
           this.ranges.today = {
             score: ratingRes.data.score,
             level: getHealthTier({
               score: ratingRes.data.score,
               rating: ratingRes.data.rating
             }).title,
-            delta: '今日评分'
+            delta: '今日评分',
+            hasScore: true,
+            recorded: 1,
+            days: 1
           }
         }
       } catch (e) { /* silent */ }
 
+      await Promise.all([this.loadRatingHistory(7), this.loadRatingHistory(30)])
+
       // re-paint ring with real data
       this.$nextTick(() => {
-        if (this.activeRange === 'today') this.paintRange('today')
+        this.paintRange(this.activeRange)
       })
+    },
+    async loadRatingHistory(days) {
+      const key = days === 7 ? 'w7' : 'm30'
+      try {
+        const res = await api.getRatingHistory(days)
+        const summary = summarizeRatingHistory(res.data, days)
+        this.ranges[key] = {
+          score: summary.score,
+          level: summary.hasScore ? getHealthTier({ score: summary.score }).title : '暂无评分',
+          delta: summary.hasScore
+            ? `近 ${days} 天均值 · ${summary.recorded} 天有记录`
+            : `近 ${days} 天暂无评分`,
+          hasScore: summary.hasScore,
+          recorded: summary.recorded,
+          days
+        }
+        if (this.activeRange === key) this.paintRange(key)
+      } catch (e) {
+        this.ranges[key] = {
+          score: 0,
+          level: '暂无评分',
+          delta: `近 ${days} 天暂无评分`,
+          hasScore: false,
+          recorded: 0,
+          days
+        }
+        if (this.activeRange === key) this.paintRange(key)
+      }
     },
 
     // ---- score ring ----

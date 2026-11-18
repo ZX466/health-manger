@@ -596,6 +596,39 @@
   color: var(--success-soft);
 }
 
+.v21 .score-ranges {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid color-mix(in oklch, var(--surface) 18%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--surface) 8%, transparent);
+}
+
+.v21 .score-range {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 650;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+}
+
+.v21 .score-range:hover {
+  opacity: 0.9;
+}
+
+.v21 .score-range.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  opacity: 1;
+}
+
 .v21 .score-main {
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
@@ -3184,6 +3217,20 @@
   .v21 .score-panel {
     padding: 18px;
     min-height: 0;
+  }
+
+  .v21 .score-panel-head {
+    flex-wrap: wrap;
+  }
+
+  .v21 .score-ranges {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .v21 .score-range {
+    flex: 1;
   }
 
   .v21 .score-ring {
