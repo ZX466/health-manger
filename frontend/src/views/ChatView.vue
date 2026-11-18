@@ -178,6 +178,7 @@ const messages = ref([])
 const input = ref('')
 const sending = ref(false)
 const creating = ref(false)
+let disposed = false
 const notice = ref('')
 const route = useRoute()
 const showHelp = ref(false)
@@ -310,6 +311,7 @@ async function createSession () {
     const contextType = mode.value === 'body' ? 'health' : 'general'
     const title = mode.value === 'body' ? '身体问诊 · 新会话' : '心理树洞 · 新会话'
     const { data } = await api.createChatSession({ title, context_type: contextType })
+    if (disposed) return
     loadToken += 1
     sessions.value = [data, ...sessions.value]
     activeId.value = data.id
@@ -369,7 +371,8 @@ async function send () {
 
   if (!activeId.value) {
     await createSession()
-    if (!activeId.value) return
+    // 等待建会话期间已离开页面：本次发送作废，不能继续发起流式请求。
+    if (disposed || !activeId.value) return
   }
 
   // 发送会接管当前会话：作废尚未返回的历史请求，避免它覆盖刚发出的消息。
@@ -474,6 +477,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  disposed = true
   if (controller) controller.abort()
 })
 </script>

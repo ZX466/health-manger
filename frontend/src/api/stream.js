@@ -56,12 +56,15 @@ export async function streamChatMessage (sessionId, content, { signal, onEvent }
     const name = eventName || 'message'
     eventName = 'message'
     let data = raw
+    let parsed = false
     try {
       data = JSON.parse(raw)
+      parsed = true
     } catch (e) {
       // 非 JSON 的 data 也交给调用方；后端当前全部是 JSON。
     }
-    if (name === 'done' || name === 'error') sawTerminal = true
+    // 只认可完整解析的终态帧：EOF 时被截断的 done/error 不能当作正常结束。
+    if (parsed && (name === 'done' || name === 'error')) sawTerminal = true
     if (typeof onEvent === 'function') onEvent(name, data)
   }
 

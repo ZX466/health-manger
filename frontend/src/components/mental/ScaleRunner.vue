@@ -126,6 +126,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import api from '../../api'
 import SafetyNotice from './SafetyNotice.vue'
+import { scaleRiskAdvice } from '../../utils/scaleAdvice'
 
 const props = defineProps({
   /** GET /mental/scales 的单项：{ key, name, questions: string[], options: [{score,label}], max_score } */
@@ -156,19 +157,7 @@ const resultRiskClass = computed(() =>
   result.value?.crisis_flag ? 'risk-severe' : `risk-${result.value?.risk_level || 'minimal'}`
 )
 
-const riskAdvice = computed(() => {
-  if (result.value?.crisis_flag) {
-    return '你的回答里提到了伤害自己的念头。请先不要独处，联系身边信任的人、学校心理咨询中心，或拨打 120 / 110。你不需要一个人扛。'
-  }
-  const level = result.value?.risk_level
-  if (level === 'minimal') return '目前没有明显症状。继续保持规律作息；如果之后状态变化，可以再测一次。'
-  if (level === 'mild') return '有一些轻度困扰。先从睡眠、运动和和人聊聊开始；如果持续两周以上，建议预约咨询。'
-  if (level === 'moderate') return '困扰已经比较明显。建议尽快预约学校心理咨询中心，和专业人员聊一聊。'
-  if (level === 'moderately_severe' || level === 'severe') {
-    return '建议尽快联系学校心理咨询中心或医疗机构。如果出现伤害自己的念头，请立刻寻求紧急帮助。'
-  }
-  return '结果仅供参考，不构成诊断。'
-})
+const riskAdvice = computed(() => scaleRiskAdvice(result.value, answers.value))
 
 function resetAnswers () {
   answers.value = Array(total.value).fill(null)
