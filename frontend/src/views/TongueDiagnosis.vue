@@ -1,36 +1,54 @@
 <template>
-  <div class="tongue-diagnosis">
+  <div class="tongue-page">
+    <PageHead
+      folio="07"
+      eyebrow="TONGUE / SCAN"
+      title="舌诊"
+      deck="自然光、舌头放平、别伸太用力。拍一张，看看中医眼里的寒热虚实。"
+    >
+      <template #actions>
+        <span class="status-chip" :class="cameraActive || activeResult ? 'status-chip--accent' : ''">
+          <span class="status-dot" :class="cameraActive || activeResult ? 'status-dot--success' : ''"></span>
+          {{ cameraActive ? '实时采集中' : (store.analyzing ? '分析中' : (activeResult ? '已完成' : '待拍摄')) }}
+        </span>
+      </template>
+    </PageHead>
 
-    <div class="page-header">
-      <h1> 中医舌诊分析</h1>
-      <p>上传舌象照片或使用摄像头实时分析</p>
-      <div class="mascot-companion mascot-nailong-companion">
-        <MiniNailong />
+    <div class="tongue-toolbar">
+      <div class="tongue-tabs">
+        <button :class="{ active: inputMode === 'upload' }" @click="setInputMode('upload')">
+          <AppIcon name="plus" :size="14" />
+          图片上传
+        </button>
+        <button :class="{ active: inputMode === 'camera' }" @click="setInputMode('camera')">
+          <AppIcon name="camera" :size="14" />
+          摄像头实时
+        </button>
       </div>
+      <span class="micro">{{ inputMode === 'camera' ? 'LIVE / CAMERA' : 'STILL / UPLOAD' }}</span>
     </div>
 
-    <div class="mode-tabs">
-      <button :class="['mode-tab', { active: inputMode === 'upload' }]" @click="setInputMode('upload')">
-         图片上传
-      </button>
-      <button :class="['mode-tab', { active: inputMode === 'camera' }]" @click="setInputMode('camera')">
-         摄像头实时
-      </button>
-    </div>
+    <div class="tongue-grid">
+      <!-- 左侧控制栏 -->
+      <div class="tongue-col">
+        <section v-if="inputMode === 'upload'" class="v21-panel control-panel">
+          <div class="panel-head">
+            <span class="micro">INPUT</span>
+            <span class="micro">JPG / PNG</span>
+          </div>
+          <h2>舌象照片</h2>
 
-    <div class="diagnosis-container">
-      <!-- 左侧配置面板 -->
-      <div class="left-panel">
-        <!-- 图片上传模式 -->
-        <div v-if="inputMode === 'upload'" class="panel-section">
-          <h3> 图片上传</h3>
           <div
-            class="upload-area"
-            :class="{ 'dragover': isDragOver }"
+            class="upload-drop"
+            :class="{ dragover: isDragOver }"
+            role="button"
+            tabindex="0"
             @drop.prevent="handleDrop"
             @dragover.prevent="isDragOver = true"
             @dragleave.prevent="isDragOver = false"
-            @click="$refs.fileInput.click()"
+            @click="openFilePicker()"
+            @keydown.enter.prevent="openFilePicker()"
+            @keydown.space.prevent="openFilePicker()"
           >
             <input
               ref="fileInput"
@@ -39,375 +57,365 @@
               @change="handleFileSelect"
               style="display: none"
             >
-            <div v-if="!previewImage" class="upload-placeholder">
-              <span class="upload-icon"></span>
+            <template v-if="!previewImage">
+              <span class="upload-mark"><AppIcon name="camera" :size="22" /></span>
               <p>点击或拖拽图片到此处</p>
-              <span class="upload-hint">支持 JPG、PNG 格式</span>
-            </div>
-            <img v-else :src="previewImage" alt="舌象预览" class="preview-image" />
+              <span class="micro">支持 JPG、PNG 格式</span>
+            </template>
+            <img v-else :src="previewImage" alt="舌象预览" class="upload-preview" />
           </div>
 
           <button
             v-if="previewImage && !store.analyzing"
+            class="btn btn-primary btn-block"
             @click="startAnalysis"
-            class="analyze-btn primary"
           >
-             开始分析
+            开始分析
           </button>
 
-          <button v-if="store.analyzing" class="analyze-btn analyzing" disabled>
-            <span class="spinner"></span> 分析中...
+          <button v-if="store.analyzing" class="btn btn-primary btn-block" disabled>
+            <span class="spinner"></span>
+            分析中…
           </button>
 
-          <div v-if="previewImage && !store.analyzing" class="clear-btn" @click="clearImage">
+          <button
+            v-if="previewImage && !store.analyzing"
+            class="btn btn-ghost btn-block"
+            @click="clearImage"
+          >
             清除图片
-          </div>
-        </div>
+          </button>
+        </section>
 
-        <!-- 摄像头模式 -->
-        <div v-if="inputMode === 'camera'" class="panel-section camera-panel">
-          <h3> 摄像头控制</h3>
-
-          <div class="camera-status">
-            <div class="status-indicator" :class="{ active: cameraActive }"></div>
-            <span>{{ cameraActive ? '摄像头已开启' : '摄像头已关闭' }}</span>
+        <section v-else class="v21-panel control-panel">
+          <div class="panel-head">
+            <span class="micro">CAMERA</span>
+            <span class="camera-status-line" :class="{ active: cameraActive }">
+              <span class="status-dot" :class="cameraActive ? 'status-dot--success' : ''"></span>
+              {{ cameraActive ? '已开启' : '已关闭' }}
+            </span>
           </div>
+          <h2>摄像头控制</h2>
 
           <div class="camera-controls">
             <button
               v-if="!cameraActive && !cameraError"
+              class="btn btn-primary btn-block"
               @click="startCamera"
-              class="camera-btn start"
             >
-              ▶ 开启摄像头
+              开启摄像头
             </button>
             <button
               v-if="cameraActive"
+              class="btn btn-ghost btn-block"
               @click="stopCamera"
-              class="camera-btn stop"
             >
-              ⏹ 关闭摄像头
+              关闭摄像头
             </button>
           </div>
 
           <div v-if="cameraError" class="camera-error">
-            <span class="error-icon"></span>
+            <AppIcon name="alert" :size="18" />
             <p>{{ cameraError }}</p>
-            <button @click="retryCamera" class="retry-btn">重试</button>
+            <button class="btn btn-ghost" @click="retryCamera">重试</button>
           </div>
 
-          <div class="camera-guide" v-if="cameraActive">
-            <h4> 拍摄指南</h4>
+          <div v-if="cameraActive" class="camera-guide">
+            <span class="micro">GUIDE</span>
             <ul>
               <li>保持光线充足均匀</li>
               <li>舌头自然伸出放平</li>
               <li>对准舌头正面区域</li>
               <li>避免舌头过度伸展</li>
-              <li>保持手机/摄像头稳定</li>
+              <li>保持手机 / 摄像头稳定</li>
             </ul>
           </div>
-        </div>
+        </section>
 
-        <div class="panel-section">
-          <h3> 分析设置</h3>
-          <div class="setting-item">
-            <label>置信度阈值</label>
+        <section class="v21-panel control-panel">
+          <div class="panel-head">
+            <span class="micro">SETTINGS</span>
+            <span class="micro">{{ confidenceThreshold }}</span>
+          </div>
+          <h2>分析设置</h2>
+          <label class="range-row">
+            <span>置信度阈值</span>
             <input type="range" v-model="confidenceThreshold" min="0.5" max="1" step="0.05" />
-            <span>{{ confidenceThreshold }}</span>
-          </div>
-          <div class="setting-item" v-if="inputMode === 'camera'">
-            <label>分析频率</label>
+          </label>
+          <label v-if="inputMode === 'camera'" class="select-row">
+            <span>分析频率</span>
             <select v-model="analysisInterval">
-              <option value="1000">每秒1次</option>
-              <option value="2000">每2秒1次</option>
-              <option value="3000">每3秒1次</option>
-              <option value="5000">每5秒1次</option>
+              <option value="1000">每秒 1 次</option>
+              <option value="2000">每 2 秒 1 次</option>
+              <option value="3000">每 3 秒 1 次</option>
+              <option value="5000">每 5 秒 1 次</option>
             </select>
-          </div>
-        </div>
+          </label>
+        </section>
 
-        <div class="panel-section tongue-coating">
-          <h3> 舌苔信息</h3>
-          <div class="coating-grid">
-            <div class="coating-item">
-              <label>苔色</label>
-              <div class="color-options">
-                <button
-                  v-for="color in coatingColors"
-                  :key="color.name"
-                  :class="['color-btn', { active: selectedCoatingColor === color.name }]"
-                  :style="{ backgroundColor: color.color }"
-                  :title="color.name + ': ' + color.desc"
-                  @click="selectedCoatingColor = color.name"
-                >
-                  <span v-if="selectedCoatingColor === color.name" class="check-mark"></span>
-                </button>
-              </div>
-              <span class="coating-label">{{ selectedCoatingColor || '请选择' }}</span>
-            </div>
-            <div class="coating-item">
-              <label>苔质</label>
-              <div class="thickness-options">
-                <button
-                  v-for="thickness in coatingThickness"
-                  :key="thickness"
-                  :class="['thickness-btn', { active: selectedCoatingThickness === thickness }]"
-                  @click="selectedCoatingThickness = thickness"
-                >
-                  {{ thickness }}
-                </button>
-              </div>
-            </div>
+        <section class="v21-panel control-panel">
+          <div class="panel-head">
+            <span class="micro">COATING</span>
+            <span class="micro">{{ selectedCoatingColor || '未选择' }}</span>
           </div>
-          <div class="coating-actions" v-if="selectedCoatingColor || selectedCoatingThickness">
-            <button class="apply-btn" @click="applyCoatingSelection">
-              应用选择
-            </button>
-            <button class="clear-btn-small" @click="clearCoatingSelection">
-              清除
-            </button>
-          </div>
-        </div>
+          <h2>舌苔信息</h2>
 
-        <div class="panel-section tips">
-          <h3> 拍摄提示</h3>
-          <ul>
+          <div class="coating-block">
+            <span class="coating-label">苔色</span>
+            <div class="swatch-row">
+              <button
+                v-for="color in coatingColors"
+                :key="color.name"
+                class="swatch"
+                :class="{ active: selectedCoatingColor === color.name }"
+                :style="{ backgroundColor: color.color }"
+                :title="color.name + '：' + color.desc"
+                :aria-label="color.name + '：' + color.desc"
+                @click="selectedCoatingColor = color.name"
+              />
+            </div>
+            <p class="coating-hint">{{ selectedCoatingHint }}</p>
+          </div>
+
+          <div class="coating-block">
+            <span class="coating-label">苔质</span>
+            <div class="chip-row">
+              <button
+                v-for="thickness in coatingThickness"
+                :key="thickness"
+                class="chip"
+                :class="{ active: selectedCoatingThickness === thickness }"
+                @click="selectedCoatingThickness = thickness"
+              >
+                {{ thickness }}
+              </button>
+            </div>
+          </div>
+
+          <div v-if="selectedCoatingColor || selectedCoatingThickness" class="coating-actions">
+            <button class="btn btn-primary" @click="applyCoatingSelection">应用选择</button>
+            <button class="btn btn-ghost" @click="clearCoatingSelection">清除</button>
+          </div>
+        </section>
+
+        <section class="v21-panel control-panel">
+          <div class="panel-head">
+            <span class="micro">SHOOTING NOTES</span>
+          </div>
+          <h2>拍摄提示</h2>
+          <ul class="tips-list">
             <li>在自然光下拍摄效果最佳</li>
             <li>舌头自然伸出，不要用力</li>
             <li>对准舌头正面，避免遮挡</li>
             <li>拍摄前请清洁口腔</li>
           </ul>
-        </div>
+        </section>
       </div>
 
       <!-- 中间图像区域 -->
-      <div class="center-panel">
-        <!-- 图片上传模式显示 -->
-        <div v-if="inputMode === 'upload'" class="image-display">
-          <div v-if="!store.result && !previewImage" class="empty-state">
-            <span class="empty-icon"></span>
-            <p>请上传舌象图片开始分析</p>
+      <div class="tongue-col">
+        <section class="v21-panel stage-panel">
+          <div class="panel-head">
+            <span class="micro">SPECIMEN / VIEW</span>
+            <span class="micro">{{ inputMode === 'camera' ? (cameraActive ? '● LIVE' : 'PAUSED') : 'STILL' }}</span>
           </div>
 
-          <div v-if="previewImage" class="image-wrapper">
-            <img :src="previewImage" alt="舌象图片" class="main-image" />
-
-            <div v-if="store.result" class="analysis-overlay">
-              <div class="overlay-badge type-badge" :style="{ background: getTypeColor(store.result.overall_type) }">
-                {{ store.result.overall_type }}
-              </div>
-              <div class="overlay-badge syndrome-badge">
-                {{ store.result.tcm_syndrome }}
-              </div>
-              <div class="confidence-badge">
-                置信度: {{ (store.result.confidence_score * 100).toFixed(1) }}%
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 摄像头模式显示 -->
-        <div v-if="inputMode === 'camera'" class="camera-display">
-          <div v-if="!cameraActive && !cameraError" class="camera-placeholder">
-            <span class="camera-placeholder-icon"></span>
-            <p>点击左侧"开启摄像头"开始实时分析</p>
-          </div>
-
-          <div v-if="cameraError" class="camera-error-display">
-            <span class="error-icon-large"></span>
-            <h3>摄像头访问错误</h3>
-            <p>{{ cameraError }}</p>
-            <button @click="retryCamera" class="retry-btn-large">重新尝试</button>
-          </div>
-
-          <div v-if="cameraActive" class="video-wrapper">
-            <video
-              ref="videoElement"
-              autoplay
-              playsinline
-              muted
-              class="camera-video"
-              style="width: 100%; min-height: 320px; background: #000;"
-            ></video>
-            <canvas ref="canvasElement" class="analysis-canvas"></canvas>
-
-            <div v-if="store.realtimeResult" class="realtime-overlay">
-              <div class="realtime-badge syndrome" :style="{ background: getTypeColor(store.realtimeResult.overall_type) }">
-                {{ store.realtimeResult.tcm_syndrome }}
-              </div>
-              <div class="realtime-badge confidence">
-                {{ (store.realtimeResult.confidence_score * 100).toFixed(0) }}%
-              </div>
+          <!-- 图片上传模式 -->
+          <div v-if="inputMode === 'upload'" class="stage-frame">
+            <div v-if="!previewImage" class="stage-empty">
+              <span class="stage-mark"><AppIcon name="tongue" :size="30" /></span>
+              <p>请上传舌象图片开始分析</p>
+              <button class="btn btn-ghost" @click="openFilePicker()">选择图片</button>
             </div>
 
-            <div v-if="store.analyzing" class="analyzing-indicator">
-              <span class="spinner-large"></span>
-              <span>分析中...</span>
-            </div>
+            <template v-else>
+              <img :src="previewImage" alt="舌象图片" class="stage-media" />
+              <div v-if="activeResult" class="overlay-stack">
+                <span class="result-pill result-pill--type" :class="typeTone(activeResult.overall_type)">
+                  {{ activeResult.overall_type }}
+                </span>
+                <span class="result-pill">{{ activeResult.tcm_syndrome }}</span>
+                <span class="result-pill result-pill--muted">
+                  置信度 {{ (activeResult.confidence_score * 100).toFixed(1) }}%
+                </span>
+              </div>
+            </template>
           </div>
 
-          <!-- 实时分析结果条 -->
-          <div v-if="store.realtimeHistory.length > 0" class="realtime-results-bar">
+          <!-- 摄像头模式 -->
+          <div v-else class="stage-frame stage-frame--camera">
+            <div v-if="!cameraActive && !cameraError" class="stage-empty">
+              <span class="stage-mark"><AppIcon name="camera" :size="30" /></span>
+              <p>开启摄像头后，这里会显示实时画面</p>
+            </div>
+
+            <div v-if="cameraError" class="stage-empty">
+              <span class="stage-mark stage-mark--danger"><AppIcon name="alert" :size="28" /></span>
+              <h3>摄像头访问错误</h3>
+              <p>{{ cameraError }}</p>
+              <button class="btn btn-ghost" @click="retryCamera">重新尝试</button>
+            </div>
+
+            <template v-if="cameraActive">
+              <video
+                ref="videoElement"
+                autoplay
+                playsinline
+                muted
+                class="stage-media"
+                style="width: 100%; min-height: 320px; background: #000;"
+              ></video>
+              <canvas ref="canvasElement" class="analysis-canvas"></canvas>
+
+              <div v-if="store.realtimeResult" class="overlay-stack">
+                <span class="result-pill result-pill--type" :class="typeTone(store.realtimeResult.overall_type)">
+                  {{ store.realtimeResult.tcm_syndrome }}
+                </span>
+                <span class="result-pill result-pill--muted">
+                  {{ (store.realtimeResult.confidence_score * 100).toFixed(0) }}%
+                </span>
+              </div>
+
+              <div v-if="store.analyzing" class="analyzing-bar">
+                <span class="spinner"></span>
+                分析中…
+              </div>
+            </template>
+          </div>
+
+          <div v-if="inputMode === 'camera' && store.realtimeHistory.length > 0" class="realtime-strip">
             <div
               v-for="(item, idx) in store.realtimeHistory.slice(-5)"
               :key="idx"
-              class="realtime-result-item"
+              class="realtime-item"
               :class="{ latest: idx === store.realtimeHistory.slice(-5).length - 1 }"
             >
-              <span class="result-time">{{ item.time }}</span>
-              <span class="result-syndrome" :style="{ color: getTypeColor(item.overall_type) }">
-                {{ item.tcm_syndrome }}
-              </span>
-              <span class="result-confidence">{{ (item.confidence * 100).toFixed(0) }}%</span>
+              <span class="micro">{{ item.time }}</span>
+              <span class="realtime-syndrome">{{ item.tcm_syndrome }}</span>
+              <span class="micro">{{ (item.confidence * 100).toFixed(0) }}%</span>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 历史记录列表 -->
-        <div class="history-section" v-if="store.historyList.length > 0">
-          <h4> 历史记录 ({{ store.historyList.length }})</h4>
-          <div class="history-list">
-            <div
+        <section v-if="store.historyList.length > 0" class="v21-panel history-panel">
+          <div class="panel-head">
+            <span class="micro">HISTORY</span>
+            <span class="micro">{{ store.historyList.length }} 条</span>
+          </div>
+          <h2>历史记录</h2>
+          <div class="history-strip">
+            <button
               v-for="item in store.historyList"
               :key="item.id"
-              class="history-item"
+              class="history-card"
               @click="loadHistoryDetail(item)"
             >
-              <img :src="protectedImageUrls[item.id] || ''" class="history-thumb" />
-              <div class="history-info">
-                <span class="history-type">{{ item.overall_type || '分析中' }}</span>
-                <span class="history-date">{{ formatDate(item.created_at) }}</span>
-              </div>
-            </div>
+              <span class="history-thumb-wrap">
+                <img :src="protectedImageUrls[item.id] || ''" class="history-thumb" alt="" />
+              </span>
+              <span class="history-type">{{ item.overall_type || '分析中' }}</span>
+              <span class="micro">{{ formatDate(item.created_at) }}</span>
+            </button>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- 右侧结果面板 -->
-      <div class="right-panel">
-        <div v-if="!store.result && !store.realtimeResult" class="no-result">
-          <span class="no-result-icon"></span>
-          <p>{{ inputMode === 'camera' ? '开启摄像头后开始实时分析...' : '等待分析结果...' }}</p>
-        </div>
-
-        <div v-if="store.result || store.realtimeResult" class="result-panel">
-          <h3> {{ inputMode === 'camera' ? '实时' : '' }}分析结果</h3>
-          <div class="result-source" v-if="inputMode === 'camera'">
-            <span class="source-badge" :class="{ live: cameraActive }">
-              {{ cameraActive ? '● LIVE' : 'PAUSED' }}
+        <section class="v21-panel result-panel">
+          <div class="panel-head">
+            <span class="micro">DIAGNOSIS / RESULT</span>
+            <span v-if="activeResult" class="micro">
+              {{ (activeResult.confidence_score * 100).toFixed(0) }}%
             </span>
           </div>
 
-          <div class="result-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>特征项</th>
-                  <th>检测结果</th>
-                  <th>说明</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><span class="feature-dot tongue"></span>舌色</td>
-                  <td>
-                    <span
-                      class="color-badge"
-                      :style="{ background: (store.result || store.realtimeResult)?.tongue_color?.color || 'var(--muted)' }"
-                    >
-                      {{ (store.result || store.realtimeResult)?.tongue_color?.name || '-' }}
-                    </span>
-                  </td>
-                  <td class="desc">{{ (store.result || store.realtimeResult)?.tongue_color?.desc || '-' }}</td>
-                </tr>
-                <tr>
-                  <td><span class="feature-dot coating"></span>苔色</td>
-                  <td>
-                    <span
-                      class="color-badge"
-                      :style="{ background: (store.result || store.realtimeResult)?.coating_color?.color || 'var(--muted)' }"
-                    >
-                      {{ (store.result || store.realtimeResult)?.coating_color?.name || '-' }}
-                    </span>
-                  </td>
-                  <td class="desc">{{ (store.result || store.realtimeResult)?.coating_color?.desc || '-' }}</td>
-                </tr>
-                <tr>
-                  <td><span class="feature-dot thickness"></span>苔质</td>
-                  <td>{{ (store.result || store.realtimeResult)?.coating_thickness || '-' }}</td>
-                  <td>-</td>
-                </tr>
-                <tr>
-                  <td><span class="feature-dot shape"></span>舌形</td>
-                  <td>{{ (store.result || store.realtimeResult)?.tongue_shape || '-' }}</td>
-                  <td>-</td>
-                </tr>
-                <tr>
-                  <td><span class="feature-dot moisture"></span>润燥</td>
-                  <td>{{ (store.result || store.realtimeResult)?.moisture_level || '-' }}</td>
-                  <td>-</td>
-                </tr>
-                <tr>
-                  <td><span class="feature-dot crack"></span>裂纹</td>
-                  <td>{{ (store.result || store.realtimeResult)?.has_cracks ? '有' : '无' }}</td>
-                  <td>-</td>
-                </tr>
-                <tr>
-                  <td><span class="feature-dot teeth"></span>齿痕</td>
-                  <td>{{ (store.result || store.realtimeResult)?.has_teeth_marks ? '有' : '无' }}</td>
-                  <td>-</td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="!activeResult" class="result-empty">
+            <span class="stage-mark"><AppIcon name="chart" :size="26" /></span>
+            <p>{{ inputMode === 'camera' ? '开启摄像头后，实时结果会出现在这里。' : '上传图片后，分析结果会出现在这里。' }}</p>
           </div>
 
-          <div class="syndrome-card">
-            <h4> 中医证型判断</h4>
-            <div class="syndrome-result">
-              <span class="syndrome-name">{{ (store.result || store.realtimeResult)?.tcm_syndrome || '-' }}</span>
-              <span class="overall-type" :style="{ color: getTypeColor((store.result || store.realtimeResult)?.overall_type) }">
-                {{ (store.result || store.realtimeResult)?.overall_type || '-' }}
+          <template v-else>
+            <div class="result-head">
+              <div>
+                <span class="micro">TCM SYNDROME</span>
+                <h2 class="result-syndrome">{{ activeResult.tcm_syndrome || '—' }}</h2>
+              </div>
+              <span class="result-pill result-pill--type" :class="typeTone(activeResult.overall_type)">
+                {{ activeResult.overall_type || '—' }}
               </span>
             </div>
-          </div>
 
-          <div class="advice-section">
-            <h4> 健康建议</h4>
-            <div class="advice-card health">
-              <h5>综合评估</h5>
-              <p>{{ (store.result || store.realtimeResult)?.health_advice || '暂无建议' }}</p>
+            <div class="confidence-track">
+              <span :style="{ width: confidencePercent + '%' }"></span>
             </div>
 
-            <div class="advice-card diet">
-              <h5> 饮食建议</h5>
-              <p>{{ (store.result || store.realtimeResult)?.diet_suggestion || '暂无建议' }}</p>
+            <div class="feature-table">
+              <div class="feature-row">
+                <span class="feature-key">舌色</span>
+                <span class="feature-val">
+                  <span class="color-dot" :style="{ background: activeResult.tongue_color?.color || 'var(--muted-2)' }"></span>
+                  {{ activeResult.tongue_color?.name || '—' }}
+                  <em>{{ activeResult.tongue_color?.desc || '' }}</em>
+                </span>
+              </div>
+              <div class="feature-row">
+                <span class="feature-key">苔色</span>
+                <span class="feature-val">
+                  <span class="color-dot" :style="{ background: activeResult.coating_color?.color || 'var(--muted-2)' }"></span>
+                  {{ activeResult.coating_color?.name || '—' }}
+                  <em>{{ activeResult.coating_color?.desc || '' }}</em>
+                </span>
+              </div>
+              <div class="feature-row">
+                <span class="feature-key">苔质</span>
+                <span class="feature-val">{{ activeResult.coating_thickness || '—' }}</span>
+              </div>
+              <div class="feature-row">
+                <span class="feature-key">舌形</span>
+                <span class="feature-val">{{ activeResult.tongue_shape || '—' }}</span>
+              </div>
+              <div class="feature-row">
+                <span class="feature-key">润燥</span>
+                <span class="feature-val">{{ activeResult.moisture_level || '—' }}</span>
+              </div>
+              <div class="feature-row">
+                <span class="feature-key">裂纹</span>
+                <span class="feature-val">{{ activeResult.has_cracks ? '有' : '无' }}</span>
+              </div>
+              <div class="feature-row">
+                <span class="feature-key">齿痕</span>
+                <span class="feature-val">{{ activeResult.has_teeth_marks ? '有' : '无' }}</span>
+              </div>
             </div>
 
-            <div class="advice-card lifestyle">
-              <h5> 生活建议</h5>
-              <p>{{ (store.result || store.realtimeResult)?.lifestyle_advice || '暂无建议' }}</p>
+            <div class="advice-block">
+              <span class="micro">COMPREHENSIVE</span>
+              <p>{{ activeResult.health_advice || '暂无建议' }}</p>
             </div>
-          </div>
+            <div class="advice-block">
+              <span class="micro">DIET</span>
+              <p>{{ activeResult.diet_suggestion || '暂无建议' }}</p>
+            </div>
+            <div class="advice-block">
+              <span class="micro">LIFESTYLE</span>
+              <p>{{ activeResult.lifestyle_advice || '暂无建议' }}</p>
+            </div>
 
-          <div class="action-buttons" v-if="inputMode === 'upload'">
-            <button @click="exportResult" class="action-btn export">
-               导出报告
-            </button>
-            <button @click="reAnalyze" class="action-btn retry">
-               重新分析
-            </button>
-          </div>
-        </div>
+            <div v-if="inputMode === 'upload'" class="result-actions">
+              <button class="btn btn-primary" @click="exportResult">导出报告</button>
+              <button class="btn btn-ghost" @click="reAnalyze">重新分析</button>
+            </div>
+          </template>
+        </section>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useTongueStore } from '../stores/tongue'
 import api from '../api'
-import MiniNailong from '../components/mascots/MiniNailong.vue'
+import PageHead from '../components/PageHead.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const store = useTongueStore()
 
@@ -440,6 +448,23 @@ const coatingColors = ref([
 const coatingThickness = ref(['薄苔', '厚苔', '腻苔', '腐苔'])
 const selectedCoatingColor = ref(null)
 const selectedCoatingThickness = ref(null)
+
+const activeResult = computed(() => store.result || store.realtimeResult)
+const confidencePercent = computed(() => {
+  const value = Number(activeResult.value?.confidence_score)
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value * 100))) : 0
+})
+const selectedCoatingHint = computed(() => {
+  const item = coatingColors.value.find((color) => color.name === selectedCoatingColor.value)
+  return item ? item.desc : '选择苔色后可手动修正结果'
+})
+
+function typeTone(type) {
+  if (!type) return 'is-muted'
+  if (type === '正常舌象') return 'is-success'
+  if (['轻度异常舌象', '偏虚寒舌象', '阳虚舌象'].includes(type)) return 'is-warn'
+  return 'is-danger'
+}
 
 function setInputMode(mode) {
   if (mode === 'camera' && inputMode.value === 'upload') {
@@ -475,6 +500,10 @@ function processFile(file) {
     previewImage.value = e.target.result
   }
   reader.readAsDataURL(file)
+}
+
+function openFilePicker() {
+  fileInput.value?.click()
 }
 
 function clearImage() {
@@ -622,22 +651,7 @@ async function loadHistoryImages() {
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
-}
-
-function getTypeColor(type) {
-  const colors = {
-    '正常舌象': '#52c41a',
-    '轻度异常舌象': '#faad14',
-    '偏虚寒舌象': '#1890ff',
-    '偏实热舌象': '#ff4d4f',
-    '痰湿舌象': '#722ed1',
-    '湿热舌象': '#fa8c16',
-    '血瘀舌象': '#eb2f96',
-    '阳虚舌象': '#13c2c2',
-    '异常舌象': '#f5222d'
-  }
-  return colors[type] || 'var(--muted)'
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 function exportResult() {
@@ -715,538 +729,361 @@ onBeforeUnmount(() => {
 })
 </script>
 
-
 <style scoped>
-.tongue-diagnosis {
-  min-height: 100vh;
-  background: var(--accent);
-}
-
-.page-header {
-  text-align: center;
-  padding: 30px 20px;
-  color: white;
-}
-.page-header h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-.page-header p {
-  opacity: 0.9;
-  font-size: 15px;
-}
-
-.mode-tabs {
+.tongue-page {
   display: flex;
-  justify-content: center;
-  gap: 16px;
-  padding: 0 20px;
-  margin-top: -15px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.mode-tab {
-  padding: 12px 32px;
-  border: none;
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 15px;
+.tongue-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tongue-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.tongue-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
 }
 
-.mode-tab.active {
-  background: white;
-  color: var(--accent-strong);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+.tongue-tabs button.active {
+  background: var(--ink);
+  color: var(--surface);
 }
 
-.mode-tab:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.diagnosis-container {
-  max-width: 1400px;
-  margin: 0 auto 40px;
+.tongue-grid {
   display: grid;
-  grid-template-columns: 280px 1fr 380px;
-  gap: 20px;
-  padding: 0 20px;
+  grid-template-columns: 292px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
-/* 左侧面板 */
-.left-panel {
+.tongue-col {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
-.panel-section {
-  background: white;
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-.panel-section h3 {
-  font-size: 16px;
-  margin-bottom: 16px;
-  color: var(--fg);
+.control-panel h2,
+.history-panel h2 {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 730;
+  letter-spacing: -0.035em;
 }
 
-.camera-panel .camera-status {
-  display: flex;
+.btn-block {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.camera-status-line {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 10px;
-  background: var(--warn-soft);
-  border-radius: var(--radius);
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
 }
 
-.status-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-
-.status-indicator.active {
-  background: var(--success);
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+.camera-status-line.active {
+  color: var(--success);
 }
 
 .camera-controls {
-  display: flex;
-  gap: 10px;
-}
-
-.camera-btn {
-  flex: 1;
-  padding: 12px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.camera-btn.start {
-  background: var(--success);
-  color: white;
-}
-
-.camera-btn.start:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(82, 196, 26, 0.4);
-}
-
-.camera-btn.stop {
-  background: var(--danger);
-  color: white;
-}
-
-.camera-btn.stop:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 77, 79, 0.4);
-}
-
-.camera-error {
-  text-align: center;
-  padding: 16px;
-  background: var(--danger-soft);
-  border-radius: var(--radius);
   margin-top: 12px;
 }
 
-.error-icon {
-  font-size: 32px;
-  display: block;
-  margin-bottom: 8px;
+.camera-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .camera-error p {
-  color: var(--muted);
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-
-.retry-btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 6px;
-  background: var(--accent);
-  color: white;
-  cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .camera-guide {
-  margin-top: 16px;
-  padding: 12px;
-  background: var(--warn-soft);
-  border-radius: var(--radius);
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
-.camera-guide h4 {
-  font-size: 13px;
-  margin-bottom: 8px;
-  color: var(--fg);
-}
-
-.camera-guide ul {
-  list-style: none;
+.camera-guide ul,
+.tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
   padding: 0;
-  margin: 0;
+  list-style: none;
 }
 
-.camera-guide li {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 4px 0;
+.camera-guide li,
+.tips-list li {
   position: relative;
-  padding-left: 16px;
+  padding-left: 13px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
-.camera-guide li::before {
+.camera-guide li::before,
+.tips-list li::before {
   content: "";
   position: absolute;
   left: 0;
-  color: var(--success);
-  font-size: 10px;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--line-strong);
 }
 
-.upload-area {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 30px 20px;
+.upload-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 156px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s;
-  background: var(--warn-soft);
+  transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
 }
-.upload-area:hover, .upload-area.dragover {
-  border-color: var(--accent-strong);
-  background: var(--warn-soft);
+
+.upload-drop:hover,
+.upload-drop.dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
-.upload-placeholder .upload-icon {
-  font-size: 48px;
-  display: block;
-  margin-bottom: 10px;
+
+.upload-drop p {
+  font-size: 12.5px;
+  font-weight: 600;
 }
-.upload-placeholder p {
+
+.upload-mark,
+.stage-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--muted);
-  margin-bottom: 8px;
 }
-.upload-hint {
+
+.stage-mark--danger {
+  border-color: color-mix(in oklch, var(--danger) 35%, var(--line));
+  color: var(--danger);
+}
+
+.upload-preview {
+  width: 100%;
+  height: 150px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.range-row,
+.select-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
   font-size: 12px;
   color: var(--muted);
 }
-.preview-image {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 6px;
-  object-fit: contain;
-}
 
-.analyze-btn {
+.range-row input[type="range"] {
   width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 16px;
-  transition: all 0.3s;
-}
-.analyze-btn.primary {
-  background: var(--accent);
-  color: white;
-}
-.analyze-btn.primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255,155,113,0.4);
-}
-.analyze-btn.analyzing {
-  background: var(--warn-soft);
-  color: var(--muted);
-  cursor: not-allowed;
+  accent-color: var(--accent);
 }
 
-.spinner {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent-strong);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 8px;
-  vertical-align: middle;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.select-row select {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
 }
 
-.clear-btn {
-  text-align: center;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 8px;
-  font-size: 13px;
-  margin-top: 8px;
-}
-.clear-btn:hover { color: var(--danger); }
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.setting-item label {
-  flex: 1;
-  font-size: 14px;
-  color: var(--muted);
-}
-.setting-item input[type="range"] {
-  flex: 2;
-}
-.setting-item span, .setting-item select {
-  width: auto;
-  min-width: 60px;
-  text-align: right;
-  font-weight: 600;
-  color: var(--accent-strong);
+.coating-block {
+  margin-top: 14px;
 }
 
-.tongue-coating {
-  background: var(--warn-soft);
-}
-
-.coating-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
-.coating-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.coating-item label {
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.color-options {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.color-btn {
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.color-btn:hover {
-  transform: scale(1.1);
-  border-color: var(--accent-strong);
-}
-
-.color-btn.active {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.check-mark {
-  color: white;
-  font-weight: bold;
+.coating-block + .coating-block {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
 .coating-label {
-  font-size: 12px;
-  color: var(--muted);
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-2);
 }
 
-.thickness-options {
+.swatch-row {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.thickness-btn {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: white;
-  font-size: 12px;
-  color: var(--muted);
+.swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.thickness-btn:hover {
-  border-color: var(--accent-strong);
-  color: var(--accent-strong);
+.swatch:hover {
+  transform: translateY(-1px);
 }
 
-.thickness-btn.active {
-  background: var(--accent);
-  color: white;
-  border-color: transparent;
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+}
+
+.coating-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
 }
 
 .coating-actions {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 14px;
 }
 
-.apply-btn {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  border-radius: 6px;
-  background: var(--accent);
-  color: white;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.apply-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 155, 113, 0.3);
-}
-
-.clear-btn-small {
-  padding: 8px 16px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: white;
-  color: var(--muted);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.clear-btn-small:hover {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.tips ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.tips li {
-  padding: 6px 0;
-  font-size: 13px;
-  color: var(--muted);
-  position: relative;
-  padding-left: 16px;
-}
-.tips li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  color: var(--success);
-  font-weight: bold;
-}
-
-/* 中间面板 */
-.center-panel {
+.stage-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  order: 1;
 }
 
-.image-display, .camera-display {
-  background: white;
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  min-height: 450px;
-  display: flex;
-  flex-direction: column;
-}
-
-.empty-state, .camera-placeholder {
-  text-align: center;
-  padding: 100px 20px;
-  color: var(--muted);
-}
-.empty-state .empty-icon, .camera-placeholder-icon {
-  font-size: 80px;
-  display: block;
-  margin-bottom: 16px;
-}
-
-.camera-error-display {
-  text-align: center;
-  padding: 60px 20px;
-}
-.error-icon-large {
-  font-size: 64px;
-  display: block;
-  margin-bottom: 16px;
-}
-.camera-error-display h3 {
-  color: var(--fg);
-  margin-bottom: 12px;
-}
-.camera-error-display p {
-  color: var(--muted);
-  margin-bottom: 20px;
-}
-.retry-btn-large {
-  padding: 12px 32px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: white;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.video-wrapper {
+.stage-frame {
   position: relative;
-  width: 100%;
-  min-height: 400px;
-  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  min-height: 380px;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
   overflow: hidden;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.camera-video {
-  width: 100%;
-  height: auto;
-  max-height: 400px;
+.stage-frame--camera {
+  background: var(--ink);
+}
+
+.stage-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.stage-empty h3 {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--fg);
+}
+
+.stage-empty p {
+  max-width: 34ch;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.stage-media {
   display: block;
+  width: 100%;
+  max-height: 560px;
+  object-fit: contain;
+}
+
+.stage-frame--camera .stage-media {
   object-fit: cover;
 }
 
@@ -1254,343 +1091,343 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.realtime-overlay {
+.overlay-stack {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  left: 12px;
+  bottom: 12px;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
 }
 
-.realtime-badge {
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: white;
-  font-weight: 600;
-  text-align: center;
-}
-
-.realtime-badge.syndrome {
-  font-size: 14px;
-  padding: 6px 14px;
-}
-
-.analyzing-indicator {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  display: flex;
+.result-pill {
+  display: inline-flex;
   align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(18, 18, 18, 0.82);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(4px);
+}
+
+.result-pill--type.is-success {
+  background: var(--success);
+}
+
+.result-pill--type.is-warn {
+  background: var(--warn);
+}
+
+.result-pill--type.is-danger {
+  background: var(--danger);
+}
+
+.result-pill--type.is-muted {
+  background: rgba(18, 18, 18, 0.7);
+}
+
+.result-pill--muted {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--fg);
+}
+
+.analyzing-bar {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.realtime-strip {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.realtime-item {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.realtime-item.latest .realtime-syndrome {
+  color: var(--fg);
+  font-weight: 650;
+}
+
+.realtime-syndrome {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.history-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   gap: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
+  margin-top: 14px;
+}
+
+.history-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.history-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.history-thumb-wrap {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 5px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.history-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.history-type {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.history-card .micro {
+  font-size: 8px;
+}
+
+.result-panel {
+  display: flex;
+  flex-direction: column;
+  order: 2;
+}
+
+.history-panel {
+  order: 3;
+}
+
+.result-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 44px 18px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.result-empty p {
+  max-width: 26ch;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.result-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.result-syndrome {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.confidence-track {
+  height: 4px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.confidence-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 300ms var(--ease-out);
+}
+
+.feature-table {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
   font-size: 12px;
 }
 
-.spinner-large {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
+.feature-key {
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+
+.feature-val {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+}
+
+.feature-val em {
+  flex-basis: 100%;
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--muted-2);
+}
+
+.color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+}
+
+.advice-block {
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+
+.advice-block p {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-.realtime-results-bar {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 10px;
-  background: var(--warn-soft);
-  border-radius: var(--radius);
-  overflow-x: auto;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.realtime-result-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 12px;
-  background: white;
-  border-radius: 6px;
-  min-width: 80px;
-  font-size: 11px;
-}
-
-.realtime-result-item.latest {
-  background: var(--accent);
-  color: white;
-}
-
-.realtime-result-item.latest .result-syndrome,
-.realtime-result-item.latest .result-confidence {
-  color: white;
-}
-
-.result-time {
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.result-syndrome {
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.result-confidence {
-  color: var(--muted);
-}
-
-.history-section {
-  background: white;
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-.history-section h4 {
-  margin-bottom: 12px;
-  color: var(--fg);
-  font-size: 14px;
-}
-.history-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
-}
-.history-item {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.history-item:hover {
-  border-color: var(--accent-strong);
-  box-shadow: 0 2px 8px rgba(255,155,113,0.2);
-}
-.history-thumb {
-  width: 100%;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
-  margin-bottom: 6px;
-}
-.history-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.history-type {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--fg);
-}
-.history-date {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-/* 右侧结果面板 */
-.right-panel {
-  background: white;
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  overflow-y: auto;
-  max-height: calc(100vh - 200px);
-}
-
-.no-result {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-}
-.no-result-icon {
-  font-size: 60px;
-  display: block;
-  margin-bottom: 16px;
-}
-
-.result-panel h3 {
-  font-size: 18px;
-  margin-bottom: 12px;
-  color: var(--fg);
-}
-
-.result-source {
-  margin-bottom: 16px;
-}
-
-.source-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--warn-soft);
-  color: var(--muted);
-}
-
-.source-badge.live {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-
-@keyframes pulseBadge {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-.result-table {
-  margin-bottom: 20px;
-}
-.result-table table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.result-table th {
-  background: var(--accent);
-  color: white;
-  padding: 10px 8px;
-  text-align: left;
-  font-weight: 500;
-}
-.result-table th:first-child { border-radius: 6px 0 0 0; }
-.result-table th:last-child { border-radius: 0 6px 0 0; }
-.result-table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-.result-table tr:last-child td:first-child { border-radius: 0 0 0 6px; }
-.result-table tr:last-child td:last-child { border-radius: 0 0 6px 0; }
-
-.feature-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-.feature-dot.tongue { background: #FF69B4; }
-.feature-dot.coating { background: #FFFFFF; border: 1px solid var(--border); }
-.feature-dot.thickness { background: #90EE90; }
-.feature-dot.shape { background: #87CEEB; }
-.feature-dot.moisture { background: #DDA0DD; }
-.feature-dot.crack { background: #FFD700; }
-.feature-dot.teeth { background: #F0E68C; }
-
-.color-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: var(--radius);
-  color: var(--fg);
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid rgba(0,0,0,0.1);
-}
-.desc {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.syndrome-card {
-  background: linear-gradient(135deg, var(--warn-soft) 0%, var(--border) 100%);
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-.syndrome-card h4 {
-  margin-bottom: 12px;
-  color: var(--fg);
-  font-size: 14px;
-}
-.syndrome-result {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.syndrome-name {
-  font-size: 22px;
-  font-weight: bold;
-  color: var(--fg);
-}
-.overall-type {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 4px 12px;
-  background: white;
-  border-radius: 20px;
-}
-
-.advice-section h4 {
-  margin-bottom: 12px;
-  color: var(--fg);
-  font-size: 14px;
-}
-.advice-card {
-  background: var(--warn-soft);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 12px;
-  border-left: 3px solid var(--accent);
-}
-.advice-card h5 {
-  margin-bottom: 8px;
-  color: var(--fg);
-  font-size: 13px;
-}
-.advice-card p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0;
-}
-.advice-card.diet { border-left-color: var(--success); }
-.advice-card.lifestyle { border-left-color: var(--info); }
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-.action-btn {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: white;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-.action-btn:hover {
-  border-color: var(--accent-strong);
-  color: var(--accent-strong);
-}
-.action-btn.export:hover { border-color: var(--success); color: var(--success); }
-.action-btn.retry:hover { border-color: var(--info); color: var(--info); }
-
-@media (max-width: 1200px) {
-  .diagnosis-container {
-    grid-template-columns: 1fr;
-  }
-  .right-panel {
-    max-height: none;
+@media (max-width: 1180px) {
+  .tongue-grid {
+    grid-template-columns: 280px minmax(0, 1fr);
   }
 }
-/* page-header mascot positioning */
-.page-header { display: flex; align-items: center; flex-wrap: wrap; }
-.page-header .mascot-companion {
-  position: relative; top: auto; transform: none;
-  margin-right: 8px; flex-shrink: 0;
+
+@media (max-width: 820px) {
+  .tongue-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 手机上让「上传 → 预览 → 结果」优先，设置与提示后置 */
+  .tongue-col {
+    display: contents;
+  }
+
+  .tongue-col:first-child > .control-panel:nth-child(1) {
+    order: 1;
+  }
+
+  .stage-panel {
+    order: 2;
+  }
+
+  .result-panel {
+    order: 3;
+  }
+
+  .tongue-col:first-child > .control-panel:nth-child(2) {
+    order: 4;
+  }
+
+  .tongue-col:first-child > .control-panel:nth-child(3) {
+    order: 5;
+  }
+
+  .tongue-col:first-child > .control-panel:nth-child(4) {
+    order: 6;
+  }
+
+  .history-panel {
+    order: 7;
+  }
+
+  .tongue-toolbar {
+    align-items: flex-start;
+  }
+
+  .stage-frame {
+    min-height: 300px;
+  }
 }
 
+@media (max-width: 640px) {
+  .tongue-tabs button {
+    padding: 0 11px;
+    font-size: 11px;
+  }
+
+  .stage-frame {
+    min-height: 240px;
+  }
+
+  .result-syndrome {
+    font-size: 22px;
+  }
+}
 </style>
