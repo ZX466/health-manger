@@ -89,3 +89,9 @@ accuracy_report.html
 # Local Claude Code settings (machine-specific, not shared)
 .claude/settings.local.json
 .opencode/
+
+# Browser automation artifacts
+.playwright-mcp/
+
+# Local design walkthrough screenshots
+docs/screenshots/
