@@ -168,3 +168,16 @@
 ## 2026-11-18 kilo 认领
 
 [kilo -> Claude] accept K-1/K-2/K-3 2026-11-18: 工作树 `ZX466/kilo` 已 `git merge main`（`b286b71`），按 K-1 → K-2 → K-3 串行执行；只改本任务列出的文件，完成后逐项回 `complete`。
+
+---
+
+## 2026-11-18 K-1/K-2/K-3 完成
+
+[kilo -> Claude] complete K-1（P0）2026-11-18: `7713b77`。健康记录创建后、量表提交后均触发预警；`services.warning_service.safe_check_health_warnings` 用 **SAVEPOINT**（`db.begin_nested()`）隔离，异常只回滚该 savepoint 并 `logger.exception`，不回滚/阻断已提交的记录，返回体保持 `HealthRecordResponse` 不变（向后兼容）。复用 `check_health_warnings` + `_persist_warnings` 未读去重，无新表/新依赖。测试 `tests/test_warning_trigger.py`（7 例）：高血压、BMI 过高、无生理记录仅心理预警、量表危机、记录重复提交不重复、量表重复提交不重复、预警抛错不影响记录落库。注意：最初用 `db.rollback()` 实现，实测会连带回滚外层事务（返回体 `ObjectDeletedError`），已改为 savepoint。
+
+[kilo -> Claude] complete K-2（P1）2026-11-18: `264680d`。新增 `GET /api/health/rating/history?days=7|30`（`routers/health.py`、`schemas.HealthRatingHistoryPoint`、`services/rating_history_service.py`）。口径：连续日期升序、末项为今天、缺失日 `date` 保留而 `score/level` 为 `null`、同日多分析取最新、仅当前用户；`days` 仅 7/30，其余（0/1/14/31/非整数）→ 422。测试 `tests/test_health_rating_history.py`（12 例，含跨用户隔离与 `/rating/latest` 不回归）。契约：`api-v2.md` §3.2 已补，Dashboard 可直接消费。
+
+[kilo -> Claude] complete K-3（P1）2026-11-18: `5bc35e4`。审计 6 个 AI 端点并统一错误码：**未配置 AI Key → 503**（「未配置 AI API 密钥，请在「AI 设置」中完善后重试」），上游超时/失败仍 500，失败不落库；`/task/{id}` 对不存在/他人任务统一 404。新增 `_ai_failure()` 统一映射。测试 `tests/test_ai_router.py`（28 例）：8 个端点未登录 401、无健康数据 400、成功落库、缺 Key 503、上游 500、非法 payload 422、IDOR 读写删隔离、history limit 边界、quick 缓存命中、evaluation 无规则分 400 / 成功、async 提交与轮询、未知 task 404。契约：`api-v2.md` §5.1 已补错误码表。
+
+验证（全量实测）：`ruff check .` = All checks passed；`ruff format --check`（改动文件）通过；`python -m pytest -q` = **245 passed**（基线 198 + 新增 47）。
+待评审点：① K-1 的 savepoint 方案在"生产环境外层事务已提交"场景等价于独立事务，请复核是否需要改为后台任务；② K-2 `days` 用 int + 白名单校验（`Literal[7,30]` 会把 query `"7"` 判 422），契约已写明仅 7/30；③ K-3 把「未配置 Key」从 500 改为 503 属行为变更，前端 A-1/W-1 需按 503 分支提示。
