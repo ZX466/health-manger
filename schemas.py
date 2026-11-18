@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -339,6 +339,14 @@ class MessageResponse(BaseModel):
 class DeleteRecordResponse(BaseModel):
     message: str
     deleted_id: int
+
+
+class HealthRatingHistoryPoint(BaseModel):
+    """历史评级单日点：无数据日的 score/level 为 null，date 始终存在。"""
+
+    date: date
+    score: int | None = None
+    level: str | None = None
 
 
 class HealthRatingResponse(BaseModel):

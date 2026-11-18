@@ -14,6 +14,7 @@ from auth import get_current_user
 from database import get_db
 from services.scale_scoring import SCALES, score
 from services.security_service import check_rate_limit
+from services.warning_service import safe_check_health_warnings
 
 router = APIRouter(prefix="/api/mental", tags=["心理健康"])
 
@@ -111,6 +112,7 @@ def submit_scale(
     assessment, _ = _mental_service().save_assessment(
         db, current_user.id, scale_type, payload.answers
     )
+    safe_check_health_warnings(current_user.id, db)
     return {
         "id": getattr(assessment, "id", None),
         **result.to_dict(),

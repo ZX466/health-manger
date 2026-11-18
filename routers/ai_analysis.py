@@ -42,6 +42,16 @@ _EVALUATION_CONFIG = LLMConfig(
 )
 
 
+NO_AI_KEY_DETAIL = "未配置 AI API 密钥，请在「AI 设置」中完善后重试"
+
+
+def _ai_failure(exc: Exception, action: str) -> HTTPException:
+    """统一 AI 调用失败映射：缺 Key → 503（可操作提示），其余 → 500。"""
+    if isinstance(exc, ValueError) and "密钥" in str(exc):
+        return HTTPException(status_code=503, detail=NO_AI_KEY_DETAIL)
+    return HTTPException(status_code=500, detail=f"{action}失败，请稍后重试")
+
+
 def _extract_health_data(record: models.HealthRecord) -> dict:
     return {
         "身高": f"{record.height}cm" if record.height else "未知",
@@ -102,9 +112,9 @@ async def create_ai_analysis(
         return db_analysis
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("AI 分析失败")
-        raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
+        raise _ai_failure(exc, "AI 分析") from exc
 
 
 @router.get("/analysis/history", response_model=list[schemas.AIAnalysisResponse])
@@ -195,9 +205,9 @@ async def quick_health_analysis(
                 messages, build_llm_config_for_user(db, current_user.id, _QUICK_CONFIG)
             )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
-        except Exception:
+        except Exception as exc:
             logger.exception("AI 快速分析失败")
-            raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
+            raise _ai_failure(exc, "AI 分析") from exc
 
     db_analysis = models.AIAnalysis(
         user_id=current_user.id,
@@ -263,9 +273,9 @@ async def llm_health_evaluation(
                 messages, build_llm_config_for_user(db, current_user.id, _EVALUATION_CONFIG)
             )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
-        except Exception:
+        except Exception as exc:
             logger.exception("LLM 健康评价失败")
-            raise HTTPException(status_code=500, detail="健康评价失败，请稍后重试")
+            raise _ai_failure(exc, "健康评价") from exc
 
     db_eval = models.AIAnalysis(
         user_id=current_user.id,
