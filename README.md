@@ -117,7 +117,7 @@ cd frontend
 npm run dev
 ```
 
-访问 <http://localhost:3000>。Vite 会把 `/api` 代理到 8420。
+启动后终端会打印本次的随机四位数端口（4000–7999），访问 `http://localhost:<端口>`。Vite 会把 `/api` 代理到 8420。
 
 ### 5. 验证
 
