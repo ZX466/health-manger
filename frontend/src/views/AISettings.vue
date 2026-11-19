@@ -52,6 +52,38 @@
         :testing="visionTesting" :saving="visionSaving" :result="visionResult" uid="vision"
         @update:form="visionForm = $event" @test="testVision" @save="saveVision" @reset="resetVision" />
     </section>
+
+    <!-- 偏好与提醒（视觉占位，暂无后端） -->
+    <section class="card v21-panel pref-panel">
+      <div class="section-head">
+        <h2>偏好与提醒</h2>
+        <span class="pill pill--warn">即将上线</span>
+      </div>
+      <p class="hint">这里会放每日提醒和数据管理。当前仅展示样式，开关与按钮暂不可用。</p>
+      <div class="pref-grid">
+        <div class="pref-card">
+          <div>
+            <p class="pref-label">每日打卡提醒</p>
+            <p class="pref-value">20:00 <span>· 未开启</span></p>
+          </div>
+          <button class="pref-switch" type="button" role="switch" aria-checked="false" aria-disabled="true" disabled>
+            <span></span>
+          </button>
+          <p class="pref-note">上线后会在固定时间提醒你记录情绪与饮食。</p>
+        </div>
+        <div class="pref-card">
+          <div>
+            <p class="pref-label">数据与隐私</p>
+            <p class="pref-value">仅自己可见 <span>· 本地账号隔离</span></p>
+          </div>
+          <div class="pref-actions">
+            <button class="pref-btn" type="button" disabled>导出数据</button>
+            <button class="pref-btn" type="button" disabled>删除数据</button>
+          </div>
+          <p class="pref-note">健康数据存放在你的账号下；导出与删除功能规划中。</p>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -211,4 +243,25 @@ export default {
 .style-section { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .style-section .section-head { margin-bottom: 0; }
 .style-section .hint { margin: 0 0 2px; }
+.pref-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.pref-card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px; border: 1px solid var(--line); border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+.pref-label { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+.pref-value { margin: 0; font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--ink); }
+.pref-value span { font-family: var(--font-body, inherit); font-size: 12px; font-weight: 400; color: var(--muted-2); }
+.pref-switch {
+  width: 40px; height: 22px; padding: 2px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface-3); display: flex; align-items: center; cursor: not-allowed; opacity: .7;
+}
+.pref-switch span { width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.16); }
+.pref-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pref-btn {
+  padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); font-size: 12px; cursor: not-allowed; opacity: .6;
+}
+.pref-note { margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted-2); }
+@media (max-width: 640px) { .pref-grid { grid-template-columns: 1fr; } }
 </style>
