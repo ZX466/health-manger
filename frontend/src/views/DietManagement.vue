@@ -145,7 +145,7 @@
             @input="searchFoods"
             class="search-input"
           />
-          <button v-if="isAdmin" @click="showAddFood = true" class="btn btn-ghost" type="button">
+          <button v-if="isAdmin" @click="openAddFood" class="btn btn-ghost" type="button">
             <AppIcon name="plus" :size="15" />
             添加食物
           </button>
@@ -166,6 +166,10 @@
               添加到记录
               <AppIcon name="arrow" :size="14" />
             </button>
+            <div v-if="isAdmin" class="food-admin-actions">
+              <button type="button" class="food-admin-btn" @click="openEditFood(food)">编辑</button>
+              <button type="button" class="food-admin-btn food-admin-btn--danger" @click="confirmDeleteFood(food)">删除</button>
+            </div>
           </article>
         </div>
       </section>
@@ -339,9 +343,9 @@
       </div>
     </div>
 
-    <div v-if="showAddFood" class="modal-overlay" @click="showAddFood = false">
+    <div v-if="showAddFood" class="modal-overlay" @click="closeFoodModal">
       <div class="modal" @click.stop>
-        <h2>添加食物</h2>
+        <h2>{{ editingFoodId ? '编辑食物' : '添加食物' }}</h2>
         <form @submit.prevent="submitFood">
           <div class="form-group">
             <label>食物名称</label>
@@ -371,8 +375,8 @@
             <input type="number" v-model.number="newFood.carbs_per_100g" step="0.1" />
           </div>
           <div class="modal-actions">
-            <button type="button" @click="showAddFood = false" class="btn-cancel">取消</button>
-            <button type="submit" class="btn-submit">确定</button>
+            <button type="button" @click="closeFoodModal" class="btn-cancel">取消</button>
+            <button type="submit" class="btn-submit">{{ editingFoodId ? '保存' : '确定' }}</button>
           </div>
         </form>
       </div>
@@ -407,6 +411,8 @@ export default {
       foodSearch: '',
       showAddRecord: false,
       showAddFood: false,
+      editingFoodId: null,
+      deletingFoodId: null,
       isAdmin: false,
       newRecord: { food_id: '', quantity_grams: '', meal_type: 'lunch' },
       newFood: { name: '', category: '', calories_per_100g: 0, protein_per_100g: 0, carbs_per_100g: 0 },
@@ -510,15 +516,69 @@ export default {
         alert('添加失败：' + this.errMsg(err))
       }
     },
-    async submitFood() {
+    openAddFood() {
+      this.editingFoodId = null
+      this.newFood = { name: '', category: '', calories_per_100g: 0, protein_per_100g: 0, carbs_per_100g: 0 }
+      this.showAddFood = true
+    },
+    async openEditFood(food) {
+      this.editingFoodId = food.id
+      this.newFood = {
+        name: food.name,
+        category: food.category || '',
+        calories_per_100g: food.calories_per_100g || 0,
+        protein_per_100g: food.protein_per_100g || 0,
+        carbs_per_100g: food.carbs_per_100g || 0
+      }
+      this.showAddFood = true
       try {
-        await api.createFood(this.newFood)
-        this.showAddFood = false
+        const { data } = await api.getFood(food.id)
+        if (data && this.editingFoodId === food.id) {
+          this.newFood = {
+            name: data.name,
+            category: data.category || '',
+            calories_per_100g: data.calories_per_100g || 0,
+            protein_per_100g: data.protein_per_100g || 0,
+            carbs_per_100g: data.carbs_per_100g || 0
+          }
+        }
+      } catch (err) {
+        // 详情接口失败时保留列表快照，仍可编辑。
+      }
+    },
+    closeFoodModal() {
+      this.showAddFood = false
+      this.editingFoodId = null
+    },
+    async submitFood() {
+      const isEdit = !!this.editingFoodId
+      try {
+        if (isEdit) {
+          await api.updateFood(this.editingFoodId, this.newFood)
+        } else {
+          await api.createFood(this.newFood)
+        }
+        this.closeFoodModal()
         this.newFood = { name: '', category: '', calories_per_100g: 0, protein_per_100g: 0, carbs_per_100g: 0 }
         await this.loadFoods()
-        alert('添加成功')
+        alert(isEdit ? '更新成功' : '添加成功')
       } catch (err) {
-        alert('添加失败：' + this.errMsg(err))
+        alert((isEdit ? '更新失败：' : '添加失败：') + this.errMsg(err))
+      }
+    },
+    async confirmDeleteFood(food) {
+      if (this.deletingFoodId) return
+      if (!confirm(`确定删除「${food.name}」吗？该食物会从食物库移除，已有记录不受影响。`)) return
+      this.deletingFoodId = food.id
+      try {
+        await api.deleteFood(food.id)
+        this.foods = this.foods.filter(item => item.id !== food.id)
+        await this.loadFoods()
+        alert('删除成功')
+      } catch (err) {
+        alert('删除失败：' + this.errMsg(err))
+      } finally {
+        this.deletingFoodId = null
       }
     },
     async deleteRecord(id) {
@@ -940,5 +1000,23 @@ export default {
 }
 .mascot-cat-companion { left: 15px; }
 .mascot-nailong-companion { right: 15px; }
+
+.food-admin-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.food-admin-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.food-admin-btn:hover { color: var(--fg); }
+.food-admin-btn--danger { color: var(--danger); border-color: currentColor; }
 
 </style>

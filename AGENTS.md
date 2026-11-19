@@ -6,7 +6,7 @@
 
 - 大学生健康管理系统：FastAPI + SQLAlchemy 2.0 + SQLite 后端，Vue 3 + Vite 5 前端，JWT 认证；身心健康双维（健康记录 + 心理空间）。
 - AI：默认智谱 GLM-4.5-Air（聊天 / 分析）+ 火山 ARK 豆包视觉模型（舌诊）；支持每用户在「AI 设置」页自定义双模型，API Key 以 Fernet 加密存储；聊天支持 SSE 流式与 safety 安全首帧。
-- 测试：`uv run python -m pytest -q`（或 `.venv/Scripts/python.exe -m pytest -q`），当前 198 passed。
+- 测试：`uv run python -m pytest -q`（或 `.venv/Scripts/python.exe -m pytest -q`），当前 271 passed；前端 `cd frontend && npm test`（node:test）27 passed。
 
 ## 工作方式
 

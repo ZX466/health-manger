@@ -16,6 +16,10 @@ export function updateFood (id, data) {
   return http.put(`/food/foods/${id}`, data)
 }
 
+export function deleteFood (id) {
+  return http.delete(`/food/foods/${id}`)
+}
+
 export function createFoodRecord (data) {
   return http.post('/food/records', data)
 }
@@ -52,6 +56,7 @@ export default {
   getFood,
   createFood,
   updateFood,
+  deleteFood,
   createFoodRecord,
   getFoodRecords,
   getFoodStats,

@@ -40,6 +40,9 @@ export default {
   updateSport(id, data) {
     return http.put(`/sport/sports/${id}`, data)
   },
+  deleteSport(id) {
+    return http.delete(`/sport/sports/${id}`)
+  },
   createSportRecord(data) {
     return http.post('/sport/records', data)
   },
