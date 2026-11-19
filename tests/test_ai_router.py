@@ -34,6 +34,33 @@ def _clear_llm_cache():
     llm_response_cache.clear()
 
 
+@pytest.fixture
+def task_queue_db(tmp_path):
+    """把全局 task_queue 的 session_factory 指向隔离库，供异步端点测试。"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    import async_tasks
+    from database import Base
+
+    db_path = str(tmp_path / "async_tasks.db")
+    eng = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False, "timeout": 30},
+    )
+    Base.metadata.create_all(bind=eng)
+    factory = sessionmaker(bind=eng, autocommit=False, autoflush=False)
+
+    original = async_tasks.task_queue._session_factory
+    async_tasks.task_queue._session_factory = factory
+    async_tasks.task_queue.running = False
+    async_tasks.task_queue.workers.clear()
+    async_tasks.task_queue.cleanup_thread = None
+    yield factory
+    async_tasks.task_queue._session_factory = original
+    eng.dispose()
+
+
 # ── 鉴权 ──────────────────────────────────────────────
 
 
@@ -292,13 +319,23 @@ async def test_async_analysis_requires_health_data(client):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_async_analysis_submits_and_status_is_pollable(client, db, test_user):
+async def test_async_analysis_submits_and_status_is_pollable(client, db, test_user, task_queue_db):
     _seed_health_record(db, test_user.id)
     resp = await client.post("/api/ai/async-analysis", json={"request_content": "分析"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "pending"
     assert body["task_id"]
+
+    # 任务行持久化在注入的队列库中
+    from models import AsyncTask
+
+    session = task_queue_db()
+    row = session.query(AsyncTask).filter(AsyncTask.task_id == body["task_id"]).first()
+    assert row is not None
+    assert row.status == "pending"
+    assert row.user_id == test_user.id
+    session.close()
 
     status = await client.get(f"/api/ai/task/{body['task_id']}")
     assert status.status_code == 200
@@ -313,44 +350,73 @@ async def test_task_status_unknown_id_returns_404(client):
 
 
 def test_run_llm_sync_returns_json_serializable_result(monkeypatch):
-    from routers import ai_analysis
+    from async_tasks import _run_llm_sync
 
     async def fake_call_llm(messages, config):
         return "同步包装结果", 7
 
-    monkeypatch.setattr(ai_analysis, "call_llm", fake_call_llm)
-    result = ai_analysis._run_llm_sync([], object())
+    monkeypatch.setattr("async_tasks.call_llm", fake_call_llm)
+    result = _run_llm_sync([], object())
     assert result == {"content": "同步包装结果", "tokens_used": 7}
 
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_completed_task_result_is_persisted_once(client, db, test_user):
-    from async_tasks import TaskResult, task_queue
+async def test_completed_task_result_is_readable_and_stable(client, db, test_user, task_queue_db):
+    """已完成任务：GET 返回落库结果（含 analysis_id），多次读取稳定（纯读不再落库）。"""
+    import json
+    from datetime import datetime
+
+    from models import AsyncTask
 
     task_id = "async-persist-test"
-    result = TaskResult(task_id, user_id=test_user.id)
-    result.set_completed({"content": "异步健康建议", "tokens_used": 9})
-    task_queue.results[task_id] = result
-    try:
-        first = await client.get(f"/api/ai/task/{task_id}")
-        assert first.status_code == 200
-        body = first.json()
-        assert body["result"]["content"] == "异步健康建议"
-        analysis_id = body["result"]["analysis_id"]
-        assert analysis_id
-
-        second = await client.get(f"/api/ai/task/{task_id}")
-        assert second.status_code == 200
-        assert second.json()["result"]["analysis_id"] == analysis_id
-
-        rows = (
-            db.query(models.AIAnalysis)
-            .filter(models.AIAnalysis.user_id == test_user.id)
-            .all()
+    session = task_queue_db()
+    session.add(
+        AsyncTask(
+            task_id=task_id,
+            user_id=test_user.id,
+            status="completed",
+            payload="{}",
+            result=json.dumps({"content": "异步健康建议", "tokens_used": 9, "analysis_id": 42}),
+            completed_at=datetime.now(),
         )
-        assert len(rows) == 1
-        assert rows[0].response_content == "异步健康建议"
-        assert rows[0].analysis_type == "AI 异步分析"
-    finally:
-        task_queue.results.pop(task_id, None)
+    )
+    session.commit()
+    session.close()
+
+    first = await client.get(f"/api/ai/task/{task_id}")
+    assert first.status_code == 200
+    body = first.json()
+    assert body["result"]["content"] == "异步健康建议"
+    assert body["result"]["analysis_id"] == 42
+
+    second = await client.get(f"/api/ai/task/{task_id}")
+    assert second.status_code == 200
+    assert second.json()["result"]["analysis_id"] == 42
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_async_task_rejects_task_of_other_user(client, app, db, test_user, task_queue_db):
+    """用户隔离：A 用户提交的任务，B 用户查询返回 404。"""
+    from httpx import ASGITransport, AsyncClient
+
+    from auth import create_access_token
+
+    _seed_health_record(db, test_user.id)
+    resp = await client.post("/api/ai/async-analysis", json={"request_content": "分析"})
+    task_id = resp.json()["task_id"]
+
+    other = models.User(
+        name="otheruser",
+        password_hash="x",
+        invite_code="health2026",
+    )
+    db.add(other)
+    db.flush()
+    other_token = create_access_token(data={"sub": str(other.id)})
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        ac.headers["Authorization"] = f"Bearer {other_token}"
+        status = await ac.get(f"/api/ai/task/{task_id}")
+    assert status.status_code == 404
