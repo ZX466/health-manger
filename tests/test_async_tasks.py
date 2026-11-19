@@ -274,3 +274,54 @@ def test_start_and_stop_creates_workers(queue):
     assert len(queue.workers) == queue.max_workers
     queue.stop()
     assert queue.running is False
+
+
+def test_stale_worker_cannot_complete_recovered_task(queue, monkeypatch):
+    """恢复结算后，旧 worker 的晚到结果不得覆盖终态，也不得落分析记录（P1 回归）。"""
+    queue.submit_task("stale-complete", user_id=1, messages=[{"role": "user", "content": "x"}])
+    monkeypatch.setattr(
+        "async_tasks._run_llm_sync",
+        lambda messages, config: {"content": "晚到结果", "tokens_used": 1},
+    )
+    claimed = queue._claim_task()
+    assert claimed is not None
+
+    # 模拟启动恢复：任务被判 failed 并清空领取令牌
+    queue._recover_interrupted()
+    assert queue.get_task_status("stale-complete")["status"] == "failed"
+
+    queue._execute_task(claimed)
+
+    status = queue.get_task_status("stale-complete")
+    assert status["status"] == "failed"  # 未被旧 worker 覆盖为 completed
+    assert status["result"] is None
+    session = queue._session_factory()
+    try:
+        assert session.query(models.AIAnalysis).filter_by(user_id=1).count() == 0
+    finally:
+        session.close()
+
+
+def test_stale_worker_cannot_mark_failed_after_settlement(queue):
+    """令牌失效后，旧 worker 的失败标记不得覆盖已结算状态。"""
+    queue.submit_task("stale-failed", user_id=1, messages=[])
+    claimed = queue._claim_task()
+    assert claimed is not None
+
+    queue._recover_interrupted()  # 恢复先结算为 failed 且清空令牌
+    # 模拟任务随后被新 worker 完成
+    session = queue._session_factory()
+    try:
+        task = session.query(models.AsyncTask).filter_by(task_id="stale-failed").first()
+        task.status = TaskStatus.COMPLETED.value
+        task.result = json.dumps({"content": "新 worker 结果"})
+        task.claim_token = None
+        session.commit()
+    finally:
+        session.close()
+
+    queue._mark_failed("stale-failed", "旧 worker 失败", claimed.claim_token)
+
+    status = queue.get_task_status("stale-failed")
+    assert status["status"] == "completed"
+    assert status["result"] == {"content": "新 worker 结果"}

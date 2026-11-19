@@ -13,7 +13,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, NamedTuple
 
-from sqlalchemy import text
+from sqlalchemy import text, update
 
 import models
 import settings
@@ -48,6 +48,7 @@ class _ClaimedTask(NamedTuple):
     user_id: int
     payload: str
     created_at: datetime
+    claim_token: str | None
 
 
 def _run_llm_sync(messages: list, config: LLMConfig) -> dict:
@@ -195,6 +196,7 @@ class AsyncTaskQueue:
                 user_id=task.user_id,
                 payload=task.payload,
                 created_at=task.created_at,
+                claim_token=task.claim_token,
             )
         finally:
             session.close()
@@ -223,39 +225,59 @@ class AsyncTaskQueue:
             session.flush()  # 仅取自增主键，与任务状态同事务提交
             result["analysis_id"] = analysis.id
 
-            task = (
-                session.query(models.AsyncTask)
-                .filter(models.AsyncTask.task_id == claimed.task_id)
-                .first()
-            )
-            task.status = TaskStatus.COMPLETED.value
-            task.result = json.dumps(result)
-            task.completed_at = datetime.now()
-            task.claim_token = None
+            # 终态写入必须仍持有领取令牌：恢复/重领后旧 worker 不得覆盖新状态。
+            updated = session.execute(
+                update(models.AsyncTask)
+                .where(
+                    models.AsyncTask.task_id == claimed.task_id,
+                    models.AsyncTask.claim_token == claimed.claim_token,
+                    models.AsyncTask.status == TaskStatus.RUNNING.value,
+                )
+                .values(
+                    status=TaskStatus.COMPLETED.value,
+                    result=json.dumps(result),
+                    completed_at=datetime.now(),
+                    claim_token=None,
+                )
+            ).rowcount
+            if not updated:
+                # 领取已失效（启动恢复或重领）：结果与分析记录一并回滚。
+                session.rollback()
+                logger.warning("任务 %s 的领取已失效，丢弃本 worker 结果", claimed.task_id)
+                return
             session.commit()  # 单一事务：分析 + 任务完成一起落库
         except Exception as exc:
             session.rollback()
             logger.error("任务 %s 执行失败 (error=%s)", claimed.task_id, type(exc).__name__)
-            self._mark_failed(claimed.task_id, _public_task_error(exc))
+            self._mark_failed(claimed.task_id, _public_task_error(exc), claimed.claim_token)
         finally:
             session.close()
 
-    def _mark_failed(self, task_id: str, error: str):
-        """独立事务把任务标记为 failed 并立即提交，避免状态变更被打断导致任务卡在 running。"""
+    def _mark_failed(self, task_id: str, error: str, claim_token: str | None):
+        """独立事务把任务标记为 failed 并立即提交，避免状态变更被打断导致任务卡在 running。
+
+        仅在任务仍由本 worker 持有（令牌匹配且 running）时生效；
+        已被恢复/重领/结算的任务保持原状态，不被旧 worker 覆盖。
+        """
         session = self._session_factory()
         try:
-            task = (
-                session.query(models.AsyncTask)
-                .filter(models.AsyncTask.task_id == task_id)
-                .first()
-            )
-            if task is None:
-                return
-            task.status = TaskStatus.FAILED.value
-            task.error = error
-            task.completed_at = datetime.now()
-            task.claim_token = None
+            updated = session.execute(
+                update(models.AsyncTask)
+                .where(
+                    models.AsyncTask.task_id == task_id,
+                    models.AsyncTask.claim_token == claim_token,
+                    models.AsyncTask.status == TaskStatus.RUNNING.value,
+                )
+                .values(
+                    status=TaskStatus.FAILED.value,
+                    error=error,
+                    completed_at=datetime.now(),
+                    claim_token=None,
+                )
+            ).rowcount
             session.commit()
+            if not updated:
+                logger.info("任务 %s 已由他处结算，跳过 failed 标记", task_id)
         except Exception as exc:
             session.rollback()
             logger.error("标记任务 %s 为 failed 失败: %s", task_id, exc)
