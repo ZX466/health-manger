@@ -184,6 +184,35 @@ class AIAnalysis(Base):
     user = relationship("User", backref="ai_analyses")
 
 
+class AsyncTask(Base):
+    """异步任务持久化：提交 / 原子领取 / 状态查询 / 启动恢复。
+
+    payload 仅存消息列表，不存 LLM 配置，避免用户 API Key 明文落库；
+    领取时由 worker 按 user_id 重新解析用户 AI 配置（密钥仅在内存解密）。
+    """
+
+    __tablename__ = "async_tasks"
+    __table_args__ = (
+        UniqueConstraint("task_id", name="uq_async_tasks_task_id"),
+        Index("ix_async_tasks_task_id", "task_id"),
+        Index("ix_async_tasks_user_status", "user_id", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(String(32), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String(20), nullable=False, default="pending", server_default="pending")
+    payload = Column(Text, nullable=False)
+    result = Column(Text, nullable=True)
+    error = Column(String(200), nullable=True)
+    claim_token = Column(String(32), nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    claimed_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", backref="async_tasks")
+
+
 class UserHealthGoal(Base):
     __tablename__ = "user_health_goals"
 

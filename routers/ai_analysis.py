@@ -299,38 +299,13 @@ async def llm_health_evaluation(
     }
 
 
-def _run_llm_sync(messages: list, config: LLMConfig) -> dict:
-    """同步包装：在工作线程中运行异步 LLM 调用。
-
-    返回 dict 而不是 tuple，保证 /task/{id} 的 result 能通过
-    AsyncTaskStatus 的 Pydantic 校验，也方便前端直接读取 content。
-    """
-    import asyncio
-
-    loop = asyncio.new_event_loop()
-    try:
-        content, tokens_used = loop.run_until_complete(call_llm(messages, config))
-        return {"content": content, "tokens_used": tokens_used}
-    finally:
-        loop.close()
-
-
-def _normalize_async_result(result) -> dict | None:
-    """兼容旧任务的 tuple 结果，返回可 JSON 化的 dict。"""
-    if isinstance(result, dict):
-        return dict(result)
-    if isinstance(result, (list, tuple)) and len(result) >= 2:
-        return {"content": result[0], "tokens_used": result[1]}
-    return None
-
-
 @router.post("/async-analysis", response_model=schemas.AsyncTaskStatus)
 async def async_ai_analysis(
     analysis: schemas.AIAnalysisCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """异步 AI 分析：提交到后台队列，通过 task_id 轮询结果"""
+    """异步 AI 分析：提交到持久化后台队列，通过 task_id 轮询结果。"""
     check_rate_limit(f"ai_async:{current_user.id}", max_requests=5, window_seconds=60)
 
     health_records = (
@@ -351,12 +326,7 @@ async def async_ai_analysis(
 
     from async_tasks import task_queue
 
-    task_queue.submit_task(
-        task_id,
-        _run_llm_sync,
-        args=(messages, build_llm_config_for_user(db, current_user.id, _ANALYSIS_CONFIG)),
-        user_id=current_user.id,
-    )
+    task_queue.submit_task(task_id, user_id=current_user.id, messages=messages)
 
     return schemas.AsyncTaskStatus(
         task_id=task_id,
@@ -368,36 +338,13 @@ async def async_ai_analysis(
 async def get_task_status(
     task_id: str,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
-    """查询异步任务状态；首次完成时落库，返回 analysis_id 供前端跳转历史。"""
+    """查询异步任务状态（从持久化队列读取，结果已含落库后的 analysis_id）。"""
     from async_tasks import task_queue
 
     status = task_queue.get_task_status(task_id, user_id=current_user.id)
     if not status:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
-
-    if status.get("status") == "completed":
-        result = _normalize_async_result(status.get("result"))
-        if result is not None:
-            if not result.get("analysis_id") and result.get("content"):
-                try:
-                    db_analysis = models.AIAnalysis(
-                        user_id=current_user.id,
-                        request_content="异步 AI 分析",
-                        response_content=result["content"],
-                        analysis_type="AI 异步分析",
-                        tokens_used=result.get("tokens_used"),
-                    )
-                    db.add(db_analysis)
-                    db.commit()
-                    db.refresh(db_analysis)
-                    result["analysis_id"] = db_analysis.id
-                    task_queue.update_result(task_id, result)
-                except Exception as exc:
-                    db.rollback()
-                    logger.error("异步 AI 分析落库失败 (error=%s)", type(exc).__name__)
-            status["result"] = result
 
     return schemas.AsyncTaskStatus(**status)
 
