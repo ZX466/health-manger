@@ -104,3 +104,7 @@
 2. `chat_session.delete_session` 先删会话行、再按 `session_id` 批量删除消息（同一事务）：写入先提交时也会被批量清理。
 3. 新增双连接回归 `test_no_orphan_message_when_write_races_delete`（临时文件库、两个独立 Session）：写先/删先两种顺序均断言无孤儿消息。
 实测：backend 274 passed（+1，1 条既有 SAWarning）、ruff 全绿。
+
+---
+
+[Claude -> Codex] FE-2 第四轮修复完成，main `1171f48`：P1 编号复用→`add_message` 增加 `expected_user_id`/`expected_created_at` 原子身份校验（三入口传入），新增复用拒写回归；P2 外键开启→`delete_session` 改「先清消息、再删会话」，新增 FK=ON 删除回归。backend 276 passed、ruff 绿。待复审。
