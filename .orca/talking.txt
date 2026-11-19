@@ -249,3 +249,76 @@
 - 前端新增 `utils/aiModes.js`（result 兼容 tuple/dict、状态文案），4 例回归；后端新增 2 例回归。
 - 验证：backend 271 passed，frontend 27 passed，`npm run build` 通过。
 - 文档：`docs/feature-coverage.md` 更新为 59 已接入 / 10 仅封装 / 2 未封装，AI 12/12。
+
+---
+
+## 本轮派单（2026-11-19 11:00）
+
+依据：项目全览确认的 5 项缺口。基线 main `c577392`：72 个 `/api` 路由（71 业务 + 1 探活）；后端 271 passed、前端 27 passed、ruff 绿、build 通过。
+
+### 任务表
+
+| 任务 | Agent | 内容 | 优先级 | 依赖 | 评审 |
+|---|---|---|---|---|---|
+| FE-2 | Claude | P2 端点前端闭环（9 仅封装 + 2 未封装） | P1 | 无 | Codex |
+| DB-2 | opencode | 孤儿表治理评估（health_articles / user_health_goals） | P2 | 无 | Codex |
+| ASYNC-1 | opencode | 异步任务队列持久化与恢复 | P1 | DB-2 | Codex |
+| DOC-2 | cline | 文档漂移校准 | P2 | 无；代码任务合并后复校 | Claude |
+| E2E-1 | Claude | 核心链路自动化 E2E 冒烟 + CI | P2 | FE-2 | Codex |
+
+### 详细任务
+
+[Claude -> Claude] assign FE-2（P1）：P2 端点前端闭环。
+- 聊天：`DELETE /api/chat/session/{id}` 增加删除入口（二次确认；删除后切换或清空当前会话）；`POST /api/chat/session/{id}/message` 为 v1 非流式遗留，保留封装并注明废弃，不补 UI。
+- 健康记录：`GET /api/health/records/{id}` 详情抽屉/弹窗，从列表进入，展示完整字段与评级。
+- 舌诊：`GET /api/tongue/stats/summary` 统计卡（总次数/最近证型）；`DELETE /api/tongue/{id}` 删除确认。
+- 饮食/运动：自定义条目支持 `GET/PUT/DELETE /api/food/foods/{id}` 与 `/api/sport/sports/{id}` 的查看/编辑/删除；补 `DELETE` 前端封装；内置条目只读，遵循后端规则。
+- 文件：`frontend/src/views/{ChatView,HealthRecord,TongueDiagnosis,DietManagement,SportManagement}.vue`、`frontend/src/api/{food,chat,index}.js`、必要样式；不改后端。
+- 验收：10 个端点有 UI 调用链（v1 消息标注废弃）；1280/390 无横向滚动；`npm test`、`npm run build` 通过；更新 `docs/feature-coverage.md` 状态。
+- 评审：Codex。
+
+[Claude -> opencode] assign DB-2（P2）：孤儿表治理评估。
+- 对象：`models.HealthArticle`、`models.UserHealthGoal`（有模型/schema/迁移，无路由/UI/写入）。
+- 核对：代码引用、Alembic 迁移历史、现有行数、种子数据；给出“删除 / 保留并接入 / 暂缓”的结论与理由。
+- 产出：`.orca/decisions/2026-11-19-orphan-tables.md`（不入 git）；若建议删除，附可执行迁移草案与回滚说明。
+- 约束：只读审计；删表迁移必须经用户批准后再执行；不改业务代码、不新增依赖。
+- 验收：报告含 grep 证据、行数、迁移版本、风险；回 `complete` 附结论。
+- 评审：Codex。
+
+[Claude -> opencode] assign ASYNC-1（P1，DB-2 后）：异步任务队列持久化。
+- 现状：`async_tasks.py` 为进程内线程队列，重启丢任务、多 worker 不共享；`/ai/async-analysis` 与 `/ai/task/{id}` 依赖内存态。
+- 目标：新增 SQLite `async_tasks` 表（显式例外：本轮允许新增该表），实现提交、原子领取、状态查询、启动恢复；保持现有 API 契约与前端轮询不变；失败/中断标记 failed；结果仍落 `ai_analyses`。
+- 约束：零新增依赖；Alembic 单头；不改变前端调用方式。
+- 文件：`models.py`、`schemas.py`（如需）、`async_tasks.py`、`routers/ai_analysis.py`、`alembic/versions/*`、`tests/test_async_tasks.py`。
+- 测试：提交→完成→重启后状态可查；并发领取不重复；失败恢复；旧内存路径回归。
+- 验收：pytest 全绿、ruff 绿；说明单进程/多进程边界与迁移回滚。
+- 评审：Codex。
+
+[Claude -> cline] assign DOC-2（P2）：文档漂移校准。
+- `CLAUDE.md`：测试数 198 → 271（并注明前端 27），与 README 一致。
+- `docs/feature-coverage.md`：修正饮食行（明细 8/2/1，汇总写 7/3/1）与总计（60/9/2，非 59/10/2）；基线更新到 `c577392`；补 2026-11-19 校准记录。
+- `.orca/memory.md`：更新到 2026-11-19 当前状态（main `c577392`、271/27、最近任务），清除过期数字。
+- README 与代码不符处一并修正；只改文档。
+- 验收：数字与实测一致、路径可点；回 `complete` 附 diff 摘要。
+- 评审：Claude。
+
+[Claude -> Claude] assign E2E-1（P2，FE-2 后）：核心链路自动化 E2E 冒烟。
+- 目标：遵循工作流 §6，不新增依赖、不启用浏览器自动化；用 pytest + FastAPI TestClient/httpx 覆盖：
+  1) 注册/登录；2) 创建健康记录；3) 预警自动生成/列表/已读；4) 心理打卡 + PHQ-9（危机分支）；5) AI 快速分析（mock LLM）；6) 聊天流式（mock LLM，校验 safety→delta→done 顺序）。
+- 增加 `tests/test_e2e_smoke.py`（或 `tests/e2e/`）+ Makefile `e2e` 目标；可选 `.github/workflows/ci.yml`：backend pytest + frontend npm test/build，不依赖外部 Key。
+- 验收：pytest 全绿；E2E 在无网络、无真实 Key 下可重复；CI 配置语法有效。
+- 评审：Codex。
+
+### 执行顺序
+
+1. 并行起跑：FE-2（Claude）、DB-2（opencode）、DOC-2（cline）。
+2. opencode 串行：DB-2 → ASYNC-1（都动 models/迁移，禁止并行）。
+3. Claude 串行：FE-2 → E2E-1（E2E 覆盖新 UI/接口）。
+4. DOC-2 先修确定性漂移；代码任务合并后二次校准。
+5. 建议合并顺序：FE-2 → ASYNC-1 → DOC-2 → E2E-1；DB-2 为报告，不阻塞。
+6. 各树开工前 `git merge main`（`c577392`），回 `accept` 后开工；完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试 + 待评审点`。
+
+### 待用户裁决
+
+- ASYNC-1 新增 `async_tasks` 表：上一轮统一口径为“只允许三处表结构变更”，本轮按缺口 3 显式放行；若不同意，ASYNC-1 降级为只出 ADR。
+- DB-2 若结论为删表，迁移执行前需用户确认。
