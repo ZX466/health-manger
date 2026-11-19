@@ -193,3 +193,137 @@ def test_delete_session_is_durable():
         assert gone is None, "删除未生效：delete_session 没有 commit"
     finally:
         s3.close()
+
+
+@pytest.mark.asyncio
+async def test_send_message_binds_identity_across_both_writes(tmp_path, monkeypatch):
+    """入口级回归：普通发送的两次写入必须共用请求进入时的会话身份。
+
+    场景：用户消息提交后，原会话被删除、编号被替换会话复用；
+    第二次（助手）写入若重新读取 ORM 属性，会刷新成替换会话身份并把
+    晚到回复写进替换会话。修复后第二次写入应仍按原身份被原子拒绝 → 404。
+    """
+    from fastapi import HTTPException
+
+    import schemas
+    from routers import chat as chat_router
+
+    eng = create_engine(f"sqlite:///{tmp_path / 'send-race.db'}")
+    Base.metadata.create_all(bind=eng)
+
+    db = Session(eng)
+    session = create_session(db=db, user_id=1)
+    session_id = session.id  # capture before expire
+
+    async def fake_call_llm(messages, config):
+        return "助手答复", 5
+
+    monkeypatch.setattr(chat_router, "call_llm", fake_call_llm)
+
+    real_add = chat_router.add_message
+    state = {"calls": 0}
+
+    def add_then_replace(**kwargs):
+        result = real_add(**kwargs)
+        state["calls"] += 1
+        if state["calls"] == 1:
+            # 用户消息已提交：另一连接删除原会话并创建同编号替换会话
+            other = Session(eng)
+            try:
+                other.query(chat_session.ChatMessage).filter_by(
+                    session_id=session_id
+                ).delete()
+                other.query(chat_session.ChatSession).filter_by(id=session_id).delete()
+                other.commit()
+                replacement = create_session(db=other, user_id=1)
+                assert replacement.id == session_id
+                other.add(
+                    chat_session.ChatMessage(
+                        session_id=session_id, role="user", content="替换会话消息"
+                    )
+                )
+                other.commit()
+            finally:
+                other.close()
+        return result
+
+    monkeypatch.setattr(chat_router, "add_message", add_then_replace)
+
+    class FakeUser:
+        id = 1
+
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            await chat_router.send_message(
+                session_id,
+                schemas.ChatMessageCreate(content="你好"),
+                FakeUser(),
+                db,
+            )
+        assert exc_info.value.status_code == 404
+    finally:
+        db.close()
+
+    check = Session(eng)
+    try:
+        assert (
+            check.query(chat_session.ChatSession).filter_by(id=session_id).count() == 1
+        )
+        messages = (
+            check.query(chat_session.ChatMessage)
+            .filter_by(session_id=session_id)
+            .all()
+        )
+        assert [m.content for m in messages] == ["替换会话消息"]
+    finally:
+        check.close()
+    eng.dispose()
+
+
+def test_delete_session_does_not_touch_replacement(tmp_path, monkeypatch):
+    """入口级回归：删除检查之后编号被复用，清理与删除都不能触碰替换会话。"""
+    eng = create_engine(f"sqlite:///{tmp_path / 'delete-race.db'}")
+    Base.metadata.create_all(bind=eng)
+
+    db = Session(eng)
+    original = create_session(db=db, user_id=1)
+    session_id = original.id  # capture before expire
+    add_message(db=db, session_id=session_id, role="user", content="原消息")
+
+    other = Session(eng)
+    try:
+        def replace_after_check(_db, _session_id, _created_at):
+            # 「原会话检查」已完成：另一连接删除原会话并创建同编号替换会话
+            other.query(chat_session.ChatMessage).filter_by(
+                session_id=session_id
+            ).delete()
+            other.query(chat_session.ChatSession).filter_by(id=session_id).delete()
+            other.commit()
+            replacement = create_session(db=other, user_id=1)
+            assert replacement.id == session_id
+            other.add(
+                chat_session.ChatMessage(
+                    session_id=session_id, role="user", content="替换会话消息"
+                )
+            )
+            other.commit()
+
+        monkeypatch.setattr(chat_session, "_purge_session_messages", replace_after_check)
+
+        try:
+            assert delete_session(db=db, session_id=session_id, user_id=1) is False
+        finally:
+            db.close()
+    finally:
+        other.close()
+
+    check = Session(eng)
+    try:
+        assert check.query(chat_session.ChatSession).filter_by(id=session_id).count() == 1
+        messages = (
+            check.query(chat_session.ChatMessage).filter_by(session_id=session_id).all()
+        )
+        assert [m.content for m in messages] == ["替换会话消息"]
+    finally:
+        check.close()
+    eng.dispose()

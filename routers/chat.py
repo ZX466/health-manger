@@ -12,6 +12,7 @@ import schemas
 import settings
 from auth import get_current_user
 from chat_session import (
+    SessionMissingError,
     add_message,
     create_session,
     delete_session,
@@ -170,6 +171,11 @@ async def send_message(
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
 
+    # 请求进入时一次性捕获不可变身份：第一次写入提交会使 ORM 实例过期，
+    # 若第二次再读 session.created_at，会刷新成可能已被复用的替换会话身份。
+    session_user_id = session.user_id
+    session_created_at = session.created_at
+
     safe_content = sanitize_for_prompt(message_data.content, max_length=2000)
 
     # 先取历史上下文（不含本次用户消息，因为尚未落库），再把本次用户消息追加给 LLM
@@ -189,8 +195,8 @@ async def send_message(
             session_id=session_id,
             role="user",
             content=safe_content,
-            expected_user_id=current_user.id,
-            expected_created_at=session.created_at,
+            expected_user_id=session_user_id,
+            expected_created_at=session_created_at,
         )
         add_message(
             db=db,
@@ -198,8 +204,8 @@ async def send_message(
             role="assistant",
             content=response_content,
             tokens_used=tokens_used,
-            expected_user_id=current_user.id,
-            expected_created_at=session.created_at,
+            expected_user_id=session_user_id,
+            expected_created_at=session_created_at,
         )
 
         return {
@@ -207,7 +213,7 @@ async def send_message(
             "response": response_content,
             "tokens_used": tokens_used,
         }
-    except ValueError as exc:
+    except SessionMissingError as exc:
         # 等待 LLM 期间会话被删除（或编号被复用）：消息不落库，按会话不存在返回。
         db.rollback()
         logger.info("会话已被删除，消息未写入 (session=%d): %s", session_id, exc)
@@ -264,7 +270,7 @@ async def stream_message(
             expected_user_id=session_user_id,
             expected_created_at=session_created_at,
         )
-    except ValueError:
+    except SessionMissingError:
         # 请求间隙会话已被删除：不再建立流，避免孤儿消息。
         raise HTTPException(status_code=404, detail="会话不存在")
 
@@ -303,7 +309,7 @@ async def stream_message(
                     expected_user_id=session_user_id,
                     expected_created_at=session_created_at,
                 )
-            except ValueError:
+            except SessionMissingError:
                 # 流式生成期间会话被删除：不再落库，也不发 done。
                 logger.info("会话已被删除，丢弃助手消息 (session=%d)", session_id)
                 return
@@ -366,14 +372,17 @@ async def create_tongue_context_chat(
 
 请根据以上舌诊结果，为用户提供健康咨询。"""
 
-    add_message(
-        db=db,
-        session_id=session_id,
-        role="system",
-        content=context_message,
-        expected_user_id=current_user.id,
-        expected_created_at=session.created_at,
-    )
+    try:
+        add_message(
+            db=db,
+            session_id=session_id,
+            role="system",
+            content=context_message,
+            expected_user_id=session.user_id,
+            expected_created_at=session.created_at,
+        )
+    except SessionMissingError:
+        raise HTTPException(status_code=404, detail="会话不存在")
 
     return {"message": "舌诊上下文已添加", "session_id": session_id}
 

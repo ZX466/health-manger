@@ -23,6 +23,10 @@ from sqlalchemy.orm import Session, relationship
 import settings
 from database import Base
 
+
+class SessionMissingError(ValueError):
+    """目标会话不存在（或编号已被替换会话复用）：写入/删除必须放弃。"""
+
 DEFAULT_MAX_MESSAGES = settings.CHAT_CONTEXT_MAX_MESSAGES
 DEFAULT_MAX_TOKENS = settings.CHAT_CONTEXT_MAX_TOKENS
 CHARS_PER_TOKEN_ZH = settings.CHARS_PER_TOKEN_ZH
@@ -161,10 +165,10 @@ def add_message(
     row = db.execute(stmt).first()
     db.commit()
     if row is None:
-        raise ValueError(f"chat session {session_id} does not exist")
+        raise SessionMissingError(f"chat session {session_id} does not exist")
     message = db.get(ChatMessage, row[0])
     if message is None:  # pragma: no cover - 提交后同一事务内不应缺失
-        raise ValueError(f"chat session {session_id} does not exist")
+        raise SessionMissingError(f"chat session {session_id} does not exist")
     return message
 
 
@@ -218,6 +222,30 @@ def get_session_context(
     return [{"role": msg.role, "content": msg.content} for msg in selected]
 
 
+def _purge_session_messages(
+    db: Session,
+    session_id: int,
+    created_at: datetime,
+) -> None:
+    """只清理属于指定生命周期（id + created_at）的会话消息。
+
+    编号可能被替换会话复用；子表清理若不绑定原会话身份，
+    会把替换会话的消息一起删掉。
+    """
+    original_exists = (
+        select(ChatSession.id)
+        .where(
+            ChatSession.id == session_id,
+            ChatSession.created_at == created_at,
+        )
+        .exists()
+    )
+    db.query(ChatMessage).filter(
+        ChatMessage.session_id == session_id,
+        original_exists,
+    ).delete(synchronize_session=False)
+
+
 def delete_session(
     db: Session,
     session_id: int,
@@ -225,29 +253,36 @@ def delete_session(
 ) -> bool:
     """Delete a chat session and its messages.
 
-    先按 ``session_id`` 批量清理消息、再删会话行（同一事务）：
+    先清理**原会话**消息、再删会话行（同一事务）：
     - 开启外键且未配置级联的数据库（SQLite PRAGMA / PostgreSQL）也能正常删除；
-    - 消息清理按 ``session_id`` 批量进行，SQLite 写事务串行化下，
-      并发写入先提交也会被一并清理，晚到写入则被存在性校验原子拒绝。
+    - 消息清理与会话删除都绑定生命周期身份（created_at），
+      检查之后编号即使被替换会话复用，也不会触碰替换会话。
     """
-    session_exists = (
-        db.query(ChatSession.id)
+    session_created_at = (
+        db.query(ChatSession.created_at)
         .filter(
             ChatSession.id == session_id,
             ChatSession.user_id == user_id,
         )
-        .first()
+        .scalar()
     )
-    if not session_exists:
+    if session_created_at is None:
         return False
 
-    db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete(
-        synchronize_session=False
+    _purge_session_messages(db, session_id, session_created_at)
+    deleted = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.id == session_id,
+            ChatSession.user_id == user_id,
+            ChatSession.created_at == session_created_at,
+        )
+        .delete(synchronize_session=False)
     )
-    db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id,
-    ).delete(synchronize_session=False)
+    if not deleted:
+        # 检查后原会话已被替换：回滚清理，不提交、不触碰替换会话。
+        db.rollback()
+        return False
     db.commit()
     return True
 
