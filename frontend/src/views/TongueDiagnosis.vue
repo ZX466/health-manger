@@ -887,6 +887,32 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+/* 宽屏：舌象舞台与诊断结果同屏左右，历史记录留在舞台下方 */
+@media (min-width: 1181px) {
+  .tongue-grid .tongue-col:nth-child(2) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .tongue-grid .tongue-col:nth-child(2) > .stage-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .tongue-grid .tongue-col:nth-child(2) > .history-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .tongue-grid .tongue-col:nth-child(2) > .result-panel {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+  }
+}
+
 .control-panel h2,
 .history-panel h2 {
   margin-top: 4px;

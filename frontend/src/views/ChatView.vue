@@ -202,6 +202,19 @@
           </div>
         </div>
 
+        <div v-if="messages.length && !sending" class="quick-strip" aria-label="快捷提问">
+          <span class="quick-strip-label">再问一句</span>
+          <button
+            v-for="prompt in quickPrompts.slice(0, 3)"
+            :key="prompt"
+            class="prompt-chip prompt-chip--sm"
+            type="button"
+            @click="usePrompt(prompt)"
+          >
+            {{ prompt }}
+          </button>
+        </div>
+
         <form class="chat-input" @submit.prevent="send">
           <input
             v-model="input"
@@ -924,6 +937,25 @@ onUnmounted(() => {
   color: var(--muted);
   font-size: 10.5px;
   line-height: 1.5;
+}
+
+.quick-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 10px;
+}
+
+.quick-strip-label {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.prompt-chip--sm {
+  padding: 4px 9px;
+  font-size: 10.5px;
 }
 
 .session-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }

@@ -91,6 +91,24 @@
           </div>
         </div>
 
+        <div v-if="ocrDraft" class="ocr-review" role="group" aria-label="体检单识别结果核对">
+          <div class="ocr-review-head">
+            <span class="micro">OCR / REVIEW</span>
+            <span>识别到 {{ ocrDraft.values.length }} 项，核对或修改后才会填入表单</span>
+          </div>
+          <div class="ocr-review-grid">
+            <label v-for="item in ocrDraft.values" :key="item.key" class="ocr-review-item">
+              <span>{{ item.label }}</span>
+              <input v-model.number="item.value" type="number" step="0.1" />
+              <em v-if="item.unit">{{ item.unit }}</em>
+            </label>
+          </div>
+          <div class="ocr-review-actions">
+            <button type="button" class="btn btn-primary" @click="applyOcrDraft">确认填入表单</button>
+            <button type="button" class="btn btn-ghost" @click="ocrDraft = null">放弃识别结果</button>
+          </div>
+        </div>
+
         <form @submit.prevent="handleSubmit" class="record-form">
 
           <!-- 身体基本指标 -->
@@ -445,6 +463,17 @@ import MiniCat from '../components/mascots/MiniCat.vue'
 import MiniNailong from '../components/mascots/MiniNailong.vue'
 import { useWellnessStore } from '../stores/wellness'
 
+const OCR_FIELDS = [
+  { key: 'height', label: '身高', unit: 'cm' },
+  { key: 'weight', label: '体重', unit: 'kg' },
+  { key: 'blood_pressure_systolic', label: '收缩压', unit: 'mmHg' },
+  { key: 'blood_pressure_diastolic', label: '舒张压', unit: 'mmHg' },
+  { key: 'heart_rate', label: '心率', unit: '次/分' },
+  { key: 'temperature', label: '体温', unit: '℃' },
+  { key: 'vision_left', label: '左眼视力', unit: '' },
+  { key: 'vision_right', label: '右眼视力', unit: '' }
+]
+
 export default {
   name: 'HealthRecord',
   components: { AppIcon, PageHead, CharacterAvatar, MiniCat, MiniNailong },
@@ -489,6 +518,7 @@ export default {
       ocrType: '',
       ocrAbnormal: [],
       ocrConfidence: null,
+      ocrDraft: null,
 
       operationLogs: []
     }
@@ -556,29 +586,21 @@ export default {
       this.ocrType = ''
       this.ocrAbnormal = []
       this.ocrConfidence = null
+      this.ocrDraft = null
       try {
         const formData = new FormData()
         formData.append('file', file)
         const { data } = await api.ocrHealthReport(formData)
         const fields = data?.fields || {}
-        const keys = [
-          'height', 'weight',
-          'blood_pressure_systolic', 'blood_pressure_diastolic',
-          'heart_rate', 'temperature', 'vision_left', 'vision_right'
-        ]
-        let filled = 0
-        keys.forEach(key => {
-          const value = fields[key]
-          if (value !== null && value !== undefined && value !== '') {
-            this.form[key] = value
-            filled += 1
-          }
-        })
+        const values = OCR_FIELDS
+          .filter(item => fields[item.key] !== null && fields[item.key] !== undefined && fields[item.key] !== '')
+          .map(item => ({ ...item, value: fields[item.key] }))
         this.ocrAbnormal = Array.isArray(data?.abnormal) ? data.abnormal.slice(0, 10) : []
         this.ocrConfidence = typeof data?.confidence === 'number' ? data.confidence : null
-        if (filled) {
+        if (values.length) {
+          this.ocrDraft = { values }
           this.ocrType = 'success'
-          this.ocrMessage = `已回填 ${filled} 项指标，请核对后再提交`
+          this.ocrMessage = `识别到 ${values.length} 项指标，请先核对`
         } else {
           this.ocrType = 'error'
           this.ocrMessage = '这张单子没识别出可回填的指标，换一张更清楚的试试'
@@ -589,6 +611,23 @@ export default {
       } finally {
         this.ocrLoading = false
       }
+    },
+
+    applyOcrDraft() {
+      const values = this.ocrDraft?.values || []
+      let filled = 0
+      values.forEach(item => {
+        const value = item.value
+        if (value !== null && value !== undefined && value !== '') {
+          this.form[item.key] = value
+          filled += 1
+        }
+      })
+      this.ocrType = filled ? 'success' : 'error'
+      this.ocrMessage = filled
+        ? `已填入 ${filled} 项指标，请核对后再提交`
+        : '没有可填入的数值'
+      this.ocrDraft = null
     },
 
     async handleSubmit() {
@@ -1084,6 +1123,57 @@ export default {
   background: var(--warn-soft);
   color: var(--warn);
   font-size: 10px;
+}
+.ocr-review {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ocr-review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.ocr-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.ocr-review-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 11px;
+}
+.ocr-review-item span { flex: 0 0 auto; }
+.ocr-review-item input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 5px;
+  border: var(--border-hairline);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.ocr-review-item em { color: var(--muted-2); font-size: 10px; font-style: normal; }
+.ocr-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
 }
 .survey-group {
   background: var(--warn-soft);

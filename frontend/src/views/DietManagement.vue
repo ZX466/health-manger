@@ -196,6 +196,21 @@
             </div>
           </div>
 
+          <h3 class="diet-subhead">近 7 天摄入</h3>
+          <div
+            class="week-intake"
+            role="img"
+            :aria-label="`近 7 天摄入：${weekIntake.map(day => `${day.label} ${day.calories} kcal`).join('，')}`"
+          >
+            <div v-for="day in weekIntake" :key="day.date" class="week-day">
+              <span class="week-value">{{ day.calories || '—' }}</span>
+              <div class="week-track">
+                <span :style="{ height: weekBarHeight(day.calories) + '%' }"></span>
+              </div>
+              <span class="week-label">{{ day.label }}</span>
+            </div>
+          </div>
+
           <h3 class="diet-subhead">各餐次热量分布</h3>
           <div v-for="(calories, mealType) in foodStats.meal_type_stats" :key="mealType" class="meal-stat">
             <span class="meal-stat-label">{{ mealLabel(mealType) }}</span>
@@ -424,6 +439,7 @@ export default {
       foodRecords: [],
       foods: [],
       foodStats: { total_calories: 0, total_records: 0, meal_type_stats: {} },
+      weekIntake: [],
       filterDate: localDateKey(),
       foodSearch: '',
       showAddRecord: false,
@@ -469,6 +485,7 @@ export default {
     await this.loadFoodRecords()
     await this.loadFoods()
     await this.loadFoodStats()
+    await this.loadWeekIntake()
   },
   methods: {
     async loadCurrentUser() {
@@ -512,6 +529,36 @@ export default {
         console.error('加载统计失败:', err)
       }
     },
+    async loadWeekIntake() {
+      const end = new Date(`${this.filterDate}T00:00:00`)
+      const days = []
+      for (let i = 6; i >= 0; i -= 1) {
+        const day = new Date(end)
+        day.setDate(end.getDate() - i)
+        days.push(localDateKey(day))
+      }
+      try {
+        const response = await api.getFoodRecords({ start_date: days[0], end_date: this.filterDate })
+        const totals = Object.fromEntries(days.map(day => [day, 0]))
+        ;(response.data || []).forEach(record => {
+          const date = parseServerDate(record.record_date)
+          if (!date) return
+          const key = localDateKey(date)
+          if (key in totals) totals[key] += Number(record.calories) || 0
+        })
+        this.weekIntake = days.map(day => ({
+          date: day,
+          label: day.slice(5),
+          calories: Math.round(totals[day])
+        }))
+      } catch (err) {
+        console.error('加载近 7 天摄入失败:', err)
+        this.weekIntake = []
+      }
+    },
+    weekBarHeight(calories) {
+      return Math.min(100, Math.round(((Number(calories) || 0) / 2000) * 100))
+    },
     async searchFoods() {
       await this.loadFoods()
     },
@@ -519,7 +566,7 @@ export default {
       return { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }[type] || type || '未分类'
     },
     async reloadForDate() {
-      await Promise.all([this.loadFoodRecords(), this.loadFoodStats()])
+      await Promise.all([this.loadFoodRecords(), this.loadFoodStats(), this.loadWeekIntake()])
     },
     async submitFoodRecord() {
       try {

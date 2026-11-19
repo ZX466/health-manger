@@ -6,8 +6,8 @@
         <h2>心情和睡眠</h2>
       </div>
       <span class="trend-legend">
-        <span><i class="legend-bar"></i>精神状态</span>
-        <span><i class="legend-line"></i>睡眠时长</span>
+        <span><i class="legend-line legend-line--mood"></i>精神状态 0–5</span>
+        <span><i class="legend-line legend-line--sleep"></i>睡眠 0–12h</span>
       </span>
     </div>
 
@@ -175,6 +175,10 @@ const chartAriaLabel = computed(() => {
   height: 2px;
   border-radius: 1px;
   background: var(--teal);
+}
+
+.legend-line--mood {
+  background: var(--accent);
 }
 
 .trend-stats {
