@@ -316,7 +316,7 @@
               :class="{ latest: idx === store.realtimeHistory.slice(-5).length - 1 }"
             >
               <span class="micro">{{ item.time }}</span>
-              <span class="realtime-syndrome">{{ item.tcm_syndrome }}</span>
+              <span class="realtime-syndrome">{{ item.syndrome }}</span>
               <span class="micro">{{ (item.confidence * 100).toFixed(0) }}%</span>
             </div>
           </div>
@@ -436,6 +436,8 @@
               <span class="micro">LIFESTYLE</span>
               <p>{{ activeResult.lifestyle_advice || '暂无建议' }}</p>
             </div>
+
+            <p class="result-fineprint">AI 舌象分析仅供健康管理参考，不能替代医生诊断。如有持续不适，请前往校医院。</p>
 
             <div v-if="inputMode === 'upload'" class="result-actions">
               <button class="btn btn-primary" @click="exportResult">导出报告</button>
@@ -1411,6 +1413,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   order: 2;
+}
+
+.result-fineprint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.6;
 }
 
 .history-panel {

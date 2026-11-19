@@ -98,7 +98,10 @@
               <span class="meal-pill">{{ mealLabel(record.meal_type) }}</span>
               <div class="diet-record-main">
                 <strong>{{ record.food_name }}</strong>
-                <p>{{ record.quantity_grams }}g · {{ record.calories }} kcal</p>
+                <p>
+                  <time v-if="formatRecordTime(record.record_date)" class="diet-record-time">{{ formatRecordTime(record.record_date) }}</time>
+                  {{ record.quantity_grams }}g · {{ record.calories }} kcal
+                </p>
               </div>
               <button
                 class="diet-record-del"
@@ -282,11 +285,25 @@
               <div class="scan-fields">
                 <label>
                   克数
-                  <input v-model.number="item.grams" type="number" min="0" max="5000" step="1" />
+                  <input
+                    v-model.number="item.grams"
+                    type="number"
+                    min="0"
+                    max="5000"
+                    step="1"
+                    @input="syncScanCalories(item)"
+                  />
                 </label>
                 <label>
                   热量 kcal
-                  <input v-model.number="item.calories" type="number" min="0" max="100000" step="1" />
+                  <input
+                    v-model.number="item.calories"
+                    type="number"
+                    min="0"
+                    max="100000"
+                    step="1"
+                    @input="syncScanPer100(item)"
+                  />
                 </label>
               </div>
             </div>
@@ -388,7 +405,7 @@
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import PageHead from '../components/PageHead.vue'
-import { localDateKey } from '../utils/date'
+import { localDateKey, parseServerDate } from '../utils/date'
 
 export default {
   name: 'DietManagement',
@@ -650,15 +667,20 @@ export default {
           this.scanError = '这张图没认出食物，换一张更清楚的试试'
           return
         }
-        this.scanItems = items.map(item => ({
-          name: item.name || '未命名食物',
-          grams: Number(item.grams) || 100,
-          calories: Number(item.calories) || 0,
-          protein: item.protein ?? null,
-          fat: item.fat ?? null,
-          carbs: item.carbs ?? null,
-          confidence: Number(item.confidence) || 0
-        }))
+        this.scanItems = items.map(item => {
+          const grams = Number(item.grams) || 100
+          const calories = Number(item.calories) || 0
+          return {
+            name: item.name || '未命名食物',
+            grams,
+            calories,
+            per100: grams > 0 ? (calories / grams) * 100 : 0,
+            protein: item.protein ?? null,
+            fat: item.fat ?? null,
+            carbs: item.carbs ?? null,
+            confidence: Number(item.confidence) || 0
+          }
+        })
       } catch (err) {
         this.scanError = '识别失败：' + this.errMsg(err)
       } finally {
@@ -714,6 +736,22 @@ export default {
     },
     formatDate(dateStr) {
       return new Date(dateStr).toLocaleString('zh-CN')
+    },
+    formatRecordTime(value) {
+      const date = parseServerDate(value)
+      if (!date) return ''
+      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    },
+    syncScanCalories(item) {
+      const grams = Number(item.grams)
+      if (!Number.isFinite(grams) || grams <= 0) return
+      item.calories = Math.round(((Number(item.per100) || 0) * grams) / 100)
+    },
+    syncScanPer100(item) {
+      const grams = Number(item.grams)
+      const calories = Number(item.calories)
+      if (!Number.isFinite(grams) || grams <= 0 || !Number.isFinite(calories)) return
+      item.per100 = (calories / grams) * 100
     },
     getPercentage(calories) {
       const max = Math.max(...Object.values(this.foodStats.meal_type_stats))
@@ -804,6 +842,7 @@ export default {
 .scan-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .scan-fields label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
 .scan-fields input { flex: 1; min-width: 0; min-height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); font-size: 12px; }
+.diet-record-time { margin-right: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
 .scan-note { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
 .spinner { width: 14px; height: 14px; flex: 0 0 14px; border-radius: 50%; border: 2px solid color-mix(in oklch, var(--accent) 25%, transparent); border-top-color: var(--accent); animation: diet-spin 0.7s linear infinite; }
 @keyframes diet-spin { to { transform: rotate(360deg); } }

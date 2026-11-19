@@ -29,14 +29,14 @@
     <!-- 健康评级横幅 -->
     <div class="rating-banner" :class="ratingClass" v-if="latestRating">
       <div class="rating-left">
-        <span class="rating-emoji">{{ latestRating.emoji || '' }}</span>
+        <span v-if="!careMode" class="rating-emoji">{{ latestRating.emoji || '' }}</span>
         <div class="rating-info">
           <span class="rating-label">当前健康评级</span>
           <span class="rating-level">{{ latestRating.rating }}</span>
         </div>
       </div>
       <div class="rating-score-wrap">
-        <div class="rating-score-ring" :style="{ '--ring-color': latestRating.color || '#FF9B71' }">
+        <div class="rating-score-ring" :style="{ '--ring-color': latestRating.color || '#3b6ef5' }">
           <span class="rating-score-num">{{ latestRating.score }}</span>
           <span class="rating-score-unit">分</span>
         </div>
@@ -48,11 +48,11 @@
     <div v-if="showRatingResult" class="rating-result-overlay" @click="showRatingResult = false">
       <div class="rating-result-card" @click.stop>
         <button class="result-close" @click="showRatingResult = false">×</button>
-        <div class="result-emoji">{{ latestRating?.emoji || '' }}</div>
+        <div v-if="!careMode" class="result-emoji">{{ latestRating?.emoji || '' }}</div>
         <div class="result-level" :class="ratingClass">{{ latestRating?.rating || '-' }}</div>
         <div class="result-score">{{ latestRating?.score || 0 }} <span>分</span></div>
         <p class="result-desc">{{ latestRating?.overall_advice || '' }}</p>
-        <div class="result-mascot">
+        <div v-if="!careMode" class="result-mascot">
           <CharacterAvatar type="nailong" :animated="true" style="width:60px;height:60px" />
         </div>
         <button class="result-btn" @click="showRatingResult = false">知道了</button>
@@ -205,6 +205,7 @@
             {{ loading ? '评估中...' : '提交并查看评级' }}
           </button>
         </form>
+        <p class="record-fineprint">数据仅用于健康管理，不替代诊断。AI 识别结果请在提交前逐项核对。</p>
       </div>
 
       <div class="records-section">
@@ -227,7 +228,7 @@
         <div v-if="records.length === 0" class="no-data">
           <span class="no-data-icon"></span>
           <p>暂无健康记录</p>
-          <div class="mascot-no-data">
+          <div v-if="!careMode" class="mascot-no-data">
             <MiniCat size="large" animation="wobble" />
             <MiniNailong size="large" />
           </div>
@@ -442,10 +443,14 @@ import PageHead from '../components/PageHead.vue'
 import CharacterAvatar from '../components/CharacterAvatar.vue'
 import MiniCat from '../components/mascots/MiniCat.vue'
 import MiniNailong from '../components/mascots/MiniNailong.vue'
+import { useWellnessStore } from '../stores/wellness'
 
 export default {
   name: 'HealthRecord',
   components: { AppIcon, PageHead, CharacterAvatar, MiniCat, MiniNailong },
+  setup() {
+    return { wellness: useWellnessStore() }
+  },
   data() {
     return {
       form: {
@@ -489,6 +494,9 @@ export default {
     }
   },
   computed: {
+    careMode() {
+      return !!this.wellness?.isDanger
+    },
     ratingClass() {
       if (!this.latestRating) return ''
       const rating = this.latestRating.rating
@@ -500,7 +508,8 @@ export default {
     }
   },
   async mounted() {
-    await Promise.all([this.loadRecords(), this.loadRating()])
+    this.wellness.hydrateLocal()
+    await Promise.all([this.loadRecords(), this.loadRating(), this.wellness.load()])
   },
   methods: {
     async loadRecords() {
@@ -836,7 +845,7 @@ export default {
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
-  box-shadow: 0 8px 32px rgba(255, 155, 113, 0.25);
+  box-shadow: none;
   position: relative;
   overflow: hidden;
 }
@@ -1009,11 +1018,11 @@ export default {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 15px rgba(255, 155, 113, 0.3);
+  box-shadow: none;
 }
 .result-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 155, 113, 0.4);
+  box-shadow: none;
 }
 
 /* ========== 问卷分组 ========== */
@@ -1125,7 +1134,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(255, 155, 113, 0.3);
+  box-shadow: none;
 }
 
 .header-left h1 {
@@ -1200,7 +1209,13 @@ export default {
   background: white;
   border-radius: var(--radius-lg);
   padding: 28px;
-  box-shadow: 0 4px 16px rgba(255, 155, 113, 0.12);
+}
+
+.record-fineprint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.6;
 }
 
 h2 {
@@ -1284,12 +1299,12 @@ h2 {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 15px rgba(255, 155, 113, 0.3);
+  box-shadow: none;
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 155, 113, 0.4);
+  box-shadow: none;
 }
 
 .submit-btn:disabled {
@@ -1402,7 +1417,7 @@ h2 {
 
 .record-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 4px 15px rgba(255, 155, 113, 0.15);
+  box-shadow: none;
 }
 
 .record-card.selected {

@@ -394,7 +394,7 @@ export default {
         stressTags: w?.stressTags,
         sleepHours: w?.sleepHours ?? this.latestRecord?.sleep_hours,
         hasSport: w?.hasSportToday,
-        isHighRisk: this.mentalSerious || !!w?.isHighRisk
+        isHighRisk: this.mentalSerious || !!w?.isDanger
       })
     },
     statusLabel() {
@@ -511,7 +511,12 @@ export default {
     },
     personaSharePreview() {
       if (!this.persona?.canShare) return ''
-      return `${this.persona.title} ${this.persona.short}`.trim()
+      const lines = String(this.persona.shareText || '').split('\n')
+      return lines
+        .slice(2)
+        .map(line => line.replace(/^[·\s]+/, '').trim())
+        .filter(Boolean)
+        .join(' · ')
     },
     personaDate() {
       const now = new Date()
@@ -716,6 +721,7 @@ export default {
         const res = await api.getMentalSummary()
         this.mentalSummary = res.data || null
         this.mentalSerious = !!res.data?.serious_mode
+        if (res.data?.serious_mode) useWellnessStore().markSerious()
       } catch (e) { /* 心理摘要不可用不影响首页 */ }
     },
     async loadWellness() {

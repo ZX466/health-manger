@@ -38,6 +38,7 @@
             :aria-pressed="form.mood_score === option.level"
             @click="form.mood_score = option.level"
           >
+            <span class="mood-num">{{ String(option.level).padStart(2, '0') }}</span>
             <MoodFace :face="option.face" :size="30" />
             <span class="mood-label">{{ option.title }}</span>
           </button>
@@ -386,37 +387,57 @@ watch(() => wellness.bedtimeHour, () => {
 .mood-options {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
+  gap: 0;
+  border: 1px solid var(--line, var(--border));
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
 }
 
 .mood-option {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 4px;
-  border: var(--border-hairline);
-  border-radius: var(--radius-sm);
+  align-items: flex-start;
+  gap: 5px;
+  padding: 10px 9px;
+  border: 0;
+  border-right: 1px solid var(--line, var(--border));
+  border-radius: 0;
   background: var(--surface);
   color: var(--muted);
   font-size: 11px;
+  text-align: left;
   cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.mood-option:last-child {
+  border-right: 0;
 }
 
 .mood-option:hover {
-  border-color: var(--accent);
+  background: var(--surface-2);
 }
 
 .mood-option.active {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-  color: var(--accent-fg);
+  background: var(--ink, #191c22);
+  color: var(--surface, #fff);
+}
+
+.mood-num {
+  color: var(--muted-2, var(--muted));
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.mood-option.active .mood-num {
+  color: color-mix(in oklch, var(--surface) 55%, transparent);
 }
 
 .mood-label {
   line-height: 1.35;
-  text-align: center;
+  text-align: left;
 }
 
 .mood-hint {

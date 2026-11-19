@@ -306,7 +306,7 @@
             去添加体检记录
           </button>
         </div>
-        <div class="empty-mascots" aria-hidden="true">
+        <div v-if="!careMode" class="empty-mascots" aria-hidden="true">
           <MiniCat animation="wobble" />
           <MiniNailong />
         </div>
@@ -323,6 +323,7 @@ import MiniCat from '../components/mascots/MiniCat.vue'
 import MiniNailong from '../components/mascots/MiniNailong.vue'
 import { aiErrorInfo } from '../utils/aiError'
 import { asyncStatusLabel, normalizeTaskResult } from '../utils/aiModes'
+import { useWellnessStore } from '../stores/wellness'
 
 const DEFAULT_AI_PROMPT =
   '请结合我最新的健康记录，给出整体健康解读、需要关注的风险点，以及 3 条可执行的改善建议，控制在 400 字以内。'
@@ -334,6 +335,9 @@ export default {
     AppIcon,
     MiniCat,
     MiniNailong
+  },
+  setup() {
+    return { wellness: useWellnessStore() }
   },
   data() {
     return {
@@ -357,6 +361,9 @@ export default {
     }
   },
   computed: {
+    careMode() {
+      return !!this.wellness?.isDanger
+    },
     displayScore() {
       const score = Number(this.latestAnalysis?.health_score)
       return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0
@@ -369,7 +376,8 @@ export default {
     }
   },
   async mounted() {
-    await Promise.all([this.loadAnalysis(), this.loadAiHistory()])
+    this.wellness.hydrateLocal()
+    await Promise.all([this.loadAnalysis(), this.loadAiHistory(), this.wellness.load()])
   },
   beforeUnmount() {
     if (this.noticeTimer) clearTimeout(this.noticeTimer)

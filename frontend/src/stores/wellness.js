@@ -61,7 +61,9 @@ export const useWellnessStore = defineStore('wellness', {
     stressTags: [],
     hasSportToday: false,
     seriousMode: false,
-    isHighRisk: false
+    isHighRisk: false,
+    crisisLocked: false,
+    crisisResources: []
   }),
 
   getters: {
@@ -69,7 +71,7 @@ export const useWellnessStore = defineStore('wellness', {
       return getHealthTier({ score: state.healthScore, rating: state.healthRating })
     },
     isDanger (state) {
-      return state.seriousMode || state.isHighRisk || isDangerousRating({ score: state.healthScore, rating: state.healthRating })
+      return state.crisisLocked || state.seriousMode || state.isHighRisk || isDangerousRating({ score: state.healthScore, rating: state.healthRating })
     },
     moodTitle (state) {
       return state.moodLevel ? moodTitle(state.moodLevel) : ''
@@ -105,6 +107,13 @@ export const useWellnessStore = defineStore('wellness', {
   },
 
   actions: {
+    markSerious (resources = []) {
+      this.seriousMode = true
+      this.isHighRisk = true
+      this.crisisLocked = true
+      if (Array.isArray(resources) && resources.length) this.crisisResources = [...resources]
+    },
+
     hydrateLocal () {
       this.dateKey = localDateKey()
       this.bedtimeHour = readBedtime(this.dateKey)
@@ -150,8 +159,9 @@ export const useWellnessStore = defineStore('wellness', {
       if (summaryRes.status === 'fulfilled') {
         const data = summaryRes.value?.data
         if (data) {
-          this.seriousMode = !!data.serious_mode
-          this.isHighRisk = !!data.serious_mode
+          const summarySerious = !!data.serious_mode || this.crisisLocked
+          this.seriousMode = summarySerious
+          this.isHighRisk = summarySerious
           if (data.sleep_avg_7d != null) this.sleepHours = Number(data.sleep_avg_7d)
           const latest = data.latest_mood
           if (latest && this.isToday(latest.record_date)) {
@@ -160,7 +170,7 @@ export const useWellnessStore = defineStore('wellness', {
             this.stressTags = Array.isArray(latest.stress_tags) ? latest.stress_tags : []
           }
           const crisisScale = [data.latest_phq9, data.latest_gad7].some(item => item?.crisis_flag)
-          if (crisisScale) this.isHighRisk = true
+          if (crisisScale) this.markSerious()
         }
       }
 

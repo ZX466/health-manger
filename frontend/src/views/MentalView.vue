@@ -51,7 +51,7 @@
           </span>
         </div>
       </div>
-      <SafetyNotice serious context="general" compact :resources="localCrisisResources" />
+      <SafetyNotice serious context="general" compact :resources="crisisResources" />
     </section>
 
     <div v-if="loading" class="mental-grid" aria-busy="true">
@@ -194,8 +194,10 @@ import MoodTrend from '../components/mental/MoodTrend.vue'
 import ScaleRunner from '../components/mental/ScaleRunner.vue'
 import SafetyNotice from '../components/mental/SafetyNotice.vue'
 import { formatScaleDate, localDateKey, parseServerDate } from '../utils/date'
+import { MOOD_LEVELS } from '../constants/copywriting'
 import { useWellnessStore } from '../stores/wellness'
 
+const wellness = useWellnessStore()
 const loading = ref(true)
 const summary = ref(null)
 const trend = ref({ dates: [], mood_score: [], sleep_hours: [] })
@@ -211,8 +213,11 @@ const errors = reactive({ summary: '', trend: '', mood: '', scales: '', history:
 
 let toastTimer = null
 
-// 一旦看到过危机结果或 serious_mode，本次页面会话不再因刷新失败而降级。
-const seriousMode = computed(() => localCrisis.value || !!summary.value?.serious_mode)
+// 全局共享高危状态：任一页面触发后，整站不再因刷新失败而降级。
+const seriousMode = computed(() => localCrisis.value || !!summary.value?.serious_mode || wellness.isDanger)
+const crisisResources = computed(() =>
+  localCrisisResources.value.length ? localCrisisResources.value : wellness.crisisResources
+)
 const loadError = computed(() => Object.values(errors).some(Boolean))
 
 const displayMood = computed(() => {
@@ -250,7 +255,7 @@ const heroChips = computed(() => {
   return chips
 })
 
-const MOOD_LABELS = { 1: '很难受', 2: '有点丧', 3: '还行', 4: '不错', 5: '很好' }
+const MOOD_LABELS = Object.fromEntries(MOOD_LEVELS.map(item => [item.level, item.title]))
 const SERIOUS_MOOD_LABELS = { 1: '很难受', 2: '有些低落', 3: '一般', 4: '尚可', 5: '稳定' }
 const RISK_LABELS = {
   minimal: '无明显症状',
@@ -340,7 +345,10 @@ function errorText (e, fallback) {
 async function loadSummary () {
   const { data } = await api.getMentalSummary()
   summary.value = data
-  if (data?.serious_mode) localCrisis.value = true
+  if (data?.serious_mode) {
+    localCrisis.value = true
+    wellness.markSerious()
+  }
 }
 
 async function loadTrend () {
@@ -411,13 +419,13 @@ async function onScaleSubmitted (result) {
     // 先把危机状态和本次返回的资源锁在本地；刷新失败也不能退回玩梗模式。
     localCrisis.value = true
     localCrisisResources.value = Array.isArray(result.resources) ? result.resources : []
+    wellness.markSerious(localCrisisResources.value)
   }
   showToast(result?.crisis_flag ? '结果已保存，请先看看下面的支持信息' : '测评结果已保存')
   await Promise.allSettled([loadSummary(), loadHistory()])
 }
 
 onMounted(() => {
-  const wellness = useWellnessStore()
   wellness.hydrateLocal()
   wellness.load()
   loadAll()

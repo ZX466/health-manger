@@ -1,7 +1,21 @@
 <template>
   <div class="ai-settings">
+    <PageHead
+      folio="10"
+      eyebrow="SYSTEM / MODELS"
+      title="AI 设置"
+      deck="模型、风格与安全边界。高危状态优先于任何玩梗设置。"
+    >
+      <template #actions>
+        <span class="status-chip" :class="seriousMode ? 'status-chip--warn' : 'status-chip--accent'">
+          <span class="status-dot" :class="seriousMode ? 'status-dot--danger' : 'status-dot--success'"></span>
+          {{ seriousMode ? '关怀模式优先' : '配置可用' }}
+        </span>
+      </template>
+    </PageHead>
+
     <!-- 聊天/分析模型 -->
-    <section class="card">
+    <section class="card v21-panel">
       <div class="section-head">
         <h2>聊天 / 分析模型</h2>
         <span class="pill" :class="chatSaved ? 'pill--ok' : 'pill--warn'">{{ chatSaved ? '已配置' : '默认' }}</span>
@@ -13,7 +27,7 @@
     </section>
 
     <!-- 对话风格 -->
-    <section class="style-section">
+    <section class="style-section v21-panel">
       <div class="section-head">
         <h2>对话风格</h2>
         <span class="pill" :class="seriousMode ? 'pill--warn' : 'pill--ok'">
@@ -28,7 +42,7 @@
     </section>
 
     <!-- 舌诊视觉模型 -->
-    <section class="card" style="margin-top:16px">
+    <section class="card v21-panel">
       <div class="section-head">
         <h2>舌诊视觉模型</h2>
         <span class="pill" :class="visionSaved ? 'pill--ok' : 'pill--warn'">{{ visionSaved ? '已配置' : '默认 ARK' }}</span>
@@ -44,7 +58,9 @@
 <script>
 import api from '../api'
 import AiModelForm from '../components/AiModelForm.vue'
+import PageHead from '../components/PageHead.vue'
 import PersonaCard from '../components/mental/PersonaCard.vue'
+import { useWellnessStore } from '../stores/wellness'
 
 const CHAT_PROVIDERS = [
   { key: 'zhipu', label: '智谱 GLM', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', defaultModel: 'glm-4.5-Air' },
@@ -59,12 +75,13 @@ const VISION_PROVIDERS = [
 
 export default {
   name: 'AISettings',
-  components: { AiModelForm, PersonaCard },
+  components: { AiModelForm, PageHead, PersonaCard },
   data() {
     return {
       providers: CHAT_PROVIDERS,
       visionProviders: VISION_PROVIDERS,
-      seriousMode: false,
+      localSerious: false,
+      wellness: null,
       chatForm: { provider: 'zhipu', base_url: '', model: '', api_key: '' },
       visionForm: { provider: 'ark', base_url: '', model: '', api_key: '' },
       chatSaved: false, visionSaved: false,
@@ -73,14 +90,23 @@ export default {
       chatResult: null, visionResult: null
     }
   },
+  computed: {
+    seriousMode() {
+      return !!this.wellness?.isDanger || this.localSerious
+    }
+  },
+  created() {
+    this.wellness = useWellnessStore()
+  },
   async mounted() {
-    await Promise.allSettled([this.loadConfig(), this.loadSeriousMode()])
+    await Promise.allSettled([this.loadConfig(), this.loadSeriousMode(), this.wellness?.load()])
   },
   methods: {
     async loadSeriousMode() {
       try {
         const { data } = await api.getMentalSummary()
-        this.seriousMode = !!data?.serious_mode
+        this.localSerious = !!data?.serious_mode
+        if (data?.serious_mode) this.wellness?.markSerious()
       } catch (e) { /* 摘要不可用时不阻塞设置 */ }
     },
     async loadConfig() {

@@ -1,5 +1,19 @@
 <template>
   <div class="chat-view">
+    <PageHead
+      folio="09"
+      eyebrow="DIALOGUE / CARE"
+      title="对话"
+      deck="身体问诊与心理树洞共用一套安全边界。先把问题接住，再给可执行的建议。"
+    >
+      <template #actions>
+        <span class="status-chip" :class="seriousMode ? 'status-chip--warn' : 'status-chip--accent'">
+          <span class="status-dot" :class="seriousMode ? 'status-dot--danger' : 'status-dot--success'"></span>
+          {{ seriousMode ? '关怀模式优先' : '可对话' }}
+        </span>
+      </template>
+    </PageHead>
+
     <div class="chat-layout">
       <!-- 会话列表 -->
       <aside class="chat-side card" aria-label="会话列表">
@@ -56,6 +70,7 @@
             <span class="chat-dot" aria-hidden="true"></span>
             <span>{{ modeMeta.label }}</span>
             <span v-if="safetyBadge" class="serious-pill">{{ safetyBadge }}</span>
+            <span class="chat-sub">{{ modeMeta.sub }}</span>
           </div>
           <div class="chat-actions">
             <button
@@ -137,7 +152,7 @@
           v-if="showSafety"
           :level="safetyLevel"
           :crisis="currentSafety.crisis"
-          :resources="currentSafety.resources"
+          :resources="safetyResources"
           :serious="seriousMode"
           context="chat"
           :compact="!currentSafety.crisis"
@@ -213,6 +228,7 @@
             发送
           </button>
         </form>
+        <p class="chat-fineprint">AI 回复仅用于健康管理参考，不替代医生诊断。</p>
       </section>
     </div>
   </div>
@@ -223,10 +239,13 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
+import PageHead from '../components/PageHead.vue'
 import PersonaCard from '../components/mental/PersonaCard.vue'
 import SafetyNotice from '../components/mental/SafetyNotice.vue'
 import { parseServerDate } from '../utils/date'
+import { useWellnessStore } from '../stores/wellness'
 
+const wellness = useWellnessStore()
 const sessions = ref([])
 const activeId = ref(null)
 const messages = ref([])
@@ -241,7 +260,8 @@ const pendingDeleteId = ref(null)
 const deletingId = ref(null)
 const route = useRoute()
 const showHelp = ref(false)
-const seriousMode = ref(false)
+const localSerious = ref(false)
+const seriousMode = computed(() => localSerious.value || wellness.isDanger)
 const mode = ref(route.query.mode === 'mental' ? 'mental' : 'body')
 const msgBox = ref(null)
 const currentSafety = ref({ level: 'normal', crisis: false, resources: [] })
@@ -259,6 +279,7 @@ const modeOptions = [
 const MODE_META = {
   body: {
     label: '身体问诊',
+    sub: 'AI 校医 · 结合健康记录',
     hint: '说清楚哪里不舒服、多久了；AI 会结合你的健康记录给建议，不替代医生诊断。',
     emptyTitle: '身体哪里不太对劲？',
     emptyText: '睡眠、肠胃、头疼、体检单上的箭头，都可以直接说。',
@@ -266,6 +287,7 @@ const MODE_META = {
   },
   mental: {
     label: '心理树洞',
+    sub: '树洞搭子 · 正在听你说',
     hint: '这里不评判、不催你振作。想骂人、想哭、想沉默一会儿都可以。',
     emptyTitle: '今天心里堵着什么？',
     emptyText: '不用组织好语言，想到哪说到哪。有风险时，安全支持会先接管。',
@@ -281,6 +303,7 @@ const modeMeta = computed(() => {
   if (personaSerious.value) {
     return {
       ...MODE_META[mode.value],
+      sub: '关怀模式 · 先照顾自己',
       hint: '最近的状态值得被认真对待。这里不玩梗，也不用一个人扛。',
       emptyTitle: '今天想从哪里开始？',
       emptyText: '不用组织好语言，想到哪说到哪。'
@@ -301,6 +324,9 @@ const quickPrompts = computed(() => {
     : ['最近总是睡不好', '吃完饭胃不舒服', '帮我看看今天的记录']
 })
 
+const safetyResources = computed(() =>
+  currentSafety.value.resources?.length ? currentSafety.value.resources : wellness.crisisResources
+)
 const isCrisis = computed(() => currentSafety.value.crisis || currentSafety.value.level === 'crisis')
 const safetyLevel = computed(() => {
   if (isCrisis.value) return 'crisis'
@@ -347,7 +373,8 @@ async function loadSessions () {
 async function loadSeriousMode () {
   try {
     const { data } = await api.getMentalSummary()
-    seriousMode.value = !!data?.serious_mode
+    localSerious.value = !!data?.serious_mode
+    if (data?.serious_mode) wellness.markSerious()
   } catch (e) { /* 摘要失败不阻塞聊天 */ }
 }
 
@@ -531,7 +558,10 @@ async function send () {
             crisis: !!data?.crisis,
             resources: Array.isArray(data?.resources) ? data.resources : []
           }
-          if (data?.crisis) showHelp.value = true
+          if (data?.crisis || data?.level === 'high') {
+            showHelp.value = true
+            wellness.markSerious(currentSafety.value.resources)
+          }
         } else if (event === 'delta') {
           const reply = findReply()
           if (reply) {
@@ -601,7 +631,8 @@ function formatDate (value) {
 }
 
 onMounted(async () => {
-  await Promise.allSettled([loadSessions(), loadSeriousMode()])
+  wellness.hydrateLocal()
+  await Promise.allSettled([loadSessions(), loadSeriousMode(), wellness.load()])
 })
 
 onUnmounted(() => {
@@ -632,6 +663,14 @@ onUnmounted(() => {
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
+}
+
+.chat-sub {
+  margin-left: 4px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
 }
 
 .chat-dot {
@@ -878,6 +917,14 @@ onUnmounted(() => {
 
 .chat-input { display: flex; gap: 8px; padding: 12px 16px; border-top: var(--border-hairline); }
 .chat-input input { flex: 1; min-width: 0; }
+
+.chat-fineprint {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
 
 .session-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .session-row { display: flex; align-items: stretch; gap: 4px; }

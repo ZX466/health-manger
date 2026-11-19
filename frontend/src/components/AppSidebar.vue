@@ -124,7 +124,7 @@ export default {
     return {
       dailyLinks: [
         { path: '/dashboard', label: '总览', num: '01', icon: 'home' },
-        { path: '/mental', label: '心理', num: '02', icon: 'heart', dot: true },
+        { path: '/mental', label: '心理', num: '02', icon: 'heart' },
         { path: '/diet-management', label: '饮食', num: '03', icon: 'diet' },
         { path: '/sport-management', label: '运动', num: '04', icon: 'activity' }
       ],
@@ -135,7 +135,7 @@ export default {
         { path: '/warnings', label: '预警', num: '08', icon: 'alert' }
       ],
       assistantLinks: [
-        { path: '/chat', label: '对话', num: '09', icon: 'ai', dot: true },
+        { path: '/chat', label: '对话', num: '09', icon: 'ai' },
         { path: '/ai-settings', label: '设置', num: '10', icon: 'sliders' }
       ]
     }

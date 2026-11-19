@@ -53,9 +53,9 @@
 
 .v21 .micro {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.11em;
   line-height: 1.4;
   text-transform: uppercase;
   color: var(--muted);
@@ -116,7 +116,7 @@
   display: block;
   margin-top: 1px;
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--muted-2);
 }
@@ -130,9 +130,9 @@
 .v21 .nav-label {
   padding: 14px 9px 5px;
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted-2);
 }
@@ -171,8 +171,9 @@
 
 .v21 .nav-num {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--muted-2);
+  opacity: 0.8;
 }
 
 .v21 .nav-item.active .nav-num {
@@ -480,9 +481,9 @@
 
 .v21 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -1329,6 +1330,165 @@
 @media (max-width: 1024px) {
   .app-shell.v21 .mental-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── 对话 ────────────────────────────────────────────── */
+.app-shell.v21 .chat-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-shell.v21 .chat-layout {
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.app-shell.v21 .chat-side,
+.app-shell.v21 .chat-main {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.app-shell.v21 .chat-side {
+  padding: 20px;
+}
+
+.app-shell.v21 .chat-side .section-head {
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-shell.v21 .chat-side .section-head h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 740;
+  letter-spacing: -0.035em;
+}
+
+.app-shell.v21 .session-list {
+  gap: 4px;
+}
+
+.app-shell.v21 .session-item {
+  border-radius: var(--radius-sm);
+}
+
+.app-shell.v21 .session-item.active {
+  background: var(--accent-soft);
+}
+
+.app-shell.v21 .chat-top {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-shell.v21 .chat-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.app-shell.v21 .mode-switch {
+  margin: 14px 20px 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.app-shell.v21 .mode-btn {
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.app-shell.v21 .mode-btn.active {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.app-shell.v21 .mode-hint {
+  margin: 8px 22px 0;
+  font-size: 12px;
+}
+
+.app-shell.v21 .chat-persona {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-shell.v21 .messages {
+  padding: 18px 20px;
+}
+
+.app-shell.v21 .msg-content {
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.app-shell.v21 .chat-input {
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.app-shell.v21 .prompt-chip,
+.app-shell.v21 .tongue-btn,
+.app-shell.v21 .help-toggle {
+  border-color: var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* ── AI 设置 ─────────────────────────────────────────── */
+.app-shell.v21 .ai-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+}
+
+.app-shell.v21 .ai-settings .v21-panel {
+  padding: 22px;
+}
+
+.app-shell.v21 .ai-settings .v21-panel > .section-head {
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.app-shell.v21 .ai-settings .v21-panel > .section-head h2 {
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 730;
+  letter-spacing: -0.035em;
+}
+
+.app-shell.v21 .ai-settings .hint {
+  max-width: 62ch;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.app-shell.v21 .ai-settings .style-section {
+  margin-top: 0;
+}
+
+@media (max-width: 768px) {
+  .app-shell.v21 .chat-view {
+    gap: 14px;
+  }
+
+  .app-shell.v21 .chat-layout {
+    gap: 14px;
+  }
+
+  .app-shell.v21 .chat-main {
+    border-radius: var(--radius-md);
   }
 }
 
@@ -2241,6 +2401,33 @@
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 0;
   padding: 22px;
+  border-color: transparent;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.app-shell.v21 .sport-hero .micro,
+.app-shell.v21 .sport-unit,
+.app-shell.v21 .sport-note,
+.app-shell.v21 .sport-facts span,
+.app-shell.v21 .sport-facts em {
+  color: color-mix(in oklch, var(--surface) 62%, transparent);
+}
+
+.app-shell.v21 .sport-main {
+  border-right-color: color-mix(in oklch, var(--surface) 16%, transparent);
+}
+
+.app-shell.v21 .sport-facts strong {
+  color: var(--surface);
+}
+
+.app-shell.v21 .sport-page .progress {
+  background: color-mix(in oklch, var(--surface) 14%, transparent);
+}
+
+.app-shell.v21 .sport-page .progress > span {
+  background: var(--surface);
 }
 
 .app-shell.v21 .sport-main {
@@ -3172,7 +3359,7 @@
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--muted);
-    font-size: 9px;
+    font-size: 10px;
     text-decoration: none;
   }
 
