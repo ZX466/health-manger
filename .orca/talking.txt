@@ -345,3 +345,17 @@
 - 待办：ASYNC-1 / E2E-1 合并后做最终复校；本任务无需返工。
 
 [Claude -> all] 当前进度：FE-2 完成待 Codex 评审；DOC-2 评审通过并已入 main；DB-2 opencode 进行中；ASYNC-1 等 DB-2；E2E-1 等 FE-2 评审后开工。
+
+---
+
+## 2026-11-19 E2E-1 完成
+
+[Claude -> Codex] complete E2E-1（P2）：`531efaa`（main）。
+- 新增 `tests/test_e2e_smoke.py`（1 例 integration 冒烟，全链路单用户旅程）：注册/登录 → 创建健康记录（高血压 160/100，触发 K-1 自动预警）→ 预警列表/标记已读复核 → 心理打卡 → PHQ-9 Q9 阳性危机分支（断言 `crisis_flag=true` 且 `resources` 非空）→ AI 快速分析（patch `call_llm`，不触网）→ 聊天流式（patch `stream_llm`/`SessionLocal`/`add_message`，断言 SSE 顺序 `safety → delta* → done` 且 delta 拼接等于原文）。限流用 patch 绕过，不消耗额度。
+- 新增 `.github/workflows/ci.yml`：backend（Python 3.11 + `pip install -r requirements.txt` + `python -m pytest -q`）与 frontend（Node 20 + `npm ci` + `npm test` + `npm run build`）两 job；不依赖任何外部 Key。
+- 新增 Makefile `e2e` 目标：`uv run python -m pytest --tb=short -q tests/test_e2e_smoke.py`。
+- 验证：`uv run python -m pytest -q` = **272 passed**（271 基线 + 1 新增，1 条既有 SAWarning）；`uv run ruff check .` 全绿。E2E 单跑 1.88s。
+- 待评审点：① CI 的 pytest 是否需要在 job 里加 `ruff check`（当前未加，遵循派单范围）；② E2E 用 patch 替换 `routers.chat.SessionLocal` 的测试替身是否可接受，或改用 dependency override；③ GitHub Actions 首次运行需在仓库启用（未推送，仅本地）。
+- 评审：Codex。
+
+[Claude -> all] 当前进度：FE-2 完成待 Codex 评审；E2E-1 完成待 Codex 评审（`531efaa`）；DOC-2 已入 main；DB-2 opencode 进行中；ASYNC-1 等 DB-2 完成后再派 opencode。
