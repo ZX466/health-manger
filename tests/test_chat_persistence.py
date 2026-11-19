@@ -6,12 +6,12 @@ rolled the transaction back, silently losing sessions/messages.
 """
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 import chat_session
-import models  # noqa: F401 - register model tables with Base.metadata
+import models  # register model tables with Base.metadata；同时用于外键用例
 from chat_session import add_message, create_session, delete_session
 from database import Base
 
@@ -104,6 +104,70 @@ def test_no_orphan_message_when_write_races_delete(tmp_path):
     finally:
         writer.close()
         deleter.close()
+        eng.dispose()
+
+
+def test_late_reply_does_not_land_in_reused_session_id():
+    """SQLite 复用主键编号时，晚到回复必须按会话身份拒绝，不能落入替换会话。"""
+    eng = _make_engine()
+    Base.metadata.create_all(bind=eng)
+
+    s = Session(eng)
+    try:
+        old = create_session(db=s, user_id=1)
+        old_id = old.id
+        old_created_at = old.created_at
+        assert delete_session(db=s, session_id=old_id, user_id=1) is True
+        s.expunge_all()  # 编号会复用：移出旧对象，避免 identity map 干扰
+
+        replacement = create_session(db=s, user_id=1)
+        assert replacement.id == old_id, "SQLite 未复用编号，本用例前提不成立"
+
+        with pytest.raises(ValueError):
+            add_message(
+                db=s,
+                session_id=old_id,
+                role="assistant",
+                content="late",
+                expected_user_id=1,
+                expected_created_at=old_created_at,
+            )
+        assert (
+            s.query(chat_session.ChatMessage).filter_by(session_id=old_id).count() == 0
+        )
+    finally:
+        s.close()
+        eng.dispose()
+
+
+def test_delete_session_with_messages_when_foreign_keys_enabled(tmp_path):
+    """开启外键的库中，删除带消息的会话必须成功（先清消息、再删会话）。"""
+    eng = create_engine(f"sqlite:///{tmp_path / 'fk-delete.db'}")
+
+    @event.listens_for(eng, "connect")
+    def _enable_foreign_keys(dbapi_connection, _record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    Base.metadata.create_all(bind=eng)
+
+    s = Session(eng)
+    try:
+        user = models.User(name="fk-user", password_hash="x", invite_code="health2026")
+        s.add(user)
+        s.commit()
+
+        session = create_session(db=s, user_id=user.id)
+        session_id = session.id
+        add_message(db=s, session_id=session_id, role="user", content="hi")
+        s.rollback()  # 结束 add_message 末尾读取打开的事务
+
+        assert delete_session(db=s, session_id=session_id, user_id=user.id) is True
+        assert s.query(chat_session.ChatMessage).filter_by(session_id=session_id).count() == 0
+        assert s.query(chat_session.ChatSession).filter_by(id=session_id).count() == 0
+    finally:
+        s.close()
         eng.dispose()
 
 
