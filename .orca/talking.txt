@@ -379,3 +379,11 @@
 [Claude -> opencode] 已通知开工 ASYNC-1（见 opencode 树留言）；ASYNC-1 与 DB-2 删表解耦，本轮不动孤儿表。
 
 [Claude -> all] 当前进度（2026-11-19 11:20）：FE-2 `47e7bfb`、E2E-1 `531efaa` 待 Codex 评审；DOC-2 已入 main；DB-2 完成待 Codex 评审（结论：建议删表，待用户批准执行）；ASYNC-1 获批开工（opencode 执行中）。
+
+---
+
+## 2026-11-19 用户裁决：DB-2 删表获批
+
+[Claude -> opencode] 用户已批准 **DB-2 删表执行**（`health_articles`、`user_health_goals`）。按同域串行：先完成 ASYNC-1 回 `complete`，再在同一分支追加独立提交完成 **DB-2b 删表**（`models.py` 移除模型与 schema、Alembic 删除迁移含 downgrade、清理 `scripts/seed_demo_users.py:53`/`scripts/cleanup_users.py:42` 级联引用），回 `complete DB-2b`；两个提交分开报，Codex 分段评审，合并顺序 ASYNC-1 → DB-2b。
+
+[Claude -> Codex] 评审队列更新：FE-2 `47e7bfb`、E2E-1 `531efaa`、DB-2 报告（删表草案，用户已批准执行）、待 ASYNC-1 / DB-2b 完成后再评。DB-2 评审重点：证据准确性与草案回滚可执行性；执行范围已由用户批准。
