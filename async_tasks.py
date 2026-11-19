@@ -200,49 +200,65 @@ class AsyncTaskQueue:
             session.close()
 
     def _execute_task(self, claimed: _ClaimedTask):
-        """执行任务：领取时按 user_id 解析用户 AI 配置（密钥仅在内存，不落库），结果落 ai_analyses。"""
+        """执行任务：领取时按 user_id 解析用户 AI 配置（密钥仅在内存，不落库），结果落 ai_analyses。
+
+        状态机 pending → running → completed/failed：payload 解析、配置构造、LLM 调用、
+        结果落库任一步异常都收敛为 failed；成功路径分析与任务完成在同一事务提交，
+        避免双提交导致的「1 条成功数据 + 1 条失败记录」。
+        """
         session = self._session_factory()
         try:
             messages = json.loads(claimed.payload)["messages"]
             config = build_llm_config_for_user(session, claimed.user_id, _ANALYSIS_CONFIG)
-            try:
-                result = _run_llm_sync(messages, config)
+            result = _run_llm_sync(messages, config)
 
-                analysis = models.AIAnalysis(
-                    user_id=claimed.user_id,
-                    request_content="异步 AI 分析",
-                    response_content=result["content"],
-                    analysis_type="AI 异步分析",
-                    tokens_used=result["tokens_used"],
-                )
-                session.add(analysis)
-                session.commit()
-                session.refresh(analysis)
-                result["analysis_id"] = analysis.id
+            analysis = models.AIAnalysis(
+                user_id=claimed.user_id,
+                request_content="异步 AI 分析",
+                response_content=result["content"],
+                analysis_type="AI 异步分析",
+                tokens_used=result["tokens_used"],
+            )
+            session.add(analysis)
+            session.flush()  # 仅取自增主键，与任务状态同事务提交
+            result["analysis_id"] = analysis.id
 
-                task = (
-                    session.query(models.AsyncTask)
-                    .filter(models.AsyncTask.task_id == claimed.task_id)
-                    .first()
-                )
-                task.status = TaskStatus.COMPLETED.value
-                task.result = json.dumps(result)
-                task.completed_at = datetime.now()
-                task.claim_token = None
-                session.commit()
-            except Exception as exc:
-                session.rollback()
-                logger.error("任务 %s 执行失败 (error=%s)", claimed.task_id, type(exc).__name__)
-                task = (
-                    session.query(models.AsyncTask)
-                    .filter(models.AsyncTask.task_id == claimed.task_id)
-                    .first()
-                )
-                task.status = TaskStatus.FAILED.value
-                task.error = _public_task_error(exc)
-                task.completed_at = datetime.now()
-                task.claim_token = None
-                session.commit()
+            task = (
+                session.query(models.AsyncTask)
+                .filter(models.AsyncTask.task_id == claimed.task_id)
+                .first()
+            )
+            task.status = TaskStatus.COMPLETED.value
+            task.result = json.dumps(result)
+            task.completed_at = datetime.now()
+            task.claim_token = None
+            session.commit()  # 单一事务：分析 + 任务完成一起落库
+        except Exception as exc:
+            session.rollback()
+            logger.error("任务 %s 执行失败 (error=%s)", claimed.task_id, type(exc).__name__)
+            self._mark_failed(claimed.task_id, _public_task_error(exc))
+        finally:
+            session.close()
+
+    def _mark_failed(self, task_id: str, error: str):
+        """独立事务把任务标记为 failed 并立即提交，避免状态变更被打断导致任务卡在 running。"""
+        session = self._session_factory()
+        try:
+            task = (
+                session.query(models.AsyncTask)
+                .filter(models.AsyncTask.task_id == task_id)
+                .first()
+            )
+            if task is None:
+                return
+            task.status = TaskStatus.FAILED.value
+            task.error = error
+            task.completed_at = datetime.now()
+            task.claim_token = None
+            session.commit()
+        except Exception as exc:
+            session.rollback()
+            logger.error("标记任务 %s 为 failed 失败: %s", task_id, exc)
         finally:
             session.close()
 

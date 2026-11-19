@@ -138,6 +138,60 @@ def test_submit_complete_and_restart_queryable(queue, monkeypatch):
     assert status["result"]["analysis_id"] is not None
 
 
+def test_execute_invalid_payload_marks_failed(queue):
+    """payload 解析失败也收敛为 failed，不卡在 running（评审 P1 覆盖项）。"""
+    queue.submit_task("task_bad_payload", user_id=1, messages="not-a-dict")
+
+    # 将 payload 改为非法 JSON，模拟落库数据损坏
+    session = queue._session_factory()
+    try:
+        task = session.query(models.AsyncTask).filter(models.AsyncTask.task_id == "task_bad_payload").first()
+        task.payload = "{broken json"
+        session.commit()
+    finally:
+        session.close()
+
+    claimed = queue._claim_task()
+    assert claimed is not None
+    queue._execute_task(claimed)
+
+    status = queue.get_task_status("task_bad_payload")
+    assert status["status"] == "failed"
+    assert status["error"]
+
+
+def test_execute_commit_failure_does_not_leave_running(queue, monkeypatch):
+    """成功路径落库失败时任务收敛为 failed，不留下 running（评审 P1/P2 覆盖项）。"""
+    queue.submit_task("task_commit_fail", user_id=1, messages=[{"role": "user", "content": "x"}])
+
+    real_ai_analysis = models.AIAnalysis
+    monkeypatch.setattr(
+        "async_tasks._run_llm_sync",
+        lambda messages, config: {"content": "ok", "tokens_used": 5},
+    )
+
+    def exploding_add(*args, **kwargs):
+        raise RuntimeError("db write failed")
+
+    monkeypatch.setattr(models, "AIAnalysis", exploding_add)
+    claimed = queue._claim_task()
+    assert claimed is not None
+    queue._execute_task(claimed)
+
+    status = queue.get_task_status("task_commit_fail")
+    assert status["status"] == "failed"
+    assert status["error"]
+    # 不留 running，也不留下未落库的已完成分析
+    session = queue._session_factory()
+    try:
+        analyses = session.query(real_ai_analysis).filter(
+            real_ai_analysis.user_id == 1
+        ).all()
+        assert len(analyses) == 0
+    finally:
+        session.close()
+
+
 def test_completed_analysis_persisted_in_db(queue, monkeypatch):
     """结果直接落 ai_analyses，任务表 result 含 analysis_id。"""
     _claim_and_execute(queue, monkeypatch)
