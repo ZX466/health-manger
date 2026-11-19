@@ -465,6 +465,9 @@ const inputMode = ref('upload')
 const previewImage = ref(null)
 const previewImageId = ref(null)
 const protectedImageUrls = ref({})
+// 已删除记录的黑名单：晚到的详情/图片响应按 id 丢弃，避免删完又被写回。
+const deletedTongueIds = new Set()
+let detailToken = 0
 const selectedFile = ref(null)
 const isDragOver = ref(false)
 
@@ -649,13 +652,18 @@ async function captureAndAnalyze() {
 
 async function loadHistoryDetail(item) {
   if (!item || !item.id) return
+  const token = ++detailToken
   try {
     const response = await api.getTongueDetail(item.id)
+    if (token !== detailToken || deletedTongueIds.has(item.id)) return
     store.result = response.data
     previewImageId.value = item.id
-    previewImage.value = await loadProtectedImage(item.id)
+    const url = await loadProtectedImage(item.id)
+    // 图片晚到且期间已删除或切换详情：丢弃，避免回填已删记录的预览。
+    if (token !== detailToken || deletedTongueIds.has(item.id) || !url) return
+    previewImage.value = url
   } catch (err) {
-    alert('加载详情失败')
+    if (token === detailToken) alert('加载详情失败')
   }
 }
 
@@ -664,6 +672,11 @@ async function loadProtectedImage(id) {
 
   const response = await api.getTongueImage(id)
   const url = URL.createObjectURL(response.data)
+  // 请求期间记录已被删除：回收 URL，不写入缓存。
+  if (deletedTongueIds.has(id)) {
+    URL.revokeObjectURL(url)
+    return null
+  }
   protectedImageUrls.value = { ...protectedImageUrls.value, [id]: url }
   return url
 }
@@ -687,6 +700,7 @@ async function deleteHistory(item) {
   deletingTongue.value = item.id
   try {
     await api.deleteTongueRecord(item.id)
+    deletedTongueIds.add(item.id)
     if (previewImageId.value === item.id) {
       previewImageId.value = null
       previewImage.value = null

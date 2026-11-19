@@ -422,13 +422,14 @@ async function deleteSession (session) {
     return
   }
   deletingId.value = session.id
-  const wasActive = String(activeId.value) === String(session.id)
   try {
-    if (wasActive && sending.value) detachStream()
     await api.deleteChatSession(session.id)
     sessions.value = sessions.value.filter(s => String(s.id) !== String(session.id))
     notice.value = '会话已删除'
-    if (wasActive) {
+    // 删除完成时按「当前」activeId 判断：等待期间用户可能已切换会话。
+    if (String(activeId.value) === String(session.id)) {
+      if (sending.value) detachStream()
+      loadToken += 1 // 作废被删会话的在途历史请求，避免晚到响应回填
       activeId.value = null
       messages.value = []
       pendingDeleteId.value = null

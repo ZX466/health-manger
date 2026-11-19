@@ -474,6 +474,7 @@ export default {
 
       showDetailModal: false,
       detailRecord: null,
+      detailToken: 0,
 
       latestRating: null,
       showRatingResult: false,
@@ -661,19 +662,26 @@ export default {
     },
 
     async viewDetail(record) {
+      const token = ++this.detailToken
       this.detailRecord = record
       this.showDetailModal = true
       this.addLog('info', '查看', `记录 #${record.id}`)
       try {
         const { data } = await api.getHealthRecord(record.id)
+        // 只接受仍属于当前抽屉与记录 ID 的响应，避免 1/2 乱序返回时显示旧记录。
+        if (token !== this.detailToken) return
+        if (!this.detailRecord || String(this.detailRecord.id) !== String(record.id)) return
         // 详情接口返回完整字段；失败时保留列表快照，不阻断查看。
         if (data) this.detailRecord = data
       } catch (err) {
-        this.addLog('warn', '查看', '详情接口暂不可用，已显示列表数据')
+        if (token === this.detailToken) {
+          this.addLog('warn', '查看', '详情接口暂不可用，已显示列表数据')
+        }
       }
     },
 
     closeDetail() {
+      this.detailToken += 1 // 作废在途详情响应
       this.showDetailModal = false
       this.detailRecord = null
     },

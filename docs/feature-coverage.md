@@ -11,8 +11,8 @@
 |---|---|---|---|---|---|---|
 | 认证 | [routers/auth.py](../routers/auth.py) | 3 | 3 | 0 | 0 | `Login.vue` / `Register.vue` |
 | 健康数据 | [routers/health.py](../routers/health.py) | 9 | 9 | 0 | 0 | `/health-record`、`/health-analysis`、Dashboard（7/30 天评分） |
-| 饮食 | [routers/food.py](../routers/food.py) | 11 | 11 | 0 | 0 | `/diet-management`（管理员可编辑/删除食物库） |
-| 运动 | [routers/sport.py](../routers/sport.py) | 9 | 9 | 0 | 0 | `/sport-management`（管理员可编辑/删除运动库） |
+| 饮食 | [routers/food.py](../routers/food.py) | 11 | 11 | 0 | 0 | `/diet-management`（管理员可编辑/删除全库，内置与自定义一致；非管理员只读） |
+| 运动 | [routers/sport.py](../routers/sport.py) | 9 | 9 | 0 | 0 | `/sport-management`（管理员可编辑/删除全库，内置与自定义一致；非管理员只读） |
 | AI 分析与配置 | [routers/ai_analysis.py](../routers/ai_analysis.py) | 12 | 12 | 0 | 0 | `/ai-settings`（配置）、`/health-analysis`（深度 / 快速 / 规则 + AI / 后台异步） |
 | 健康预警 | [routers/warning.py](../routers/warning.py) | 6 | 6 | 0 | 0 | `/warnings`（侧栏 / 顶栏 / Dashboard 未读入口） |
 | 舌诊 | [routers/tongue.py](../routers/tongue.py) | 7 | 7 | 0 | 0 | `/tongue-diagnosis`（统计卡 / 删除） |

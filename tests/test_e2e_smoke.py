@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session as OrmSession
 
 from chat_session import ChatMessage
 
@@ -110,32 +112,13 @@ async def test_core_user_journey(app, db):
         assert analysis.status_code == 200, analysis.text
         assert analysis.json()["response_content"] == "E2E 快速分析结论"
 
-        # 7) 聊天流式：safety 首帧 → delta* → done
+        # 7) 聊天流式：safety 首帧 → delta* → done；用户/助手消息走真实落库
         session = await client.post(
             "/api/chat/session",
             json={"title": "E2E 会话", "context_type": "health"},
         )
         assert session.status_code == 200, session.text
         session_id = session.json()["id"]
-
-        class _DummySession:
-            def close(self):
-                pass
-
-        fixture_db = db
-
-        def _fake_add_message(db=None, session_id=0, role="", content="", tokens_used=None):
-            # 流式端点用独立的 stream_db 落库；测试里统一落到 transactional 会话。
-            message = ChatMessage(
-                session_id=session_id,
-                role=role,
-                content=content,
-                tokens_used=tokens_used,
-            )
-            fixture_db.add(message)
-            fixture_db.commit()
-            fixture_db.refresh(message)
-            return message
 
         async def _fake_stream(messages, config):
             yield "你"
@@ -144,8 +127,12 @@ async def test_core_user_journey(app, db):
         with (
             patch("routers.chat.check_rate_limit"),
             patch("routers.chat.stream_llm", new=_fake_stream),
-            patch("routers.chat.SessionLocal", new=lambda: _DummySession()),
-            patch("routers.chat.add_message", new=_fake_add_message),
+            # 流式端点用独立 Session 落助手消息：注入绑定测试库连接的真实会话工厂，
+            # 保留生产 add_message 与事务语义，真实落库回归失败时该测试会失败。
+            patch(
+                "routers.chat.SessionLocal",
+                new=lambda: OrmSession(bind=db.get_bind()),
+            ),
         ):
             streamed = await client.post(
                 f"/api/chat/session/{session_id}/stream",
@@ -158,3 +145,20 @@ async def test_core_user_journey(app, db):
         assert any(event == "delta" for event, _ in events)
         assert events[-1][0] == "done", f"最后一个事件必须是 done，实际 {events[-1:]}"
         assert "".join(data["content"] for event, data in events if event == "delta") == "你好"
+
+        # 真实落库断言：用户消息与助手消息都在库，done.message_id 指向助手行。
+        stored_messages = (
+            db.execute(
+                select(ChatMessage)
+                .where(ChatMessage.session_id == session_id)
+                .order_by(ChatMessage.id)
+            )
+            .scalars()
+            .all()
+        )
+        user_rows = [message for message in stored_messages if message.role == "user"]
+        assistant_rows = [message for message in stored_messages if message.role == "assistant"]
+        assert [message.content for message in user_rows] == ["你好"]
+        assert [message.content for message in assistant_rows] == ["你好"]
+        assert events[-1][1]["message_id"] == assistant_rows[0].id
+        assert events[-1][1]["tokens_used"] > 0

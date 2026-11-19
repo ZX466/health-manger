@@ -9,13 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+          enable-cache: true
+      - name: Create venv and install dependencies
+        run: |
+          uv venv --python 3.11
+          uv pip install -r requirements.txt
+      - name: Lint
+        run: uv run --no-sync ruff check .
       - name: Run tests (includes E2E smoke)
-        run: python -m pytest -q
+        run: uv run --no-sync python -m pytest -q
 
   frontend:
     runs-on: ubuntu-latest
