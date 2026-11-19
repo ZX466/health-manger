@@ -47,7 +47,7 @@
         <h2>舌诊视觉模型</h2>
         <span class="pill" :class="visionSaved ? 'pill--ok' : 'pill--warn'">{{ visionSaved ? '已配置' : '默认 ARK' }}</span>
       </div>
-      <p class="hint">用于舌象图片分析。<strong>必须选择支持图像输入的视觉模型</strong>（如 GLM-4V / GPT-4o / Doubao-Vision），否则舌诊不可用。</p>
+      <p class="hint">用于舌诊、拍照识餐与体检 OCR。<strong>必须选择支持图像输入的视觉模型</strong>（如 glm-4v-plus / GPT-4o / Doubao-Vision）；GLM-4.7、GLM-5-Turbo 等纯文本模型会拒绝图片请求。</p>
       <AiModelForm :providers="visionProviders" :form="visionForm" :saved="visionSaved"
         :testing="visionTesting" :saving="visionSaving" :result="visionResult" uid="vision"
         @update:form="visionForm = $event" @test="testVision" @save="saveVision" @reset="resetVision" />

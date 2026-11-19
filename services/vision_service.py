@@ -48,6 +48,31 @@ def resolve_vision_config(db, user_id: int) -> dict:
     }
 
 
+def _describe_failure(status: int, body: str) -> str:
+    """把上游 HTTP 失败翻译成可操作的提示（不回显上游原文，避免噪声/泄露）。"""
+    code = ""
+    message = ""
+    try:
+        data = json.loads(body)
+        error = data.get("error") if isinstance(data, dict) else None
+        if isinstance(error, dict):
+            code = str(error.get("code") or "")
+            message = str(error.get("message") or "")
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # 智谱 1210：messages.content.type 只允许 text，说明所选模型不支持图片输入。
+    if code == "1210" or "content.type" in message:
+        return "当前模型不支持图片输入，请在 AI 设置中换用视觉模型（如 glm-4v-plus）"
+    if status in (401, 403):
+        return f"视觉模型鉴权失败（HTTP {status}），请检查 AI 设置中的 API Key"
+    if status == 404:
+        return "视觉模型接口不存在（HTTP 404），请检查 Base URL 与模型名"
+    if status == 400:
+        return "视觉模型拒绝了请求（HTTP 400），请确认所选模型支持图像输入"
+    return f"视觉模型拒绝了本次请求（HTTP {status}），请检查 AI 设置"
+
+
 def _normalize_chat_url(base_url: str) -> str:
     """把 ARK 的 `/responses` 端点纠正为 OpenAI 兼容的 `/chat/completions`。"""
     url = (base_url or "").strip()
@@ -201,7 +226,7 @@ def analyze_image_json_sync(
             raise VisionServiceError("视觉模型服务暂时不可用，请稍后重试")
         if status != 200:
             logger.warning("视觉模型返回 HTTP %s", status)
-            raise VisionServiceError("视觉模型拒绝了本次请求，请检查 AI 设置")
+            raise VisionServiceError(_describe_failure(status, body))
 
         try:
             data = json.loads(body)
