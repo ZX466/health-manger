@@ -50,7 +50,6 @@ def _cleanup_demo_users(db) -> None:
             models.UserSportRecord,
             models.HealthWarning,
             models.AIAnalysis,
-            models.UserHealthGoal,
             models.TongueDiagnosis,
             models.AIConfig,
             models.MentalRecord,

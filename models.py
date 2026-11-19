@@ -141,20 +141,6 @@ class UserSportRecord(Base):
     sport = relationship("Sport", back_populates="user_records")
 
 
-class HealthArticle(Base):
-    __tablename__ = "health_articles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(200), nullable=False, index=True)
-    category = Column(String(50), nullable=True)
-    content = Column(Text, nullable=False)
-    author = Column(String(100), nullable=True)
-    views = Column(Integer, default=0)
-    is_recommended = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=_utcnow)
-    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
-
-
 class HealthWarning(Base):
     __tablename__ = "health_warnings"
 
@@ -211,22 +197,6 @@ class AsyncTask(Base):
     completed_at = Column(DateTime, nullable=True)
 
     user = relationship("User", backref="async_tasks")
-
-
-class UserHealthGoal(Base):
-    __tablename__ = "user_health_goals"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    goal_type = Column(String(50), nullable=False)
-    target_value = Column(Float, nullable=True)
-    current_value = Column(Float, nullable=True)
-    start_date = Column(DateTime, nullable=True)
-    end_date = Column(DateTime, nullable=True)
-    status = Column(String(20), default="active")
-    created_at = Column(DateTime, default=_utcnow)
-
-    user = relationship("User", backref="health_goals")
 
 
 class AIMetric(Base):

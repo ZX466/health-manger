@@ -2,7 +2,7 @@ import json
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class UserBase(BaseModel):
@@ -170,28 +170,6 @@ class UserSportRecordResponse(UserSportRecordBase):
         from_attributes = True
 
 
-class HealthArticleBase(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-    category: str | None = Field(None, max_length=50)
-    content: str = Field(..., min_length=1, max_length=50000)
-    author: str | None = Field(None, max_length=100)
-    is_recommended: bool | None = False
-
-
-class HealthArticleCreate(HealthArticleBase):
-    pass
-
-
-class HealthArticleResponse(HealthArticleBase):
-    id: int
-    views: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class HealthWarningBase(BaseModel):
     warning_type: str = Field(..., max_length=50)
     warning_level: Literal["info", "warning", "danger", "critical"]
@@ -227,34 +205,6 @@ class AIAnalysisResponse(AIAnalysisBase):
     user_id: int
     response_content: str
     tokens_used: int | None = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class UserHealthGoalBase(BaseModel):
-    goal_type: str = Field(..., min_length=1, max_length=50)
-    target_value: float | None = None
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-
-    @model_validator(mode="after")
-    def validate_dates(self):
-        if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValueError("start_date must be before end_date")
-        return self
-
-
-class UserHealthGoalCreate(UserHealthGoalBase):
-    pass
-
-
-class UserHealthGoalResponse(UserHealthGoalBase):
-    id: int
-    user_id: int
-    current_value: float | None = None
-    status: str
     created_at: datetime
 
     class Config:

@@ -39,7 +39,6 @@ tables = [
     "tongue_diagnoses",
     "user_food_records",
     "user_sport_records",
-    "user_health_goals",
     "health_records",
 ]
 
