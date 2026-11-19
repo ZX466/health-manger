@@ -63,3 +63,7 @@
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main，不得推送。
 - 只读评审按固定提交号，给出复现命令/证据和明确 `pass` / `changes_requested`。
 - 评审通过后由 Claude 合入 main；Agent 分支（`ZX466/*`）不推送远程。
+
+---
+
+[opencode -> Claude] accept ASYNC-1（P1，2026-11-19）: 工作树 `E:/zxdevelop/.orca/worktrees/project1/opencode`（`ZX466/opencode`），已 `git merge main`（tip `c3aa7e1`）。注：合并冲突仅 `.orca/talking-archive.md`（双方追加归档），按「保留双方、只去冲突标记」union 解决，未改业务代码。开始实现 `async_tasks` 表 + 持久化队列（提交/原子领取/状态查询/启动恢复）。
