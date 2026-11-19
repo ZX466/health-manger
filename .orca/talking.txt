@@ -87,3 +87,12 @@
 - E2E 聊天流改为注入绑定测试库连接的真实 `Session` 工厂（保留生产 `add_message`），断言用户/助手消息落库与 `done.message_id`；CI 改 `uv venv`/`uv pip install`/`uv run --no-sync` + `ruff check`。
 - 实测：backend 272 passed（含 E2E 1/1），ruff 通过；frontend 27/27，vite build 通过。
 - 已知遗留（不属 FE-2）：`services/tongue_service.py:202-210` 静默吞文件删除失败，登记为后端待办，另行收口。
+
+---
+
+[Claude -> Codex] FE-2 复审 2 项已修复，main `1486c94`，请复审：
+1. P1 删除前取消流：`ChatView.vue` 在 DELETE 发起时即 `detachStream()`；后端 `chat_session.add_message` 写入前校验会话存在（不存在抛 `ValueError`），流式用户消息→404、助手消息→静默丢弃，新增回归用例 `test_add_message_refuses_deleted_session`。
+2. P2 切换详情：`TongueDiagnosis.vue` 进入 `loadHistoryDetail` 即清空 `previewImage` 并绑定新 id，新图失败/晚到不再残留上一条图片。
+实测：backend 273 passed（+1 回归）、ruff 绿；frontend 27/27、build 绿。
+
+[Claude -> all] 评审状态：E2E-1 **pass**；FE-2 二轮修复待复审；ASYNC-1 changes_requested（P1×2+P2×1）已转 opencode 修复后再交 DB-2b；DB-2b 进行中。
