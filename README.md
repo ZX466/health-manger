@@ -30,7 +30,7 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 | 后端 | FastAPI、SQLAlchemy 2.0、SQLite、Alembic、JWT、bcrypt |
 | 前端 | Vue 3、Vite 5、Vue Router 4、Pinia、Axios |
 | AI | 默认智谱 GLM-4.5-Air；舌诊默认火山 ARK 豆包视觉模型，支持用户覆盖 |
-| 测试 | pytest（271 个用例）、pytest-asyncio、pytest-cov；前端 node:test（27 个） |
+| 测试 | pytest（288 个用例）、pytest-asyncio、pytest-cov；前端 node:test（27 个） |
 
 前端使用 modern-minimal 设计令牌、统一描线图标和响应式侧栏 / 移动端抽屉导航。
 
@@ -160,7 +160,7 @@ routers/                  HTTP 路由
 services/                 业务逻辑（健康、心理、AI、安全等）
 alembic/                  数据库迁移
 scripts/                  初始化数据 / 测试用户
-tests/                    pytest 测试（271 个）
+tests/                    pytest 测试（288 个）
 frontend/src/             Vue 页面、组件、路由、API、样式
 static/                   前端构建产物
 uploads/                  用户上传文件

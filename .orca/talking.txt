@@ -131,3 +131,5 @@
 [Claude] ASYNC-1b 复审补漏 `0fdf884`：终态写入条件 UPDATE 校验 claim_token+running，恢复/重领后旧 worker 不覆盖终态、不落分析；新增 2 条 stale-worker 回归（共 282 passed）。
 [Claude] DB-2b `625f957`：迁移 `b2c3d4e5f6a7`（父 `a1b2c3d4e5f6`）删除 `health_articles`/`user_health_goals`，移除模型/schema，同步两处清理脚本；临时库 upgrade/downgrade/upgrade 结构一致，单头；本地占位库备份 `health_system.db.bak-20261119` 后 stamp+upgrade 验证（两表 0 行）。
 [Claude] 合入 main：opencode 分支（ASYNC-1/1b + DB-2b）合并完成。FE-2 pass 收口、E2E-1 pass 收口、DOC-2 已合入。5 项缺口全部关闭。
+
+[Claude] 最终收口（2026-11-19）：main `c3923b5` 合并 ASYNC-1/1b + DB-2b；文档计数校准 288/27；FE-2、E2E-1、DB-2、ASYNC-1、DOC-2 全部关闭。

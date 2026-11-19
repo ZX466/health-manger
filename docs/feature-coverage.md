@@ -34,6 +34,9 @@
 | 聊天引用舌诊 | `POST /chat/session/{id}/tongue-context` | 身体问诊“引用最近舌诊”，无记录时跳转 `/tongue-diagnosis` | CHAT-1 | ✅ `008f098` |
 | AI 快捷 / 评价 / 异步分析 | `/quick-analysis`、`/health-evaluation`、`/async-analysis`、`/task/{id}` | `HealthAnalysis.vue` 三种模式按钮：快速分析、规则 + AI 评价、后台分析轮询；异步完成后落库并刷新历史 | P1 收口 | ✅ 本轮 |
 | P2 端点前端闭环 | 聊天会话删除、健康记录详情、舌诊统计/删除、食物/运动详情/更新/删除 | `ChatView.vue` / `HealthRecord.vue` / `TongueDiagnosis.vue` / `DietManagement.vue` / `SportManagement.vue`；食物/运动库编辑删除仅管理员可见（后端 `get_admin_user`） | FE-2 | ✅ 本轮 |
+| 异步分析后台队列持久化 | `/api/ai/async-analysis`、`/api/ai/task/{id}` | `async_tasks` 表 + 原子领取/启动恢复；worker 单事务写 `ai_analyses` 与任务终态，终态写入校验领取令牌 | ASYNC-1 | ✅ `6ac3dbb`+`0fdf884` |
+| 无引用表清理 | — | 迁移 `b2c3d4e5f6a7` 删除 `health_articles`/`user_health_goals`；模型、schema、清理/种子脚本同步 | DB-2b | ✅ `625f957` |
+| E2E 冒烟 | 登录 + 流式聊天冒烟 | `tests/test_e2e_smoke.py`；CI backend 用 uv + ruff，frontend 单测 + 构建 | E2E-1 | ✅ 本轮 |
 
 ## 3. 逐端点矩阵
 
@@ -180,4 +183,4 @@
 | 2026-11-18 | main `008f098` | C-1 二次校准：55 已接入 / 14 仅封装 / 2 未封装；72 路由含探活；新增 `/warnings`、AI 分析 4 端点、K-2 评分历史、CHAT-1 舌诊上下文 |
 | 2026-11-18 | main `254d51f` 后 | P1 收口：AI 快捷/规则+AI 评价/异步分析/任务轮询接入 `HealthAnalysis.vue`；59 已接入 / 10 仅封装 / 2 未封装 |
 | 2026-11-19 | main `c577392` | DOC-2 校准：修正饮食行（明细 8/2/1，原汇总误写 7/3/1）与总计 **60 已接入 / 9 仅封装 / 2 未封装**；§2 剩余缺口对齐 FE-2 派单；实测后端 271 passed、前端 27 passed |
-| 2026-11-19 | main `c577392` + FE-2 | FE-2 前端闭环：健康记录详情、舌诊统计/删除、饮食/运动库详情/编辑/删除、聊天会话删除接入；**70 已接入 / 1 仅封装 / 0 未封装**（仅剩聊天 v1 非流式消息） |
+| 2026-11-19 | main `c3923b5` | ASYNC-1 / DB-2b / E2E-1 收口：异步任务持久化（`async_tasks` + 原子领取 + 启动恢复 + 单事务落库，迁移 `a1b2c3d4e5f6`）；DB-2b 删除 `health_articles`/`user_health_goals`（迁移 `b2c3d4e5f6a7`，模型/schema/脚本同步）；E2E 冒烟 + CI（uv/ruff）。实测后端 288 passed、前端 27 passed |
