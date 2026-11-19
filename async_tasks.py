@@ -18,6 +18,13 @@ import settings
 logger = logging.getLogger(__name__)
 
 
+def _public_task_error(exc: Exception) -> str:
+    """S-1：异步任务对外只暴露固定错误文案，不返回上游响应/异常细节。"""
+    if isinstance(exc, ValueError) and "API 密钥" in str(exc):
+        return "未配置 AI API 密钥，请稍后重试"
+    return "任务执行失败，请稍后重试"
+
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -153,8 +160,8 @@ class AsyncTaskQueue:
                 except Exception as e:
                     with self.lock:
                         if task_id in self.results:
-                            self.results[task_id].set_failed(str(e))
-                    logger.error("任务 %s 执行失败: %s", task_id, e)
+                            self.results[task_id].set_failed(_public_task_error(e))
+                    logger.error("任务 %s 执行失败 (error=%s)", task_id, type(e).__name__)
 
                 finally:
                     self.task_queue.task_done()
@@ -205,6 +212,15 @@ class AsyncTaskQueue:
             if task_id in self.results and self.results[task_id].status == TaskStatus.COMPLETED:
                 return self.results[task_id].result
         return None
+
+    def update_result(self, task_id: str, result: dict[str, Any]) -> bool:
+        """已完成的异步任务补充结果字段（如落库后的 analysis_id）。"""
+        with self.lock:
+            task = self.results.get(task_id)
+            if task is None or task.status != TaskStatus.COMPLETED:
+                return False
+            task.result = result
+            return True
 
     def cleanup_old_tasks(self, max_age_seconds: int = 3600):
         """清理过期任务：已完成/失败按完成时间，悬空（pending/running）按创建时间"""

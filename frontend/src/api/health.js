@@ -28,6 +28,10 @@ export function getLatestRating () {
   return http.get('/health/rating/latest')
 }
 
+export function getRatingHistory (days = 7) {
+  return http.get('/health/rating/history', { params: { days } })
+}
+
 /**
  * 体检单 OCR。后端真实路径是 /health/reports/ocr，接收 multipart 字段 file。
  * 只返回草稿字段，确认后仍走 v1 的 POST /health/records 入库。
@@ -47,5 +51,6 @@ export default {
   getLatestAnalysis,
   getAnalysisHistory,
   getLatestRating,
+  getRatingHistory,
   ocrHealthReport
 }

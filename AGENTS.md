@@ -27,7 +27,7 @@
 
 ## Orca 多 Agent 工作流
 
-> 行动前先读 `.orca/workflow`，只做自己能力域的内容，不越界。
+> 行动前先读 `.orca/workflow`，只做自己能力域的内容，不越界。（权威文件名无扩展名；留言中的 `workflow.txt` 指同一文件。）
 
 - 每个能力域一个推荐 Agent + 一个工作树；评审 Agent 只读被评审工作树，不改代码。
 - Agent 之间不直接交流，需要时在 `.orca/talking.txt` 间接留言（只追加，不删他人留言）；暂不使用 orca-cli 发消息。
@@ -44,4 +44,4 @@
 - 启动后端：`uv run uvicorn main:app --port 8420`
 - 前端开发：`cd frontend && npm run dev`；生产构建：`cd frontend && npm run build`
 - 数据库迁移：`uv run alembic upgrade head`
-- 测试 / 静态检查：`uv run python -m pytest -q`、`uv run ruff check .`
+- 测试 / 静态检查：`uv run python -m pytest -q`、`uv run ruff check .`（勿用 `uv run pytest`：sys.path 问题会报 `ModuleNotFoundError: database`）

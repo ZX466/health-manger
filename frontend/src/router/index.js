@@ -9,6 +9,7 @@ const HealthAnalysis = () => import('../views/HealthAnalysis.vue')
 const DietManagement = () => import('../views/DietManagement.vue')
 const SportManagement = () => import('../views/SportManagement.vue')
 const TongueDiagnosis = () => import('../views/TongueDiagnosis.vue')
+const WarningView = () => import('../views/WarningView.vue')
 const MentalView = () => import('../views/MentalView.vue')
 const ChatView = () => import('../views/ChatView.vue')
 const AISettings = () => import('../views/AISettings.vue')
@@ -65,6 +66,12 @@ const routes = [
     name: 'TongueDiagnosis',
     component: TongueDiagnosis,
     meta: { requiresAuth: true, title: '中医舌诊' }
+  },
+  {
+    path: '/warnings',
+    name: 'WarningView',
+    component: WarningView,
+    meta: { requiresAuth: true, title: '健康预警' }
   },
   {
     path: '/mental',

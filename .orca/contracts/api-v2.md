@@ -289,6 +289,29 @@
 
 错误：同 2.1（`400` / `503` / `429`，每用户 10 次/60 秒）。
 
+### 3.2 `GET /api/health/rating/history?days=7|30`（K-2）
+
+- 查询参数 `days`：**仅支持 `7` 或 `30`**（缺省 `7`）；其他整数与非整数一律 `422`（`detail` 说明只支持 7/30），不做静默截断。
+- 响应 `200`：连续日期序列（升序，最后一项为今天），每天一个点：
+
+```json
+[
+  {"date": "2026-11-12", "score": null, "level": null},
+  {"date": "2026-11-13", "score": 86, "level": "良好"},
+  {"date": "2026-11-14", "score": null, "level": null}
+]
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `date` | string(`YYYY-MM-DD`) | **始终存在**，缺失数据日也保留日期占位 |
+| `score` | int \| null | 当日综合评分（0–100）；无数据为 `null` |
+| `level` | string \| null | 当日综合等级（如「优秀/良好/中等/较差/危险」）；无数据为 `null` |
+
+- 数据来源：`health_analyses`（评分与等级来自 `health_rating.calculate_health_rating` 的落库结果）；**同一天多次分析取最新一条**（`analysis_date` 最大，其次 `id` 最大）。
+- 仅返回当前登录用户的数据（`user_id` 过滤），跨用户不可见。
+- 前端不得自行猜测缺失日语义：`score: null` 即「当天无分析」。
+
 ## 4. 流式对话（`POST /api/chat/session/{id}/stream`）
 
 实现属 Pi M-PERF1；本节仅固定事件契约。
@@ -329,6 +352,23 @@ data: {"detail":"上游模型超时"}
 - `AIConfigResponse` 新增 `persona_style`，未配置时返回默认 `humorous`。
 - 落地：`services.ai_config_service.save_config(persona_style=...)` 已透传（缺省不覆盖已存值），`routers/ai_analysis.py` GET/PUT 已读写该字段。
 - 兼容：v1 客户端不传该字段时行为完全不变；未落库列时响应仍返回默认值，不报 500。
+
+## 5.1 AI 分析接口错误码口径（K-3）
+
+适用于 `POST /api/ai/analysis`、`POST /api/ai/quick-analysis`、`POST /api/ai/health-evaluation`（`/async-analysis` 与 `/task/{id}` 见下）：
+
+| 场景 | 状态码 | `detail` 语义 |
+|---|---|---|
+| 未登录/令牌失效 | `401` | 未认证 |
+| 请求体结构不合法 | `422` | Pydantic 字段错误 |
+| 无健康数据 / 无规则评分 | `400` | 「暂无健康数据，请先添加健康记录」/「暂无规则评分数据，请先添加含 BMI 的健康记录」 |
+| **用户未配置 AI API Key** | `503` | 「未配置 AI API 密钥，请在「AI 设置」中完善后重试」 |
+| 上游模型超时/失败/返回异常 | `500` | 「AI 分析失败，请稍后重试」/「健康评价失败，请稍后重试」 |
+| 触发限流 | `429` | 带 `Retry-After` 头 |
+
+- 失败时**不落库**：`ai_analyses` 仅在成功返回后写入（`/analysis`、`/quick-analysis`、`/health-evaluation` 一致）。
+- `503`（未配置 Key）与 `500`（上游故障）必须区分，前端据此给「去设置」或「稍后重试」提示。
+- `POST /api/ai/async-analysis`：无健康数据 `400`；成功返回 `{task_id, status: "pending"}`（`200`）。`GET /api/ai/task/{task_id}`：任务不存在、已过期或属于其他用户一律 `404`（不泄露存在性）。
 
 ## 6. 兼容性与回归红线
 

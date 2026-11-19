@@ -232,6 +232,15 @@ def test_serious_mode_ignores_non_danger_and_stale_rating(db, test_user):
     assert mental_service.is_serious_mode(db, test_user.id, today=TODAY) is False
 
 
+def test_cross_warning_for_danger_health_rating_uses_physiological_copy(db, test_user):
+    _health_analysis(db, test_user.id, "危险")
+    warnings = check_health_warnings(test_user.id, db)
+    by_type = {w["type"]: w for w in warnings}
+    assert "健康评级需关注" in by_type
+    assert "心理量表" not in by_type["健康评级需关注"]["content"]
+    assert "健康评级" in by_type["健康评级需关注"]["content"]
+
+
 def test_summary_serious_mode_includes_danger_health_rating(db, test_user):
     _health_analysis(db, test_user.id, "危险")
     assert mental_service.summary(db, test_user.id, today=TODAY)["serious_mode"] is True

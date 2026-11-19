@@ -55,7 +55,8 @@ export default {
 
   // AI 健康分析
   createAIAnalysis(data) {
-    return http.post('/ai/analysis', data)
+    // LLM 生成通常 10–40s，默认 30s 容易误报超时。
+    return http.post('/ai/analysis', data, { timeout: 60000 })
   },
   getAIAnalysisHistory(limit = 10) {
     return http.get('/ai/analysis/history', { params: { limit } })
@@ -67,10 +68,10 @@ export default {
     return http.delete(`/ai/analysis/${id}`)
   },
   quickHealthAnalysis() {
-    return http.post('/ai/quick-analysis')
+    return http.post('/ai/quick-analysis', null, { timeout: 60000 })
   },
   getHealthEvaluation() {
-    return http.post('/ai/health-evaluation')
+    return http.post('/ai/health-evaluation', null, { timeout: 60000 })
   },
   asyncAIAnalysis(data) {
     return http.post('/ai/async-analysis', data)

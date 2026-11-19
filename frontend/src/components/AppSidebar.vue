@@ -43,6 +43,14 @@
         <span class="nav-num">{{ item.num }}</span>
         <AppIcon :name="item.icon" :size="18" />
         <span class="nav-text">{{ item.label }}</span>
+        <span
+          v-if="item.path === '/warnings' && warningStore.stats.unread"
+          class="nav-count"
+          :aria-label="`${warningStore.stats.unread} 条未读预警`"
+        >
+          {{ warningStore.stats.unread > 9 ? '9+' : warningStore.stats.unread }}
+        </span>
+        <span v-else-if="item.dot" class="nav-dot" aria-hidden="true" />
       </router-link>
 
       <div class="nav-label">助手</div>
@@ -94,6 +102,7 @@
 <script>
 import AppIcon from './AppIcon.vue'
 import { useSound } from '../composables/useHealthU'
+import { useWarningStore } from '../stores/warnings'
 
 export default {
   name: 'AppSidebar',
@@ -105,7 +114,11 @@ export default {
   emits: ['navigate'],
   setup() {
     const { soundEnabled, toggleSound } = useSound()
-    return { soundEnabled, toggleSound }
+    const warningStore = useWarningStore()
+    return { soundEnabled, toggleSound, warningStore }
+  },
+  mounted() {
+    this.warningStore.refreshStats()
   },
   data() {
     return {
@@ -118,11 +131,12 @@ export default {
       archiveLinks: [
         { path: '/health-record', label: '体检', num: '05', icon: 'record' },
         { path: '/health-analysis', label: '健康分析', num: '06', icon: 'chart' },
-        { path: '/tongue-diagnosis', label: '舌诊', num: '07', icon: 'tongue' }
+        { path: '/tongue-diagnosis', label: '舌诊', num: '07', icon: 'tongue' },
+        { path: '/warnings', label: '预警', num: '08', icon: 'alert' }
       ],
       assistantLinks: [
-        { path: '/chat', label: '对话', num: '08', icon: 'ai', dot: true },
-        { path: '/ai-settings', label: '设置', num: '09', icon: 'sliders' }
+        { path: '/chat', label: '对话', num: '09', icon: 'ai', dot: true },
+        { path: '/ai-settings', label: '设置', num: '10', icon: 'sliders' }
       ]
     }
   },
@@ -139,6 +153,7 @@ export default {
       return this.$route.path === path
     },
     logout() {
+      this.warningStore.resetStats()
       localStorage.removeItem('token')
       localStorage.removeItem('userName')
       this.$emit('navigate')

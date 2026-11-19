@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 
 import models
@@ -17,6 +19,8 @@ from constants import (
     TEMP_NORMAL_HIGH,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def check_health_warnings(user_id: int, db) -> list[dict]:
     latest_record = (
@@ -24,6 +28,7 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
             select(models.HealthRecord)
             .where(models.HealthRecord.user_id == user_id)
             .order_by(models.HealthRecord.record_date.desc())
+            .limit(1)
         )
         .scalars()
         .first()
@@ -135,6 +140,23 @@ def check_health_warnings(user_id: int, db) -> list[dict]:
     return warnings
 
 
+def safe_check_health_warnings(user_id: int, db) -> list[dict]:
+    """写入成功后触发预警检查的容错入口。
+
+    预警是业务写入的附带动作：用 SAVEPOINT 包住检查，任何异常只回滚这个
+    savepoint 并记录日志，不会回滚调用方已经提交的健康记录/量表结果。
+    （直接 `db.rollback()` 会连带回滚会话中的外层事务，测试的事务夹具与
+    生产环境的合并写入口都会因此丢数据。）
+    """
+    try:
+        with db.begin_nested():
+            warnings = check_health_warnings(user_id, db)
+        return warnings
+    except Exception:
+        logger.exception("健康预警检查失败（user=%d）", user_id)
+        return []
+
+
 # ── 身心交叉预警（M-LOGIC1） ──
 # 睡眠债阈值：近 7 个有记录日累计少睡 10 小时以上（约每天少睡 1.5 小时）
 SLEEP_DEBT_WARN_HOURS = 10.0
@@ -218,14 +240,24 @@ def _cross_warnings(user_id: int, db, latest_record) -> list[dict]:
     warnings: list[dict] = []
     _, sleep_debt, _ = mental_service.sleep_stats(db, user_id)
 
-    # 1) 量表严肃模式：PHQ-9/GAD-7 危机或中重度以上 -> danger
-    if mental_service.is_serious_mode(db, user_id):
+    # 1) 严肃模式：区分心理量表与生理健康评级，避免把后者写成“量表结果”
+    serious_sources = mental_service.serious_sources(db, user_id)
+    if "scale" in serious_sources:
         warnings.append(
             {
                 "type": "心理状态需关注",
                 "level": "danger",
                 "content": "您近期的心理量表结果提示需要重点关注。"
                 "这不是诊断，但您不必独自承担，" + _crisis_hint(),
+            }
+        )
+    elif "health_rating" in serious_sources:
+        warnings.append(
+            {
+                "type": "健康评级需关注",
+                "level": "danger",
+                "content": "您近期的健康评级为「危险」，提示生理指标需要重点关注。"
+                "这不是诊断，建议尽快复测相关指标并咨询医生；如有明显不适请及时就医。",
             }
         )
 

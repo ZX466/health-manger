@@ -42,6 +42,16 @@ _EVALUATION_CONFIG = LLMConfig(
 )
 
 
+NO_AI_KEY_DETAIL = "未配置 AI API 密钥，请在「AI 设置」中完善后重试"
+
+
+def _ai_failure(exc: Exception, action: str) -> HTTPException:
+    """统一 AI 调用失败映射：缺 Key → 503（可操作提示），其余 → 500。"""
+    if isinstance(exc, ValueError) and "密钥" in str(exc):
+        return HTTPException(status_code=503, detail=NO_AI_KEY_DETAIL)
+    return HTTPException(status_code=500, detail=f"{action}失败，请稍后重试")
+
+
 def _extract_health_data(record: models.HealthRecord) -> dict:
     return {
         "身高": f"{record.height}cm" if record.height else "未知",
@@ -102,9 +112,9 @@ async def create_ai_analysis(
         return db_analysis
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("AI 分析失败")
-        raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
+    except Exception as exc:
+        logger.error("AI 分析失败 (error=%s)", type(exc).__name__)
+        raise _ai_failure(exc, "AI 分析") from exc
 
 
 @router.get("/analysis/history", response_model=list[schemas.AIAnalysisResponse])
@@ -195,9 +205,9 @@ async def quick_health_analysis(
                 messages, build_llm_config_for_user(db, current_user.id, _QUICK_CONFIG)
             )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
-        except Exception:
-            logger.exception("AI 快速分析失败")
-            raise HTTPException(status_code=500, detail="AI 分析失败，请稍后重试")
+        except Exception as exc:
+            logger.error("AI 快速分析失败 (error=%s)", type(exc).__name__)
+            raise _ai_failure(exc, "AI 分析") from exc
 
     db_analysis = models.AIAnalysis(
         user_id=current_user.id,
@@ -263,9 +273,9 @@ async def llm_health_evaluation(
                 messages, build_llm_config_for_user(db, current_user.id, _EVALUATION_CONFIG)
             )
             llm_response_cache.set(cache_key, (response_content, tokens_used))
-        except Exception:
-            logger.exception("LLM 健康评价失败")
-            raise HTTPException(status_code=500, detail="健康评价失败，请稍后重试")
+        except Exception as exc:
+            logger.error("LLM 健康评价失败 (error=%s)", type(exc).__name__)
+            raise _ai_failure(exc, "健康评价") from exc
 
     db_eval = models.AIAnalysis(
         user_id=current_user.id,
@@ -289,15 +299,29 @@ async def llm_health_evaluation(
     }
 
 
-def _run_llm_sync(messages: list, config: LLMConfig) -> tuple:
-    """同步包装：在工作线程中运行异步 LLM 调用"""
+def _run_llm_sync(messages: list, config: LLMConfig) -> dict:
+    """同步包装：在工作线程中运行异步 LLM 调用。
+
+    返回 dict 而不是 tuple，保证 /task/{id} 的 result 能通过
+    AsyncTaskStatus 的 Pydantic 校验，也方便前端直接读取 content。
+    """
     import asyncio
 
     loop = asyncio.new_event_loop()
     try:
-        return loop.run_until_complete(call_llm(messages, config))
+        content, tokens_used = loop.run_until_complete(call_llm(messages, config))
+        return {"content": content, "tokens_used": tokens_used}
     finally:
         loop.close()
+
+
+def _normalize_async_result(result) -> dict | None:
+    """兼容旧任务的 tuple 结果，返回可 JSON 化的 dict。"""
+    if isinstance(result, dict):
+        return dict(result)
+    if isinstance(result, (list, tuple)) and len(result) >= 2:
+        return {"content": result[0], "tokens_used": result[1]}
+    return None
 
 
 @router.post("/async-analysis", response_model=schemas.AsyncTaskStatus)
@@ -344,13 +368,37 @@ async def async_ai_analysis(
 async def get_task_status(
     task_id: str,
     current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """查询异步任务状态"""
+    """查询异步任务状态；首次完成时落库，返回 analysis_id 供前端跳转历史。"""
     from async_tasks import task_queue
 
     status = task_queue.get_task_status(task_id, user_id=current_user.id)
     if not status:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
+
+    if status.get("status") == "completed":
+        result = _normalize_async_result(status.get("result"))
+        if result is not None:
+            if not result.get("analysis_id") and result.get("content"):
+                try:
+                    db_analysis = models.AIAnalysis(
+                        user_id=current_user.id,
+                        request_content="异步 AI 分析",
+                        response_content=result["content"],
+                        analysis_type="AI 异步分析",
+                        tokens_used=result.get("tokens_used"),
+                    )
+                    db.add(db_analysis)
+                    db.commit()
+                    db.refresh(db_analysis)
+                    result["analysis_id"] = db_analysis.id
+                    task_queue.update_result(task_id, result)
+                except Exception as exc:
+                    db.rollback()
+                    logger.error("异步 AI 分析落库失败 (error=%s)", type(exc).__name__)
+            status["result"] = result
+
     return schemas.AsyncTaskStatus(**status)
 
 
@@ -398,19 +446,22 @@ def update_ai_config(
     db: Session = Depends(get_db),
 ):
     """保存用户 AI 配置（聊天 + 视觉 + 对话风格；api_key 为空则保留原值）。"""
-    cfg = save_config(
-        db,
-        current_user.id,
-        provider=payload.provider,
-        model=payload.model,
-        base_url=payload.base_url,
-        api_key=payload.api_key,
-        vision_provider=payload.vision_provider,
-        vision_model=payload.vision_model,
-        vision_base_url=payload.vision_base_url,
-        vision_api_key=payload.vision_api_key,
-        persona_style=payload.persona_style,
-    )
+    try:
+        cfg = save_config(
+            db,
+            current_user.id,
+            provider=payload.provider,
+            model=payload.model,
+            base_url=payload.base_url,
+            api_key=payload.api_key,
+            vision_provider=payload.vision_provider,
+            vision_model=payload.vision_model,
+            vision_base_url=payload.vision_base_url,
+            vision_api_key=payload.vision_api_key,
+            persona_style=payload.persona_style,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     masked = mask_api_key(decrypt_api_key(cfg.api_key_encrypted)) if cfg.api_key_encrypted else ""
     vision_masked = (
         mask_api_key(decrypt_api_key(cfg.vision_api_key_encrypted))
@@ -470,7 +521,7 @@ async def test_ai_config(
         )
         return schemas.AIConfigTestResponse(success=True, message="连接成功", model=payload.model)
     except Exception as e:
-        logger.info("AI 配置测试失败: %s", e)
+        logger.info("AI 配置测试失败 (error=%s)", type(e).__name__)
         return schemas.AIConfigTestResponse(
             success=False, message="连接失败：请检查 Base URL/API Key/模型名"
         )

@@ -71,6 +71,19 @@
         </div>
         <p class="mode-hint">{{ modeMeta.hint }}</p>
 
+        <div v-if="mode === 'body'" class="tongue-bar">
+          <button
+            class="tongue-btn"
+            type="button"
+            :disabled="tongueLoading || sending || creating"
+            @click="useTongueContext"
+          >
+            <AppIcon name="tongue" :size="15" />
+            {{ tongueLoading ? '读取舌诊…' : '引用最近舌诊' }}
+          </button>
+          <span>把最近一次舌象结果带进对话，让建议更贴近你的体质。</span>
+        </div>
+
         <div class="chat-persona">
           <PersonaCard compact :serious="personaSerious" />
         </div>
@@ -101,7 +114,16 @@
           最近的状态值得被认真对待。不用急着组织语言；如果很难受，点右上角「需要帮助？」。
         </p>
 
-        <p v-if="notice" class="chat-notice" role="status">{{ notice }}</p>
+        <p v-if="notice" class="chat-notice" role="status">
+          {{ notice }}
+          <router-link
+            v-if="noticeLink && notice.includes('舌诊')"
+            class="chat-notice-link"
+            :to="noticeLink.to"
+          >
+            {{ noticeLink.label }}
+          </router-link>
+        </p>
 
         <div
           ref="msgBox"
@@ -180,6 +202,8 @@ const sending = ref(false)
 const creating = ref(false)
 let disposed = false
 const notice = ref('')
+const noticeLink = ref(null)
+const tongueLoading = ref(false)
 const route = useRoute()
 const showHelp = ref(false)
 const seriousMode = ref(false)
@@ -355,6 +379,33 @@ function usePrompt (prompt) {
   send()
 }
 
+async function useTongueContext () {
+  if (tongueLoading.value || sending.value || creating.value) return
+  tongueLoading.value = true
+  notice.value = ''
+  noticeLink.value = null
+  try {
+    if (!activeId.value) await createSession()
+    if (!activeId.value) return
+    await api.addTongueContext(activeId.value)
+    input.value = '请结合我的舌诊结果，分析我的体质特点，并给出 3 条可执行的调理建议。'
+    tongueLoading.value = false
+    send()
+  } catch (e) {
+    const status = e?.response?.status
+    const detail = e?.response?.data?.detail
+    if (status === 404) {
+      // 全局 404 处理器会统一返回“请求的资源不存在”，这里按场景给可操作文案。
+      notice.value = '暂无舌诊记录，请先上传一张舌象图片'
+      noticeLink.value = { to: '/tongue-diagnosis', label: '去舌诊' }
+    } else {
+      notice.value = detail || '舌诊上下文添加失败，请稍后重试'
+    }
+  } finally {
+    tongueLoading.value = false
+  }
+}
+
 function stop () {
   if (controller) controller.abort()
 }
@@ -380,6 +431,7 @@ async function send () {
   loadToken += 1
   input.value = ''
   notice.value = ''
+  noticeLink.value = null
   const token = ++streamToken
   const replyId = `local-${++messageSeq}`
   messages.value.push({ role: 'user', content })
@@ -612,6 +664,45 @@ onUnmounted(() => {
   margin: 10px 16px 0;
 }
 
+.tongue-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 16px 0;
+}
+
+.tongue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px dashed color-mix(in oklch, var(--accent) 38%, var(--line));
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tongue-btn:hover {
+  background: var(--accent-soft);
+  border-style: solid;
+}
+
+.tongue-btn:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.tongue-bar span {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
 .chat-notice {
   margin: 10px 16px 0;
   padding: 7px 10px;
@@ -619,6 +710,14 @@ onUnmounted(() => {
   background: var(--warn-soft);
   color: var(--muted);
   font-size: 12px;
+}
+
+.chat-notice-link {
+  margin-left: 6px;
+  color: var(--accent-strong);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .messages {
