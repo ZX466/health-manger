@@ -1,9 +1,9 @@
 # 功能覆盖矩阵（feature-coverage）
 
-> 基线：main `c577392`（AI P1 端点收口后），2026-11-19 FE-2 前端闭环校准。
+> 基线：main `c577392`（AI P1 端点收口后），2026-11-19 DOC-2 文档校准 + FE-2 前端闭环。
 > 端点数为 FastAPI 路由表实测 **72**（含 `GET /api/health` 探活；业务端点 **71**）。
 > 状态口径：**已接入** = 前端有 UI 调用链（证据到视图/组件/store）；**仅封装** = `frontend/src/api` 已封装但无 UI 调用；**未封装** = 前端无对应方法。
-> FE-2 已把 P2 的 10 个端点接入 UI；仅剩聊天 v1 非流式消息为遗留封装（前端只走流式）。
+> 上一轮 P0（W-1 / A-1 / K-1）与 P1（K-2 / DASH-1 / CHAT-1）均已合并；FE-2 已把 P2 的 10 个端点接入 UI，仅剩聊天 v1 非流式消息为遗留封装。
 
 ## 1. 模块总览
 
@@ -101,12 +101,12 @@
 | DELETE /api/ai/analysis/{id} | [ai_analysis.py:155](../routers/ai_analysis.py) | index.js `deleteAIAnalysis` | HealthAnalysis.vue（二次确认删除） | 已接入（A-1） |
 | POST /api/ai/quick-analysis | [ai_analysis.py:176](../routers/ai_analysis.py) | index.js `quickHealthAnalysis` | HealthAnalysis.vue（快速分析） | 已接入 |
 | POST /api/ai/health-evaluation | [ai_analysis.py:226](../routers/ai_analysis.py) | index.js `getHealthEvaluation` | HealthAnalysis.vue（规则 + AI 评价） | 已接入 |
-| POST /api/ai/async-analysis | [ai_analysis.py:313](../routers/ai_analysis.py) | index.js `asyncAIAnalysis` | HealthAnalysis.vue（后台分析） | 已接入 |
-| GET /api/ai/task/{id} | [ai_analysis.py:353](../routers/ai_analysis.py) | index.js `getTaskStatus` | HealthAnalysis.vue（轮询，完成后落库） | 已接入 |
-| GET /api/ai/config | [ai_analysis.py:370](../routers/ai_analysis.py) | index.js `getAiConfig` | AISettings / PersonaCard.vue | 已接入 |
-| PUT /api/ai/config | [ai_analysis.py:404](../routers/ai_analysis.py) | index.js `saveAiConfig` | AISettings / PersonaCard.vue | 已接入 |
-| DELETE /api/ai/config | [ai_analysis.py:445](../routers/ai_analysis.py) | index.js `deleteAiConfig` | AISettings.vue | 已接入 |
-| POST /api/ai/config/test | [ai_analysis.py:455](../routers/ai_analysis.py) | index.js `testAiConfig` | AISettings.vue | 已接入 |
+| POST /api/ai/async-analysis | [ai_analysis.py:327](../routers/ai_analysis.py) | index.js `asyncAIAnalysis` | HealthAnalysis.vue（后台分析） | 已接入 |
+| GET /api/ai/task/{id} | [ai_analysis.py:367](../routers/ai_analysis.py) | index.js `getTaskStatus` | HealthAnalysis.vue（轮询，完成后落库） | 已接入 |
+| GET /api/ai/config | [ai_analysis.py:408](../routers/ai_analysis.py) | index.js `getAiConfig` | AISettings / PersonaCard.vue | 已接入 |
+| PUT /api/ai/config | [ai_analysis.py:442](../routers/ai_analysis.py) | index.js `saveAiConfig` | AISettings / PersonaCard.vue | 已接入 |
+| DELETE /api/ai/config | [ai_analysis.py:486](../routers/ai_analysis.py) | index.js `deleteAiConfig` | AISettings.vue | 已接入 |
+| POST /api/ai/config/test | [ai_analysis.py:496](../routers/ai_analysis.py) | index.js `testAiConfig` | AISettings.vue | 已接入 |
 
 注：AI 分析 12 个端点的契约/测试由 K-3 保障；`HealthAnalysis.vue` 同时展示规则引擎分析（`/health/analysis/*`）和 LLM 深度解读（`/ai/analysis/*`）。快速分析复用最新记录缓存；规则 + AI 评价展示规则评分与 LLM 综合结论；后台分析轮询 `task/{id}`，完成后由任务查询端点落库并返回 `analysis_id`，可继续在历史中查看。
 
@@ -151,13 +151,13 @@
 
 | 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
 |---|---|---|---|---|
-| POST /api/mental/mood | [mental.py:39](../routers/mental.py) | mental.js `createMentalRecord` | MoodCheckIn.vue | 已接入（每日一条 upsert） |
-| GET /api/mental/mood | [mental.py:56](../routers/mental.py) | mental.js `getMentalRecords`（别名 `getMentalMood`） | wellness.js / MentalView.vue | 已接入 |
-| GET /api/mental/trend | [mental.py:65](../routers/mental.py) | mental.js `getMentalTrend` | Dashboard / MentalView.vue | 已接入 |
-| GET /api/mental/scales | [mental.py:74](../routers/mental.py) | mental.js `getMentalScales` | MentalView.vue | 已接入 |
-| GET /api/mental/scales/history | [mental.py:80](../routers/mental.py) | mental.js `getMentalAssessments`（别名 `getMentalScaleHistory`） | MentalView.vue | 已接入 |
-| POST /api/mental/scales/{type}/submit | [mental.py:92](../routers/mental.py) | mental.js `createMentalAssessment`（别名 `submitMentalScale`） | ScaleRunner.vue | 已接入；K-1 补自动预警 |
-| GET /api/mental/summary | [mental.py:121](../routers/mental.py) | mental.js `getMentalSummary` | wellness.js / MentalView / ChatView / Dashboard / AISettings | 已接入 |
+| POST /api/mental/mood | [mental.py:40](../routers/mental.py) | mental.js `createMentalRecord` | MoodCheckIn.vue | 已接入（每日一条 upsert） |
+| GET /api/mental/mood | [mental.py:57](../routers/mental.py) | mental.js `getMentalRecords`（别名 `getMentalMood`） | wellness.js / MentalView.vue | 已接入 |
+| GET /api/mental/trend | [mental.py:66](../routers/mental.py) | mental.js `getMentalTrend` | Dashboard / MentalView.vue | 已接入 |
+| GET /api/mental/scales | [mental.py:75](../routers/mental.py) | mental.js `getMentalScales` | MentalView.vue | 已接入 |
+| GET /api/mental/scales/history | [mental.py:81](../routers/mental.py) | mental.js `getMentalAssessments`（别名 `getMentalScaleHistory`） | MentalView.vue | 已接入 |
+| POST /api/mental/scales/{type}/submit | [mental.py:93](../routers/mental.py) | mental.js `createMentalAssessment`（别名 `submitMentalScale`） | ScaleRunner.vue | 已接入；K-1 补自动预警 |
+| GET /api/mental/summary | [mental.py:123](../routers/mental.py) | mental.js `getMentalSummary` | wellness.js / MentalView / ChatView / Dashboard / AISettings | 已接入 |
 
 ### 3.10 探活
 
@@ -170,7 +170,7 @@
 1. 后端路由表：`uv run python -c "from main import app; ..."` 枚举 `app.routes`（需设 `SECRET_KEY`），共 72 个 `/api` 路由（71 业务 + 1 探活）。
 2. 前端封装：`frontend/src/api/*.js` 中 `http.get/post/put/delete` 调用逐一对照。
 3. UI 调用链：在 `frontend/src`（排除 `api/`）grep `api.<方法名>` 与别名（mental.js 尾部有 v1 别名导出）。
-4. 本文档只描述已实现功能；「待补」均对应本轮派单任务或明确标注未派单。
+4. 本文档只描述已实现功能；「待补」均对应已派单任务（当前为 FE-2）或明确标注未派单。
 
 ## 5. 校准记录
 
@@ -179,4 +179,5 @@
 | 2026-11-18 | main `ef6c68f`（对齐 `a967496`） | C-1 首轮：43 已接入 / 25 仅封装 / 2 未封装 / 1 探活 |
 | 2026-11-18 | main `008f098` | C-1 二次校准：55 已接入 / 14 仅封装 / 2 未封装；72 路由含探活；新增 `/warnings`、AI 分析 4 端点、K-2 评分历史、CHAT-1 舌诊上下文 |
 | 2026-11-18 | main `254d51f` 后 | P1 收口：AI 快捷/规则+AI 评价/异步分析/任务轮询接入 `HealthAnalysis.vue`；59 已接入 / 10 仅封装 / 2 未封装 |
+| 2026-11-19 | main `c577392` | DOC-2 校准：修正饮食行（明细 8/2/1，原汇总误写 7/3/1）与总计 **60 已接入 / 9 仅封装 / 2 未封装**；§2 剩余缺口对齐 FE-2 派单；实测后端 271 passed、前端 27 passed |
 | 2026-11-19 | main `c577392` + FE-2 | FE-2 前端闭环：健康记录详情、舌诊统计/删除、饮食/运动库详情/编辑/删除、聊天会话删除接入；**70 已接入 / 1 仅封装 / 0 未封装**（仅剩聊天 v1 非流式消息） |
