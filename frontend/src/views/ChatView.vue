@@ -423,6 +423,8 @@ async function deleteSession (session) {
   }
   deletingId.value = session.id
   try {
+    // 删除一开始就取消同会话的在途流，避免 DELETE 响应前仍有助手消息写入。
+    if (String(activeId.value) === String(session.id) && sending.value) detachStream()
     await api.deleteChatSession(session.id)
     sessions.value = sessions.value.filter(s => String(s.id) !== String(session.id))
     notice.value = '会话已删除'

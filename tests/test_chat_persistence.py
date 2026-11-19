@@ -5,6 +5,7 @@ called db.flush(), and routers never committed -> the request's session close
 rolled the transaction back, silently losing sessions/messages.
 """
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -47,6 +48,23 @@ def test_session_and_messages_survive_session_close():
         assert msgs[0].content == "hello"
     finally:
         s2.close()
+
+
+def test_add_message_refuses_deleted_session():
+    """删除会话后晚到的写入必须被拒绝，不能产生无父会话的孤儿消息。"""
+    eng = _make_engine()
+    Base.metadata.create_all(bind=eng)
+
+    s1 = Session(eng)
+    session = create_session(db=s1, user_id=1)
+    session_id = session.id
+    assert delete_session(db=s1, session_id=session_id, user_id=1) is True
+
+    with pytest.raises(ValueError):
+        add_message(db=s1, session_id=session_id, role="assistant", content="late")
+
+    assert s1.query(chat_session.ChatMessage).filter_by(session_id=session_id).count() == 0
+    s1.close()
 
 
 def test_delete_session_is_durable():

@@ -236,7 +236,11 @@ async def stream_message(
     safety_payload = _safety_payload(risk)
 
     # 决策 5：用户消息先落库；assistant 仅在完整结束后落库，断开即丢弃半截回复
-    add_message(db=db, session_id=session_id, role="user", content=safe_content)
+    try:
+        add_message(db=db, session_id=session_id, role="user", content=safe_content)
+    except ValueError:
+        # 请求间隙会话已被删除：不再建立流，避免孤儿消息。
+        raise HTTPException(status_code=404, detail="会话不存在")
 
     async def event_stream():
         chunks: list[str] = []
@@ -263,13 +267,18 @@ async def stream_message(
                 return
 
             tokens_used = _estimate_tokens(text)
-            stored = add_message(
-                db=stream_db,
-                session_id=session_id,
-                role="assistant",
-                content=text,
-                tokens_used=tokens_used,
-            )
+            try:
+                stored = add_message(
+                    db=stream_db,
+                    session_id=session_id,
+                    role="assistant",
+                    content=text,
+                    tokens_used=tokens_used,
+                )
+            except ValueError:
+                # 流式生成期间会话被删除：不再落库，也不发 done。
+                logger.info("会话已被删除，丢弃助手消息 (session=%d)", session_id)
+                return
             yield _sse("done", {"message_id": stored.id, "tokens_used": tokens_used})
         finally:
             stream_db.close()

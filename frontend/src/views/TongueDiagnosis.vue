@@ -653,11 +653,13 @@ async function captureAndAnalyze() {
 async function loadHistoryDetail(item) {
   if (!item || !item.id) return
   const token = ++detailToken
+  // 切换详情先清空预览，避免新图加载失败时仍显示上一条记录的照片。
+  previewImageId.value = item.id
+  previewImage.value = null
   try {
     const response = await api.getTongueDetail(item.id)
     if (token !== detailToken || deletedTongueIds.has(item.id)) return
     store.result = response.data
-    previewImageId.value = item.id
     const url = await loadProtectedImage(item.id)
     // 图片晚到且期间已删除或切换详情：丢弃，避免回填已删记录的预览。
     if (token !== detailToken || deletedTongueIds.has(item.id) || !url) return

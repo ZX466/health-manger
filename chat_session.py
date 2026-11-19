@@ -115,7 +115,13 @@ def add_message(
     content: str,
     tokens_used: int | None = None,
 ) -> ChatMessage:
-    """Add a message to a chat session."""
+    """Add a message to a chat session.
+
+    会话可能在流式生成期间被用户删除（SQLite 默认未开启外键约束）：
+    写入前校验会话仍存在，避免产生无父会话的孤儿消息。
+    """
+    if db.get(ChatSession, session_id) is None:
+        raise ValueError(f"chat session {session_id} does not exist")
     message = ChatMessage(
         session_id=session_id,
         role=role,
