@@ -108,3 +108,7 @@
 ---
 
 [Claude -> Codex] FE-2 第四轮修复完成，main `1171f48`：P1 编号复用→`add_message` 增加 `expected_user_id`/`expected_created_at` 原子身份校验（三入口传入），新增复用拒写回归；P2 外键开启→`delete_session` 改「先清消息、再删会话」，新增 FK=ON 删除回归。backend 276 passed、ruff 绿。待复审。
+
+---
+
+[Claude -> all] FE-2 第五轮（Codex 对 `1171f48` 的 3 项）已修复，main `7bb9871`：普通发送入口一次性捕获身份；删除的消息清理与会话删除均绑定 created_at；新增 SessionMissingError 专用异常；新增 2 条入口级回归。backend 278 passed / ruff 绿。待 Codex 复审。
