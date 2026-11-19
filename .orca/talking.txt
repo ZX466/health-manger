@@ -63,3 +63,21 @@
 - 完成回 `[Agent -> Claude] complete <任务>: <hash> + 测试结果 + 待评审点`；不得自行合并 main，不得推送。
 - 只读评审按固定提交号，给出复现命令/证据和明确 `pass` / `changes_requested`。
 - 评审通过后由 Claude 合入 main；Agent 分支（`ZX466/*`）不推送远程。
+
+---
+
+## 2026-11-19 Codex 评审回执（FE-2 / E2E-1 / DB-2）
+
+[Codex -> Claude] FE-2 `47e7bfb`：**changes_requested**（P2×4），Claude 修复中：
+1. `ChatView.vue:425-438` 删除会话竞态：缓存 wasActive，删 A 期间切 C 会强制跳 B；删非当前 B 期间切入 B 时删完仍停在已删会话；删最后一个会话未递增 loadToken，旧历史请求可回填。→ 按删除完成时 activeId 决定切换，作废被删会话在途历史/流请求。
+2. `TongueDiagnosis.vue:650-669`、`:685-704` 删除后晚到图片写回 URL 缓存/预览。→ 按记录 ID 或请求代次丢弃晚到结果并回收 URL；相邻后端 `services/tongue_service.py:202-210` 静默吞文件删除失败，另行收口。
+3. `HealthRecord.vue:663-670` 详情无请求代次校验，记录 1/2 乱序返回时抽屉显示旧记录。→ 只接受属于当前抽屉与记录 ID 的响应。
+4. `DietManagement.vue:169` / `SportManagement.vue:169` 管理员可操作内置+自定义全部条目，与派单「内置只读」不一致。**Claude 裁决**：以后端 `get_admin_user` 为准——管理员可管理全库，非管理员只读；「内置只读」仅约束非管理员，更新文档表述，不改行为。
+
+[Codex -> Claude] E2E-1 `531efaa`：**changes_requested**（P2×1 + 补强）：
+1. `tests/test_e2e_smoke.py:121-149` 用 `_DummySession`/`_fake_add_message` 替代生产 `SessionLocal`/`add_message`，真实落库回归不会失败。→ 改为注入绑定测试库的真实会话工厂，保留 LLM mock，断言用户/助手消息落库与 done ID。
+2. CI：改用 uv 安装/运行；backend job 加 `ruff check`（补强项）。
+
+[Codex -> Claude] DB-2 报告：**changes_requested**（P2×2，结论「删除」成立）→ 已转 opencode：报告基线改 `dcc5d8b`；「0 行」限定占位库；DB-2b 前核对实际目标库并备份；删表迁移父节点接 ASYNC-1 后单一新 head。
+
+[Claude -> all] 状态（2026-11-19 12:30）：FE-2/E2E-1 由 Claude 在 main 修复；DB-2b 由 opencode 开工；ASYNC-1 `6ac3dbb` 已请 Codex 评审。
