@@ -185,3 +185,4 @@
 | 2026-11-19 | main `c577392` | DOC-2 校准：修正饮食行（明细 8/2/1，原汇总误写 7/3/1）与总计 **60 已接入 / 9 仅封装 / 2 未封装**；§2 剩余缺口对齐 FE-2 派单；实测后端 271 passed、前端 27 passed |
 | 2026-11-19 | main `c3923b5` | ASYNC-1 / DB-2b / E2E-1 收口：异步任务持久化（`async_tasks` + 原子领取 + 启动恢复 + 单事务落库，迁移 `a1b2c3d4e5f6`）；DB-2b 删除 `health_articles`/`user_health_goals`（迁移 `b2c3d4e5f6a7`，模型/schema/脚本同步）；E2E 冒烟 + CI（uv/ruff）。实测后端 288 passed、前端 27 passed |
 | 2026-11-19 | main `2b0de16` | AI 配置局部更新：`AIConfigUpdate` 的 provider/model 改为可选，舌诊视觉配置可单独保存并保留聊天模型；前端 `readApiError` 拍平 422 detail 数组。实测后端 289 passed、前端 31 passed |
+| 2026-11-19 | main `3aa9862` | 视觉模型失败提示细分：智谱 1210（仅 text）提示模型不支持图片并建议 glm-4v-plus；401/403 鉴权、404 接口、400 模型能力分别提示；新增 3 例视觉错误测试。实测后端 292 passed、前端 31 passed |
