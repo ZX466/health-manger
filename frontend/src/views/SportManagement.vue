@@ -147,7 +147,7 @@
           @input="searchSports"
           class="search-input"
         />
-        <button v-if="isAdmin" class="btn btn-primary" @click="showAddSport = true">
+        <button v-if="isAdmin" class="btn btn-primary" @click="openAddSport">
           <AppIcon name="plus" :size="15" />
           添加运动
         </button>
@@ -166,6 +166,10 @@
             添加到记录
             <AppIcon name="arrow" :size="14" />
           </button>
+          <div v-if="isAdmin" class="sport-admin-actions">
+            <button type="button" class="sport-admin-btn" @click="openEditSport(sport)">编辑</button>
+            <button type="button" class="sport-admin-btn sport-admin-btn--danger" @click="confirmDeleteSport(sport)">删除</button>
+          </div>
         </div>
       </div>
       <div v-else class="empty-state">
@@ -248,11 +252,11 @@
       </div>
     </div>
 
-    <div v-if="showAddSport" class="modal-overlay" @click.self="showAddSport = false">
+    <div v-if="showAddSport" class="modal-overlay" @click.self="closeSportModal">
       <div class="modal sport-modal">
         <div class="modal-head">
-          <span class="micro">NEW SPORT</span>
-          <h2>添加运动项目</h2>
+          <span class="micro">{{ editingSportId ? 'EDIT SPORT' : 'NEW SPORT' }}</span>
+          <h2>{{ editingSportId ? '编辑运动项目' : '添加运动项目' }}</h2>
         </div>
         <form @submit.prevent="submitSport">
           <div class="form-group">
@@ -283,8 +287,8 @@
             </select>
           </div>
           <div class="modal-actions">
-            <button type="button" @click="showAddSport = false" class="btn btn-ghost">取消</button>
-            <button type="submit" class="btn btn-primary">确定</button>
+            <button type="button" @click="closeSportModal" class="btn btn-ghost">取消</button>
+            <button type="submit" class="btn btn-primary">{{ editingSportId ? '保存' : '确定' }}</button>
           </div>
         </form>
       </div>
@@ -316,6 +320,8 @@ export default {
       goalCalories: 400,
       showAddRecord: false,
       showAddSport: false,
+      editingSportId: null,
+      deletingSportId: null,
       isAdmin: false,
       newRecord: { sport_id: '', duration_minutes: '', notes: '' },
       newSport: { name: '', category: '', calories_per_hour: 0, intensity_level: 'moderate' }
@@ -467,15 +473,67 @@ export default {
         alert('添加失败：' + this.errMsg(err))
       }
     },
-    async submitSport() {
+    openAddSport() {
+      this.editingSportId = null
+      this.newSport = { name: '', category: '', calories_per_hour: 0, intensity_level: 'moderate' }
+      this.showAddSport = true
+    },
+    async openEditSport(sport) {
+      this.editingSportId = sport.id
+      this.newSport = {
+        name: sport.name,
+        category: sport.category || '',
+        calories_per_hour: sport.calories_per_hour || 0,
+        intensity_level: sport.intensity_level || 'moderate'
+      }
+      this.showAddSport = true
       try {
-        await api.createSport(this.newSport)
-        this.showAddSport = false
+        const { data } = await api.getSport(sport.id)
+        if (data && this.editingSportId === sport.id) {
+          this.newSport = {
+            name: data.name,
+            category: data.category || '',
+            calories_per_hour: data.calories_per_hour || 0,
+            intensity_level: data.intensity_level || 'moderate'
+          }
+        }
+      } catch (err) {
+        // 详情接口失败时保留列表快照，仍可编辑。
+      }
+    },
+    closeSportModal() {
+      this.showAddSport = false
+      this.editingSportId = null
+    },
+    async submitSport() {
+      const isEdit = !!this.editingSportId
+      try {
+        if (isEdit) {
+          await api.updateSport(this.editingSportId, this.newSport)
+        } else {
+          await api.createSport(this.newSport)
+        }
+        this.closeSportModal()
         this.newSport = { name: '', category: '', calories_per_hour: 0, intensity_level: 'moderate' }
         await this.loadSports()
-        alert('添加成功')
+        alert(isEdit ? '更新成功' : '添加成功')
       } catch (err) {
-        alert('添加失败：' + this.errMsg(err))
+        alert((isEdit ? '更新失败：' : '添加失败：') + this.errMsg(err))
+      }
+    },
+    async confirmDeleteSport(sport) {
+      if (this.deletingSportId) return
+      if (!confirm(`确定删除「${sport.name}」吗？该运动会从运动库移除，已有记录不受影响。`)) return
+      this.deletingSportId = sport.id
+      try {
+        await api.deleteSport(sport.id)
+        this.sports = this.sports.filter(item => item.id !== sport.id)
+        await this.loadSportData()
+        alert('删除成功')
+      } catch (err) {
+        alert('删除失败：' + this.errMsg(err))
+      } finally {
+        this.deletingSportId = null
       }
     },
     async deleteRecord(id) {
@@ -519,3 +577,23 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.sport-admin-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.sport-admin-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.sport-admin-btn:hover { color: var(--fg); }
+.sport-admin-btn--danger { color: var(--danger); border-color: currentColor; }
+</style>

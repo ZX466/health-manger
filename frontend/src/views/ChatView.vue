@@ -8,7 +8,7 @@
           <button class="btn btn--primary btn-sm" type="button" :disabled="creating" @click="createSession">＋ 新建</button>
         </div>
         <ul class="session-list">
-          <li v-for="s in sessions" :key="s.id">
+          <li v-for="s in sessions" :key="s.id" class="session-row">
             <button
               class="session-item"
               :class="{ active: s.id === activeId }"
@@ -18,6 +18,29 @@
               <span class="session-title">{{ s.title || '新会话' }}</span>
               <span class="session-meta">{{ formatDate(s.updated_at) }}</span>
             </button>
+            <div class="session-actions">
+              <template v-if="pendingDeleteId === s.id">
+                <button
+                  class="session-confirm"
+                  type="button"
+                  :disabled="deletingId === s.id"
+                  @click.stop="deleteSession(s)"
+                >
+                  {{ deletingId === s.id ? '删除中' : '确认' }}
+                </button>
+                <button class="session-cancel" type="button" @click.stop="pendingDeleteId = null">取消</button>
+              </template>
+              <button
+                v-else
+                class="session-delete"
+                type="button"
+                :aria-label="`删除会话 ${s.title || '新会话'}`"
+                title="删除会话"
+                @click.stop="pendingDeleteId = s.id"
+              >
+                <AppIcon name="trash" :size="14" />
+              </button>
+            </div>
           </li>
           <li v-if="!sessions.length" class="empty">
             <p class="empty-title">暂无会话</p>
@@ -99,6 +122,16 @@
             {{ s.title || '新会话' }}
           </option>
         </select>
+        <button
+          v-if="activeSession"
+          class="session-delete-mobile"
+          type="button"
+          :aria-label="`删除当前会话 ${activeSession.title || '新会话'}`"
+          @click="deleteSession(activeSession)"
+        >
+          <AppIcon name="trash" :size="14" />
+          {{ pendingDeleteId === activeSession.id ? '确认删除' : '删除当前会话' }}
+        </button>
 
         <SafetyNotice
           v-if="showSafety"
@@ -204,6 +237,8 @@ let disposed = false
 const notice = ref('')
 const noticeLink = ref(null)
 const tongueLoading = ref(false)
+const pendingDeleteId = ref(null)
+const deletingId = ref(null)
 const route = useRoute()
 const showHelp = ref(false)
 const seriousMode = ref(false)
@@ -237,6 +272,10 @@ const MODE_META = {
     placeholder: '想说什么就说什么…'
   }
 }
+
+const activeSession = computed(() =>
+  sessions.value.find(s => String(s.id) === String(activeId.value)) || null
+)
 
 const modeMeta = computed(() => {
   if (personaSerious.value) {
@@ -341,6 +380,7 @@ async function createSession () {
     sessions.value = [data, ...sessions.value]
     activeId.value = data.id
     messages.value = []
+    pendingDeleteId.value = null
     notice.value = ''
     resetSafety()
     await nextTick()
@@ -359,6 +399,7 @@ function onSelectChange (event) {
 
 async function selectSession (session) {
   if (sending.value) detachStream()
+  pendingDeleteId.value = null
   resetSafety()
   activeId.value = session.id
   messages.value = []
@@ -371,6 +412,37 @@ async function selectSession (session) {
     scrollBottom(true)
   } catch (e) {
     if (token === loadToken) notice.value = '消息没加载出来，稍后重试'
+  }
+}
+
+async function deleteSession (session) {
+  if (!session || deletingId.value) return
+  if (pendingDeleteId.value !== session.id) {
+    pendingDeleteId.value = session.id
+    return
+  }
+  deletingId.value = session.id
+  const wasActive = String(activeId.value) === String(session.id)
+  try {
+    if (wasActive && sending.value) detachStream()
+    await api.deleteChatSession(session.id)
+    sessions.value = sessions.value.filter(s => String(s.id) !== String(session.id))
+    notice.value = '会话已删除'
+    if (wasActive) {
+      activeId.value = null
+      messages.value = []
+      pendingDeleteId.value = null
+      if (sessions.value.length) {
+        await selectSession(sessions.value[0])
+      } else {
+        resetSafety()
+      }
+    }
+  } catch (e) {
+    notice.value = e?.response?.data?.detail || '删除会话失败，请稍后重试'
+  } finally {
+    deletingId.value = null
+    pendingDeleteId.value = null
   }
 }
 
@@ -805,12 +877,32 @@ onUnmounted(() => {
 .chat-input input { flex: 1; min-width: 0; }
 
 .session-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.session-row { display: flex; align-items: stretch; gap: 4px; }
+.session-actions { display: flex; align-items: center; gap: 2px; }
+.session-delete,
+.session-confirm,
+.session-cancel {
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.session-delete { display: inline-flex; align-items: center; justify-content: center; width: 30px; }
+.session-delete:hover { color: var(--danger, #c0392b); border-color: currentColor; }
+.session-confirm,
+.session-cancel { padding: 4px 6px; font-size: 12px; }
+.session-confirm { color: var(--danger, #c0392b); border-color: currentColor; }
+.session-cancel:hover { color: var(--fg); }
+.session-delete-mobile { display: none; }
 
 .session-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
   width: 100%;
   padding: 10px 12px;
   border: var(--border-hairline);
@@ -830,6 +922,19 @@ onUnmounted(() => {
   .chat-layout { grid-template-columns: 1fr; }
   .chat-side { display: none; }
   .session-select { display: block; }
+  .session-delete-mobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 16px 0;
+    padding: 6px 10px;
+    border: var(--border-hairline);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+  }
   .chat-new-mobile { display: inline-flex; }
   .chat-main { min-height: 62vh; }
   .messages { max-height: 52vh; padding: 16px; }

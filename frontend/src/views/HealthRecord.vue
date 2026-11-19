@@ -660,10 +660,17 @@ export default {
       this.addLog('info', '选择', '已清除所有选择')
     },
 
-    viewDetail(record) {
+    async viewDetail(record) {
       this.detailRecord = record
       this.showDetailModal = true
       this.addLog('info', '查看', `记录 #${record.id}`)
+      try {
+        const { data } = await api.getHealthRecord(record.id)
+        // 详情接口返回完整字段；失败时保留列表快照，不阻断查看。
+        if (data) this.detailRecord = data
+      } catch (err) {
+        this.addLog('warn', '查看', '详情接口暂不可用，已显示列表数据')
+      }
     },
 
     closeDetail() {

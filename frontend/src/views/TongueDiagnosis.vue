@@ -28,6 +28,31 @@
       <span class="micro">{{ inputMode === 'camera' ? 'LIVE / CAMERA' : 'STILL / UPLOAD' }}</span>
     </div>
 
+    <section v-if="tongueStats" class="v21-panel tongue-stats" aria-label="舌诊统计">
+      <div class="panel-head">
+        <span class="micro">TONGUE / STATS</span>
+        <span class="micro">累计 {{ tongueStats.total_records || 0 }} 次</span>
+      </div>
+      <div class="tongue-stat-grid">
+        <div>
+          <span class="micro">累计分析</span>
+          <strong>{{ tongueStats.total_records || 0 }}</strong>
+        </div>
+        <div>
+          <span class="micro">已完成</span>
+          <strong>{{ tongueStats.completed_records || 0 }}</strong>
+        </div>
+        <div>
+          <span class="micro">最近证型</span>
+          <strong>{{ tongueStats.latest_syndrome || '—' }}</strong>
+        </div>
+        <div>
+          <span class="micro">最近舌象</span>
+          <strong>{{ tongueStats.latest_overall_type || '—' }}</strong>
+        </div>
+      </div>
+    </section>
+
     <div class="tongue-grid">
       <!-- 左侧控制栏 -->
       <div class="tongue-col">
@@ -304,18 +329,31 @@
           </div>
           <h2>历史记录</h2>
           <div class="history-strip">
-            <button
-              v-for="item in store.historyList"
-              :key="item.id"
-              class="history-card"
-              @click="loadHistoryDetail(item)"
-            >
-              <span class="history-thumb-wrap">
-                <img :src="protectedImageUrls[item.id] || ''" class="history-thumb" alt="" />
-              </span>
-              <span class="history-type">{{ item.overall_type || '分析中' }}</span>
-              <span class="micro">{{ formatDate(item.created_at) }}</span>
-            </button>
+            <div v-for="item in store.historyList" :key="item.id" class="history-item">
+              <button class="history-card" @click="loadHistoryDetail(item)">
+                <span class="history-thumb-wrap">
+                  <img :src="protectedImageUrls[item.id] || ''" class="history-thumb" alt="" />
+                </span>
+                <span class="history-type">{{ item.overall_type || '分析中' }}</span>
+                <span class="micro">{{ formatDate(item.created_at) }}</span>
+              </button>
+              <button
+                class="history-delete"
+                type="button"
+                :aria-label="`删除 ${formatDate(item.created_at)} 的舌诊记录`"
+                title="删除记录"
+                @click="askDeleteHistory(item)"
+              >
+                <AppIcon name="trash" :size="14" />
+              </button>
+              <div v-if="pendingDeleteTongue === item.id" class="history-confirm" role="alert">
+                <span>删除这条记录？</span>
+                <button type="button" :disabled="deletingTongue === item.id" @click="deleteHistory(item)">
+                  {{ deletingTongue === item.id ? '删除中' : '确认' }}
+                </button>
+                <button type="button" @click="pendingDeleteTongue = null">取消</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -435,6 +473,9 @@ const cameraError = ref(null)
 const videoStream = ref(null)
 const analysisInterval = ref(2000)
 const analysisTimer = ref(null)
+const tongueStats = ref(null)
+const pendingDeleteTongue = ref(null)
+const deletingTongue = ref(null)
 
 const confidenceThreshold = ref(0.75)
 
@@ -518,7 +559,7 @@ function clearImage() {
 async function startAnalysis() {
   if (!selectedFile.value && inputMode.value === 'upload') return
   await store.uploadAndAnalyze(selectedFile.value, 'upload', null)
-  await loadHistoryImages()
+  await Promise.all([loadHistoryImages(), loadStats()])
 }
 
 async function startCamera() {
@@ -603,7 +644,7 @@ async function captureAndAnalyze() {
   }
 
   await store.uploadAndAnalyze(null, 'camera', captureFn)
-  await loadHistoryImages()
+  await Promise.all([loadHistoryImages(), loadStats()])
 }
 
 async function loadHistoryDetail(item) {
@@ -625,6 +666,47 @@ async function loadProtectedImage(id) {
   const url = URL.createObjectURL(response.data)
   protectedImageUrls.value = { ...protectedImageUrls.value, [id]: url }
   return url
+}
+
+async function loadStats() {
+  try {
+    const { data } = await api.getTongueStats()
+    tongueStats.value = data || null
+  } catch {
+    tongueStats.value = null
+  }
+}
+
+function askDeleteHistory(item) {
+  if (!item?.id) return
+  pendingDeleteTongue.value = pendingDeleteTongue.value === item.id ? null : item.id
+}
+
+async function deleteHistory(item) {
+  if (!item?.id || deletingTongue.value) return
+  deletingTongue.value = item.id
+  try {
+    await api.deleteTongueRecord(item.id)
+    if (previewImageId.value === item.id) {
+      previewImageId.value = null
+      previewImage.value = null
+      store.clearResult()
+    }
+    if (protectedImageUrls.value[item.id]) {
+      URL.revokeObjectURL(protectedImageUrls.value[item.id])
+      const next = { ...protectedImageUrls.value }
+      delete next[item.id]
+      protectedImageUrls.value = next
+    }
+    pendingDeleteTongue.value = null
+    await store.loadHistory()
+    await loadHistoryImages()
+    await loadStats()
+  } catch {
+    alert('删除失败，请稍后重试')
+  } finally {
+    deletingTongue.value = null
+  }
 }
 
 async function loadHistoryImages() {
@@ -719,7 +801,7 @@ function clearCoatingSelection() {
 }
 
 onMounted(async () => {
-  await store.loadHistory()
+  await Promise.all([store.loadHistory(), loadStats()])
   await loadHistoryImages()
 })
 
@@ -1189,6 +1271,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  width: 100%;
   padding: 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -1225,6 +1308,87 @@ onBeforeUnmount(() => {
 
 .history-card .micro {
   font-size: 8px;
+}
+
+.tongue-stats {
+  padding: 14px 16px;
+}
+
+.tongue-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.tongue-stat-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tongue-stat-grid strong {
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.history-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.history-delete:hover {
+  color: var(--danger);
+}
+
+.history-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 10px;
+}
+
+.history-confirm button {
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.history-confirm button:first-of-type {
+  color: var(--danger);
+  border-color: currentColor;
 }
 
 .result-panel {
@@ -1428,6 +1592,10 @@ onBeforeUnmount(() => {
 
   .result-syndrome {
     font-size: 22px;
+  }
+
+  .tongue-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
