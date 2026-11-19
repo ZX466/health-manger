@@ -341,14 +341,14 @@ class WarningStatsResponse(BaseModel):
 
 
 class AIConfigUpdate(BaseModel):
-    # 聊天/分析模型
-    provider: Literal["zhipu", "openai", "ark"] = "zhipu"
-    model: str = Field(..., min_length=1, max_length=100)
+    # 聊天/分析模型（全部可选：只提交要修改的一组字段，缺省保留原值）
+    provider: Literal["zhipu", "openai", "ark"] | None = None
+    model: str | None = Field(None, min_length=1, max_length=100)
     base_url: str | None = Field(None, max_length=500)
     api_key: str | None = Field(None, min_length=1, max_length=500)
     # 舌诊视觉模型
     vision_provider: Literal["zhipu", "openai", "ark"] | None = None
-    vision_model: str | None = Field(None, max_length=100)
+    vision_model: str | None = Field(None, min_length=1, max_length=100)
     vision_base_url: str | None = Field(None, max_length=500)
     vision_api_key: str | None = Field(None, min_length=1, max_length=500)
     # 对话风格（可选：缺省 None 表示保持已存值）

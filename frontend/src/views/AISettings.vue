@@ -93,6 +93,7 @@ import AiModelForm from '../components/AiModelForm.vue'
 import PageHead from '../components/PageHead.vue'
 import PersonaCard from '../components/mental/PersonaCard.vue'
 import { useWellnessStore } from '../stores/wellness'
+import { readApiError } from '../utils/apiError'
 
 const CHAT_PROVIDERS = [
   { key: 'zhipu', label: '智谱 GLM', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', defaultModel: 'glm-4.5-Air' },
@@ -173,7 +174,7 @@ export default {
           base_url: this.chatForm.base_url, api_key: this.chatForm.api_key || undefined
         })
         this.chatResult = r.data
-      } catch (e) { this.chatResult = { success: false, message: '连接失败：网络或参数错误' } }
+      } catch (e) { this.chatResult = { success: false, message: readApiError(e, '连接失败：网络或参数错误') } }
       finally { this.chatTesting = false }
     },
     async testVision() {
@@ -184,7 +185,7 @@ export default {
           base_url: this.visionForm.base_url, api_key: this.visionForm.api_key || undefined
         })
         this.visionResult = r.data
-      } catch (e) { this.visionResult = { success: false, message: '连接失败：网络或参数错误' } }
+      } catch (e) { this.visionResult = { success: false, message: readApiError(e, '连接失败：网络或参数错误') } }
       finally { this.visionTesting = false }
     },
     async saveChat() {
@@ -198,7 +199,7 @@ export default {
         this.chatSaved = true
         this.chatForm.api_key = ''
         this.chatResult = { success: true, message: '聊天模型已保存（API Key 加密存储）' }
-      } catch (e) { this.chatResult = { success: false, message: '保存失败：' + (e.response?.data?.detail || e.message) } }
+      } catch (e) { this.chatResult = { success: false, message: '保存失败：' + readApiError(e) } }
       finally { this.chatSaving = false }
     },
     async saveVision() {
@@ -212,7 +213,7 @@ export default {
         this.visionSaved = true
         this.visionForm.api_key = ''
         this.visionResult = { success: true, message: '舌诊视觉模型已保存' }
-      } catch (e) { this.visionResult = { success: false, message: '保存失败：' + (e.response?.data?.detail || e.message) } }
+      } catch (e) { this.visionResult = { success: false, message: '保存失败：' + readApiError(e) } }
       finally { this.visionSaving = false }
     },
     async resetChat() {

@@ -86,6 +86,33 @@ async def test_config_endpoint_accepts_custom_url_with_own_key(client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
+async def test_config_update_with_only_vision_fields_keeps_chat_model(client):
+    """舌诊保存只带 vision_* 字段时应成功，且不覆盖聊天模型。"""
+    first = await client.put(
+        "/api/ai/config",
+        json={"provider": "zhipu", "model": "glm-4.5-Air"},
+    )
+    assert first.status_code == 200
+
+    response = await client.put(
+        "/api/ai/config",
+        json={
+            "vision_provider": "zhipu",
+            "vision_model": "glm-4v-plus",
+            "vision_base_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+            "vision_api_key": "sk-vision-owned",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "zhipu"
+    assert body["model"] == "glm-4.5-Air"
+    assert body["vision_model"] == "glm-4v-plus"
+    assert body["has_vision_api_key"] is True
+
+
+@pytest.mark.asyncio
 async def test_upstream_response_body_is_not_exposed(monkeypatch):
     class FakeResponse:
         status_code = 500
