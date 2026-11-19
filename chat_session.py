@@ -7,7 +7,17 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    insert,
+    literal,
+    select,
+)
 from sqlalchemy.orm import Session, relationship
 
 import settings
@@ -117,19 +127,33 @@ def add_message(
 ) -> ChatMessage:
     """Add a message to a chat session.
 
-    会话可能在流式生成期间被用户删除（SQLite 默认未开启外键约束）：
-    写入前校验会话仍存在，避免产生无父会话的孤儿消息。
+    会话可能在流式生成期间被用户删除（SQLite 默认未开启外键约束）。
+    这里用单条 ``INSERT ... SELECT ... WHERE 会话存在`` 原子完成存在性校验
+    与写入，避免「检查后、写入前」被并发删除的窗口（TOCTOU）。
     """
-    if db.get(ChatSession, session_id) is None:
-        raise ValueError(f"chat session {session_id} does not exist")
-    message = ChatMessage(
-        session_id=session_id,
-        role=role,
-        content=content,
-        tokens_used=tokens_used,
+    stmt = (
+        insert(ChatMessage)
+        .from_select(
+            ["session_id", "role", "content", "tokens_used", "created_at"],
+            select(
+                literal(session_id),
+                literal(role),
+                literal(content),
+                literal(tokens_used, type_=Integer),
+                literal(datetime.now(UTC), type_=DateTime),
+            )
+            .select_from(ChatSession)
+            .where(ChatSession.id == session_id),
+        )
+        .returning(ChatMessage.id)
     )
-    db.add(message)
+    row = db.execute(stmt).first()
     db.commit()
+    if row is None:
+        raise ValueError(f"chat session {session_id} does not exist")
+    message = db.get(ChatMessage, row[0])
+    if message is None:  # pragma: no cover - 提交后同一事务内不应缺失
+        raise ValueError(f"chat session {session_id} does not exist")
     return message
 
 
@@ -188,20 +212,26 @@ def delete_session(
     session_id: int,
     user_id: int,
 ) -> bool:
-    """Delete a chat session and its messages."""
-    session = (
+    """Delete a chat session and its messages.
+
+    先删会话行，再按 ``session_id`` 批量清理消息（同一事务）：
+    若并发写入在会话行删除后、本事务提交前完成，批量清理仍能把它一并删掉，
+    不留无父会话的孤儿消息。
+    """
+    deleted = (
         db.query(ChatSession)
         .filter(
             ChatSession.id == session_id,
             ChatSession.user_id == user_id,
         )
-        .first()
+        .delete(synchronize_session=False)
     )
-
-    if not session:
+    if not deleted:
         return False
 
-    db.delete(session)
+    db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete(
+        synchronize_session=False
+    )
     db.commit()
     return True
 

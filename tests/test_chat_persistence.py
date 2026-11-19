@@ -67,6 +67,46 @@ def test_add_message_refuses_deleted_session():
     s1.close()
 
 
+def test_no_orphan_message_when_write_races_delete(tmp_path):
+    """两个独立连接交替提交时，不能留下无父会话的消息。"""
+    eng = create_engine(f"sqlite:///{tmp_path / 'chat-race.db'}")
+    Base.metadata.create_all(bind=eng)
+
+    writer = Session(eng)
+    deleter = Session(eng)
+    try:
+        # 情形 1：消息先提交、删除后执行 —— 删除会话按 session_id 批量清理，消息一并删除
+        session = create_session(db=writer, user_id=1)
+        session_id = session.id
+        add_message(db=writer, session_id=session_id, role="assistant", content="early")
+        writer.rollback()  # 释放 add_message 末尾读取打开的事务，避免持锁
+        assert delete_session(db=deleter, session_id=session_id, user_id=1) is True
+        assert (
+            writer.query(chat_session.ChatMessage)
+            .filter_by(session_id=session_id)
+            .count()
+            == 0
+        )
+        writer.expunge_all()  # SQLite 会复用 rowid，避免 identity map 残留
+
+        # 情形 2：删除先提交、晚到写入 —— 存在性校验与写入同一语句，原子拒绝
+        session2 = create_session(db=writer, user_id=1)
+        session_id2 = session2.id
+        assert delete_session(db=deleter, session_id=session_id2, user_id=1) is True
+        with pytest.raises(ValueError):
+            add_message(db=writer, session_id=session_id2, role="assistant", content="late")
+        assert (
+            writer.query(chat_session.ChatMessage)
+            .filter_by(session_id=session_id2)
+            .count()
+            == 0
+        )
+    finally:
+        writer.close()
+        deleter.close()
+        eng.dispose()
+
+
 def test_delete_session_is_durable():
     """Deleting a session must remove it durably (previously the delete was never committed)."""
     eng = _make_engine()
