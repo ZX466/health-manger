@@ -1,10 +1,13 @@
-.PHONY: test coverage lint install clean
+.PHONY: test e2e coverage lint install clean
 
 install:
 	uv pip install -r requirements.txt
 
 test:
 	uv run python -m pytest --tb=short -q
+
+e2e:
+	uv run python -m pytest --tb=short -q tests/test_e2e_smoke.py
 
 test-verbose:
 	uv run python -m pytest --tb=short -v
