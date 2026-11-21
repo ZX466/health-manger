@@ -71,6 +71,9 @@ yarn-error.log*
 static/
 frontend/dist/
 
+# 固定下来的 Vite 开发端口（本机生成，不入库）
+frontend/.dev-port
+
 # Test images
 tests/*.jpg
 tests/*.jpeg

@@ -1,50 +1,130 @@
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
+import { AUDIO_CLIPS } from '../constants/media'
 
-const soundEnabled = ref(true)
+const SOUND_KEY = 'hk-sound'
 
-const AUDIO_FILES = {
-  success: '/assets/mpo6l1c6-pixabay_cartoon_laugh.mp3',
-  cheer: '/assets/mpo6ky8m-cartoon-belly-laugh.mp3',
-  giggle: '/assets/mpo6kd2k-cartoon-giggle.mp3',
-  laugh: '/assets/mpo6kd1j-cartoon-crazy-laugh.mp3'
+function readSoundSetting () {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== '0'
+  } catch (e) {
+    return true
+  }
 }
 
-export function useSound() {
-  onMounted(() => {
-    try {
-      const saved = localStorage.getItem('hk-sound')
-      if (saved === '0') soundEnabled.value = false
-    } catch (e) { /* 隐私模式等场景下无法读取，保持默认开启 */ }
-  })
+const soundEnabled = ref(readSoundSetting())
+const suppressed = ref(false)
+const playingClipId = ref('')
 
-  function toggleSound() {
-    soundEnabled.value = !soundEnabled.value
+let activeAudio = null
+let activeTimer = null
+
+/** 关怀模式由 AppShell 统一注入；一旦开启，全局音效立即停止并拒绝播放。 */
+export function setAudioSuppressed (value) {
+  suppressed.value = Boolean(value)
+  if (suppressed.value) stopAllAudio()
+}
+
+export function isAudioAvailable () {
+  return soundEnabled.value && !suppressed.value
+}
+
+export function useSound () {
+  function toggleSound () {
+    setSoundEnabled(!soundEnabled.value)
+  }
+
+  function setSoundEnabled (value) {
+    soundEnabled.value = Boolean(value)
+    if (!soundEnabled.value) stopAllAudio()
     try {
-      localStorage.setItem('hk-sound', soundEnabled.value ? '1' : '0')
+      localStorage.setItem(SOUND_KEY, soundEnabled.value ? '1' : '0')
     } catch (e) { /* ignore */ }
   }
 
-  return { soundEnabled, toggleSound }
+  return { soundEnabled, suppressed, toggleSound, setSoundEnabled, isAudioAvailable }
 }
 
-export function playSound(type) {
-  if (!soundEnabled.value) return
-  const src = AUDIO_FILES[type]
-  if (!src) return
+export function stopAllAudio () {
+  if (activeTimer) {
+    clearTimeout(activeTimer)
+    activeTimer = null
+  }
+  if (activeAudio) {
+    try {
+      activeAudio.pause()
+      activeAudio.currentTime = 0
+    } catch (e) { /* ignore */ }
+    activeAudio = null
+  }
+  playingClipId.value = ''
+}
+
+/**
+ * 播放真实配音片段。
+ * @returns {boolean} 是否成功开始播放（静音/关怀模式/音频错误时为 false）。
+ */
+export function playClip (key, options = {}) {
+  if (!isAudioAvailable()) return false
+  const clip = AUDIO_CLIPS[key]
+  if (!clip?.src) return false
+  const sameClip = options.clipId && playingClipId.value === options.clipId
+  stopAllAudio()
+  if (sameClip) return false
   try {
-    const audio = new Audio(src)
+    const audio = new Audio(clip.src)
+    audio.volume = options.volume ?? 0.72
+    activeAudio = audio
+    playingClipId.value = options.clipId || key
+    audio.addEventListener('ended', () => {
+      if (activeAudio === audio) stopAllAudio()
+    })
+    audio.addEventListener('error', () => {
+      if (activeAudio === audio) stopAllAudio()
+    })
+    const promise = audio.play()
+    if (promise?.catch) {
+      promise.catch(() => {
+        if (activeAudio === audio) stopAllAudio()
+      })
+    }
+    const maxMs = options.maxMs || (key === 'pixabay' ? 6000 : 10000)
+    activeTimer = setTimeout(() => {
+      if (activeAudio === audio) stopAllAudio()
+    }, maxMs)
+    return true
+  } catch (e) {
+    stopAllAudio()
+    return false
+  }
+}
+
+export function playSound (type) {
+  const map = {
+    success: 'pixabay',
+    cheer: 'belly',
+    giggle: 'giggle',
+    laugh: 'crazy'
+  }
+  const key = map[type]
+  if (!key) return false
+  if (!isAudioAvailable()) return false
+  try {
+    const clip = AUDIO_CLIPS[key]
+    const audio = new Audio(clip.src)
     audio.volume = 0.3
     audio.play().catch(() => {})
-  } catch (e) { /* ignore */ }
+    return true
+  } catch (e) {
+    return false
+  }
 }
 
-// 合成音：不依赖新增音频文件；首次点击时也尊重 localStorage 里的静音开关。
+// 合成音：不依赖新增音频文件；静音与关怀模式都会直接关闭。
 let audioContext = null
 
 function getAudioContext () {
-  if (soundEnabled.value === false) return null
+  if (!isAudioAvailable()) return null
   try {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('hk-sound') === '0') return null
     const AudioCtx = window.AudioContext || window.webkitAudioContext
     if (!AudioCtx) return null
     if (!audioContext) audioContext = new AudioCtx()
@@ -55,7 +135,7 @@ function getAudioContext () {
   }
 }
 
-export function playWoodfish() {
+export function playWoodfish () {
   const ctx = getAudioContext()
   if (!ctx) return
   try {
@@ -76,7 +156,7 @@ export function playWoodfish() {
 }
 
 /** 4-7-8 呼吸训练的轻柔节拍提示音。 */
-export function playBreathCue(phase = 'inhale') {
+export function playBreathCue (phase = 'inhale') {
   const ctx = getAudioContext()
   if (!ctx) return
   try {
@@ -95,3 +175,5 @@ export function playBreathCue(phase = 'inhale') {
     osc.stop(now + 0.46)
   } catch (e) { /* ignore */ }
 }
+
+export { soundEnabled, suppressed, playingClipId }

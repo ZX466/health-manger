@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell v21">
+  <div class="app-shell v21" :class="{ 'is-serious': serious }">
     <AppSidebar
       ref="sidebar"
       :mobile-open="mobileOpen"
@@ -23,7 +23,8 @@
         <router-view />
       </div>
     </main>
-    <MobileTabs :inert="mobileOpen" @more="openMobile" />
+    <MobileTabs :inert="mobileOpen" @more="openMoreDialog" />
+    <MoreDialog :open="moreOpen" @close="closeMoreDialog" />
   </div>
 </template>
 
@@ -31,13 +32,24 @@
 import AppSidebar from '../components/AppSidebar.vue'
 import AppTopbar from '../components/AppTopbar.vue'
 import MobileTabs from '../components/MobileTabs.vue'
+import MoreDialog from '../components/MoreDialog.vue'
+import { usePreferences, initPreferences } from '../composables/usePreferences'
+import { setAudioSuppressed } from '../composables/useHealthU'
+import { useWellnessStore } from '../stores/wellness'
 
 export default {
   name: 'AppShell',
-  components: { AppSidebar, AppTopbar, MobileTabs },
+  components: { AppSidebar, AppTopbar, MobileTabs, MoreDialog },
+  setup() {
+    initPreferences()
+    const wellness = useWellnessStore()
+    const prefs = usePreferences()
+    return { wellness, prefs }
+  },
   data() {
     return {
       mobileOpen: false,
+      moreOpen: false,
       isMobile: false,
       lastFocused: null
     }
@@ -45,11 +57,15 @@ export default {
   computed: {
     pageTitle() {
       return this.$route.meta?.title || ''
+    },
+    serious() {
+      return this.wellness.isDanger
     }
   },
   watch: {
     '$route.path'() {
       this.closeMobile()
+      this.closeMoreDialog()
     },
     mobileOpen(value) {
       this.syncBodyLock(value)
@@ -57,10 +73,16 @@ export default {
         this.lastFocused = document.activeElement
         this.$nextTick(() => this.focusFirstNav())
       }
+    },
+    serious(value) {
+      setAudioSuppressed(value)
     }
   },
   mounted() {
     this.syncViewport()
+    this.wellness.hydrateLocal()
+    this.wellness.load()
+    setAudioSuppressed(this.serious)
     window.addEventListener('keydown', this.onKeydown)
     window.addEventListener('resize', this.onResize)
   },
@@ -68,6 +90,7 @@ export default {
     window.removeEventListener('keydown', this.onKeydown)
     window.removeEventListener('resize', this.onResize)
     this.syncBodyLock(false)
+    setAudioSuppressed(false)
   },
   methods: {
     toggleMobile() {
@@ -77,6 +100,15 @@ export default {
     },
     openMobile() {
       if (this.isMobile) this.mobileOpen = true
+    },
+    openMoreDialog() {
+      if (!this.isMobile) return
+      this.closeMobile()
+      this.moreOpen = true
+    },
+    closeMoreDialog() {
+      if (!this.moreOpen) return
+      this.moreOpen = false
     },
     closeMobile() {
       if (!this.mobileOpen) return
@@ -97,6 +129,11 @@ export default {
       })
     },
     onKeydown(event) {
+      if (event.key === 'Escape' && this.moreOpen) {
+        event.preventDefault()
+        this.closeMoreDialog()
+        return
+      }
       if (event.key === 'Escape' && this.mobileOpen) {
         event.preventDefault()
         this.closeMobile()

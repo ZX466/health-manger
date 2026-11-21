@@ -16,6 +16,27 @@
       <span class="topbar-title">{{ title }}</span>
     </div>
     <div class="topbar-right">
+      <button
+        class="icon-btn"
+        type="button"
+        :class="{ 'is-muted': effectivelyMuted }"
+        :aria-pressed="effectivelyMuted"
+        :aria-label="soundLabel"
+        :title="soundLabel"
+        @click="onToggleSound"
+      >
+        <AppIcon :name="effectivelyMuted ? 'mute' : 'volume'" :size="18" />
+      </button>
+      <button
+        class="icon-btn"
+        type="button"
+        :aria-pressed="theme === 'dark'"
+        :aria-label="theme === 'dark' ? '切换浅色模式' : '切换深色模式'"
+        :title="theme === 'dark' ? '切换浅色模式' : '切换深色模式'"
+        @click="toggleTheme"
+      >
+        <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
+      </button>
       <router-link
         class="icon-btn"
         to="/warnings"
@@ -35,6 +56,9 @@
 <script>
 import AppIcon from './AppIcon.vue'
 import { useWarningStore } from '../stores/warnings'
+import { useWellnessStore } from '../stores/wellness'
+import { useSound } from '../composables/useHealthU'
+import { usePreferences } from '../composables/usePreferences'
 
 export default {
   name: 'AppTopbar',
@@ -45,7 +69,11 @@ export default {
   },
   emits: ['toggle-mobile-menu'],
   setup() {
-    return { warningStore: useWarningStore() }
+    const { soundEnabled, toggleSound } = useSound()
+    const { theme, toggleTheme } = usePreferences()
+    const wellness = useWellnessStore()
+    const warningStore = useWarningStore()
+    return { warningStore, wellness, soundEnabled, toggleSound, theme, toggleTheme }
   },
   data() {
     return {
@@ -58,6 +86,19 @@ export default {
     },
     userInitial() {
       return this.userName.charAt(0)
+    },
+    effectivelyMuted() {
+      return !this.soundEnabled || this.wellness.isDanger
+    },
+    soundLabel() {
+      if (this.wellness.isDanger) return '关怀模式已自动静音'
+      return this.effectivelyMuted ? '开启全局音效' : '关闭全局音效'
+    }
+  },
+  methods: {
+    onToggleSound() {
+      if (this.wellness.isDanger) return
+      this.toggleSound()
     }
   },
   mounted() {

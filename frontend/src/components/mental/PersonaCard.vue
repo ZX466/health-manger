@@ -26,30 +26,25 @@
         :disabled="isDisabled(option) || saving"
         @click="select(option)"
       >
-        <span v-if="!compact" class="persona-avatar" aria-hidden="true">
-          <CharacterAvatar
-            v-if="option.key === 'humorous'"
-            type="nailong"
-            :animated="false"
-          />
-          <svg v-else viewBox="0 0 24 24" class="persona-leaf">
-            <path d="M12 21V10" />
-            <path d="M12 13c-3.5 0-6-2.2-6-5.5C9.5 7.5 12 9.7 12 13Z" />
-            <path d="M12 9c0-3.2 2.5-5.5 6-5.5C18 6.8 15.5 9 12 9Z" />
-          </svg>
+        <span v-if="!compact" class="persona-radio" aria-hidden="true">
+          <i></i>
         </span>
 
         <span class="persona-copy">
           <span class="persona-name">
-            {{ option.name }}
+            {{ compact ? option.name : option.fullName }}
             <span v-if="current === option.key" class="persona-current">当前</span>
             <span v-else-if="isDisabled(option)" class="persona-current">暂不可选</span>
           </span>
           <span v-if="!compact" class="persona-desc">{{ option.description }}</span>
+          <span v-if="!compact" class="persona-quote">“{{ option.quote }}”</span>
         </span>
-
-        <span v-if="!compact" class="persona-dot" aria-hidden="true"></span>
       </button>
+    </div>
+
+    <div v-if="!compact" class="persona-preview" aria-live="polite">
+      <span class="persona-preview-label">PREVIEW</span>
+      <p>{{ currentQuote }}</p>
     </div>
 
     <p
@@ -66,9 +61,8 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '../../api'
-import CharacterAvatar from '../CharacterAvatar.vue'
 
 const props = defineProps({
   /** 当心理摘要进入 serious_mode 时，禁用玩梗人设 */
@@ -84,16 +78,21 @@ const options = [
   {
     key: 'humorous',
     name: '玩梗搭子',
-    description: '接梗、吐槽、偶尔发疯，但不拿你的痛苦开玩笑。'
+    fullName: '幽默宿舍搭子风',
+    description: '懂梗、松弛、不爹味，关键时刻也绝不掉链子。',
+    quote: '再熬下去，发际线就要比你的绩点先起飞了。'
   },
   {
     key: 'clinical',
     name: '理性陪伴',
-    description: '不玩梗，先接住情绪，再一起把问题拆小一点。'
+    fullName: '严谨校医风',
+    description: '专业、克制，先给判断和下一步。',
+    quote: '建议先补充睡眠，观察 3 天；如持续心悸，请到校医院就诊。'
   }
 ]
 
 const current = ref('humorous')
+const currentQuote = computed(() => options.find(option => option.key === current.value)?.quote || '')
 const saving = ref(false)
 const savedNote = ref('')
 const remoteConfig = ref(null)
@@ -277,10 +276,10 @@ onUnmounted(() => {
 
 .persona-option {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   width: 100%;
-  padding: 9px 10px;
+  padding: 12px;
   border: var(--border-hairline);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -304,32 +303,31 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.persona-avatar {
+.persona-radio {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  border: 1.5px solid var(--line-strong);
   border-radius: 50%;
-  overflow: hidden;
-  background: var(--bg);
+  background: var(--surface);
 }
 
-.persona-avatar :deep(.character-avatar) {
-  width: 36px;
-  height: 36px;
-  box-shadow: none;
-  cursor: default;
+.persona-radio i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
 }
 
-.persona-leaf {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: var(--success);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.persona-option.active .persona-radio {
+  border-color: var(--accent);
+}
+
+.persona-option.active .persona-radio i {
+  background: var(--accent);
 }
 
 .persona-copy {
@@ -358,22 +356,42 @@ onUnmounted(() => {
 }
 
 .persona-desc {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.persona-quote {
+  margin-top: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--surface-2) 74%, var(--surface));
   color: var(--muted);
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-.persona-dot {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-  border-radius: 50%;
+.persona-preview {
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: #141518;
+  color: #fff;
 }
 
-.persona-option.active .persona-dot {
-  border-color: var(--accent);
-  background: var(--accent);
+.persona-preview-label {
+  color: color-mix(in oklch, #fff 54%, transparent);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.persona-preview p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
 }
 
 .persona-note,

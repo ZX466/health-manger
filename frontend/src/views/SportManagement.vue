@@ -20,31 +20,31 @@
 
     <section class="sport-hero v21-panel">
       <div class="sport-main">
-        <p class="micro">{{ isToday ? "BURN / TODAY" : 'BURN / DAY' }}</p>
+        <p class="micro">STEPS / TODAY</p>
         <div class="sport-figure">
-          <span class="sport-big">{{ Math.round(Number(sportStats.total_calories) || 0) }}</span>
-          <span class="sport-unit">/ {{ goalCalories }} kcal</span>
+          <span class="sport-big">—</span>
+          <span class="sport-unit">/ {{ goals.steps.toLocaleString('zh-CN') }} 步</span>
         </div>
-        <p class="sport-note">已消耗 · {{ isToday ? '今天' : '这一天' }}的运动</p>
-        <div class="progress sport-progress">
-          <span :style="{ width: goalPercent + '%' }"></span>
+        <p class="sport-note">手环 / 手机步数尚未接入；下面的消耗与时长来自你手动记录的活动。</p>
+        <div class="progress sport-progress" aria-hidden="true">
+          <span style="width: 0%"></span>
         </div>
       </div>
       <div class="sport-facts">
+        <div>
+          <span>活动消耗</span>
+          <strong>{{ Math.round(Number(sportStats.total_calories) || 0) }}</strong>
+          <em>kcal</em>
+        </div>
         <div>
           <span>活跃时长</span>
           <strong>{{ sportStats.total_duration_minutes || 0 }}</strong>
           <em>min</em>
         </div>
         <div>
-          <span>运动次数</span>
+          <span>今日运动</span>
           <strong>{{ sportStats.total_records || 0 }}</strong>
           <em>次</em>
-        </div>
-        <div>
-          <span>平均每次</span>
-          <strong>{{ avgDuration }}</strong>
-          <em>min</em>
         </div>
       </div>
     </section>
@@ -97,14 +97,17 @@
               v-for="sport in quickSports"
               :key="sport.id"
               type="button"
+              :disabled="quickAdding === sport.id"
               @click="quickAdd(sport)"
             >
               <span>{{ sport.name }} 20 分钟</span>
-              <em>{{ estimateCalories(sport) }} kcal · 估算</em>
-              <AppIcon name="plus" :size="14" />
+              <em>{{ quickAdding === sport.id ? '正在记录…' : `${estimateCalories(sport)} kcal · 估算` }}</em>
+              <AppIcon name="check" v-if="quickAdding === sport.id" :size="14" />
+              <AppIcon name="plus" v-else :size="14" />
             </button>
           </div>
           <p v-if="!quickSports.length" class="empty-hint">运动库还是空的，先去添加一项运动。</p>
+          <ReactionStrip :reaction="sportReaction" />
         </section>
       </div>
 
@@ -300,13 +303,22 @@
 import api from '../api'
 import PageHead from '../components/PageHead.vue'
 import AppIcon from '../components/AppIcon.vue'
+import ReactionStrip from '../components/ReactionStrip.vue'
+import { buildSportReaction } from '../constants/media'
+import { usePreferences } from '../composables/usePreferences'
+import { playClip } from '../composables/useHealthU'
 import { localDateKey, parseServerDate } from '../utils/date'
 
 export default {
   name: 'SportManagement',
   components: {
     PageHead,
-    AppIcon
+    AppIcon,
+    ReactionStrip
+  },
+  setup() {
+    const { companion, goals } = usePreferences()
+    return { companion, goals }
   },
   data() {
     return {
@@ -324,6 +336,7 @@ export default {
       deletingSportId: null,
       isAdmin: false,
       newRecord: { sport_id: '', duration_minutes: '', notes: '' },
+      quickAdding: null,
       newSport: { name: '', category: '', calories_per_hour: 0, intensity_level: 'moderate' }
     }
   },
@@ -338,6 +351,14 @@ export default {
       const count = Number(this.sportStats.total_records) || 0
       if (!count) return 0
       return Math.round((Number(this.sportStats.total_duration_minutes) || 0) / count)
+    },
+    sportReaction() {
+      return buildSportReaction({
+        minutes: Number(this.sportStats.total_duration_minutes) || 0,
+        calories: Number(this.sportStats.total_calories) || 0,
+        count: Number(this.sportStats.total_records) || 0,
+        companion: this.companion
+      })
     },
     quickSports() {
       const preferred = ['快走', '瑜伽', '力量训练']
@@ -468,6 +489,7 @@ export default {
         this.showAddRecord = false
         this.newRecord = { sport_id: '', duration_minutes: '', notes: '' }
         await this.loadSportData()
+        this.playSportFeedback()
         alert('添加成功')
       } catch (err) {
         alert('添加失败：' + this.errMsg(err))
@@ -551,9 +573,22 @@ export default {
       this.activeTab = 'records'
       this.showAddRecord = true
     },
-    quickAdd(sport) {
-      this.newRecord = { sport_id: sport.id, duration_minutes: 20, notes: '' }
-      this.showAddRecord = true
+    async quickAdd(sport) {
+      if (this.quickAdding) return
+      this.quickAdding = sport.id
+      try {
+        await api.createSportRecord({ sport_id: sport.id, duration_minutes: 20, notes: '' })
+        await this.loadSportData()
+        this.playSportFeedback()
+      } catch (err) {
+        alert('补记失败：' + this.errMsg(err))
+      } finally {
+        this.quickAdding = false
+      }
+    },
+    playSportFeedback() {
+      const reaction = this.sportReaction
+      if (reaction?.audio) playClip(reaction.audio)
     },
     estimateCalories(sport) {
       return Math.round(((Number(sport.calories_per_hour) || 0) / 60) * 20)
@@ -596,4 +631,5 @@ export default {
 }
 .sport-admin-btn:hover { color: var(--fg); }
 .sport-admin-btn--danger { color: var(--danger); border-color: currentColor; }
+.quick-panel :deep(.reaction-strip) { margin-top: 10px; }
 </style>

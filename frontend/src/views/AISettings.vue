@@ -1,10 +1,10 @@
 <template>
   <div class="ai-settings">
     <PageHead
-      folio="10"
-      eyebrow="SYSTEM / MODELS"
-      title="AI 设置"
-      deck="模型、风格与安全边界。高危状态优先于任何玩梗设置。"
+      folio="08"
+      eyebrow="SETTINGS / PERSONA"
+      title="设置"
+      deck="决定 AI 用什么画风陪你唠嗑，以及它几点该识相地闭嘴。"
     >
       <template #actions>
         <span class="status-chip" :class="seriousMode ? 'status-chip--warn' : 'status-chip--accent'">
@@ -14,74 +14,120 @@
       </template>
     </PageHead>
 
-    <!-- 聊天/分析模型 -->
-    <section class="card v21-panel">
-      <div class="section-head">
-        <h2>聊天 / 分析模型</h2>
-        <span class="pill" :class="chatSaved ? 'pill--ok' : 'pill--warn'">{{ chatSaved ? '已配置' : '默认' }}</span>
-      </div>
-      <p class="hint">用于 AI 对话、健康分析、快速评估。请选择文本对话模型（如 GLM-4.5 / GPT-4o / Doubao）。</p>
-      <AiModelForm :providers="providers" :form="chatForm" :saved="chatSaved"
-        :testing="chatTesting" :saving="chatSaving" :result="chatResult" uid="chat"
-        @update:form="chatForm = $event" @test="testChat" @save="saveChat" @reset="resetChat" />
-    </section>
+    <div class="settings-grid">
+      <!-- 对话风格 -->
+      <section class="persona-settings v21-panel">
+        <div class="panel-head">
+          <span class="micro">ASSISTANT TONE</span>
+          <span class="micro">二选一</span>
+        </div>
+        <h2>AI 说话风格</h2>
+        <PersonaCard :serious="seriousMode" />
+      </section>
 
-    <!-- 对话风格 -->
-    <section class="style-section v21-panel">
+      <!-- 提醒 -->
+      <section class="reminder-settings v21-panel">
+        <div class="panel-head">
+          <span class="micro">REMINDERS</span>
+          <span class="micro">轻提醒</span>
+        </div>
+        <h2>提醒</h2>
+        <label class="switch-row">
+          <span><strong>早八保命提醒</strong><small>前一天 23:30 准时催你放下手机睡觉</small></span>
+          <input type="checkbox" :checked="reminders.morning" @change="setReminder('morning', $event.target.checked)" />
+          <i class="switch" aria-hidden="true"></i>
+        </label>
+        <label class="switch-row">
+          <span><strong>喝水续命提醒</strong><small>每 2 小时戳你一次，考试周自动静音不添乱</small></span>
+          <input type="checkbox" :checked="reminders.water" @change="setReminder('water', $event.target.checked)" />
+          <i class="switch" aria-hidden="true"></i>
+        </label>
+        <label class="switch-row">
+          <span><strong>睡前关机呼吸</strong><small>睡前 10 分钟，拉你做一轮 4-7-8 放空仪式</small></span>
+          <input type="checkbox" :checked="reminders.breath" @change="setReminder('breath', $event.target.checked)" />
+          <i class="switch" aria-hidden="true"></i>
+        </label>
+        <label class="switch-row">
+          <span><strong>高危关怀</strong><small>检测到风险时优先展示热线与校医院</small></span>
+          <input type="checkbox" checked disabled />
+          <i class="switch" aria-hidden="true"></i>
+        </label>
+        <p class="fineprint">浏览器推送尚未接入，提醒偏好只保存在本机；高危关怀始终强制开启。</p>
+      </section>
+
+      <!-- 健康目标 -->
+      <section class="goal-settings v21-panel">
+        <div class="panel-head">
+          <span class="micro">GOALS</span>
+          <span class="micro">可随时改</span>
+        </div>
+        <h2>健康目标</h2>
+        <div class="goal-grid">
+          <label class="field">
+            <span>每日睡眠 <em>小时</em></span>
+            <input v-model.number="goals.sleep" type="number" min="4" max="12" step="0.5" @change="saveGoals" />
+          </label>
+          <label class="field">
+            <span>每日步数</span>
+            <input v-model.number="goals.steps" type="number" min="1000" step="500" @change="saveGoals" />
+          </label>
+          <label class="field">
+            <span>每日热量 <em>kcal</em></span>
+            <input v-model.number="goals.calories" type="number" min="800" step="50" @change="saveGoals" />
+          </label>
+        </div>
+        <p class="fineprint">保存后用于总览睡眠目标与饮食热量目标；步数等待设备接入后生效。</p>
+      </section>
+
+      <MediaSettings :serious="seriousMode" />
+
+      <aside class="privacy-panel v21-panel">
+        <div class="panel-head">
+          <span class="micro">PRIVACY</span>
+          <span class="micro">最小必要</span>
+        </div>
+        <h2>你的数据</h2>
+        <p>健康记录、心情与对话只存放在你的账号下。高危状态优先展示求助入口，识别结果需要你确认后才会入库。</p>
+        <ul class="check-list">
+          <li><AppIcon name="check" :size="14" />高危状态优先展示求助入口</li>
+          <li><AppIcon name="check" :size="14" />不把玩梗文案用于风险状态</li>
+          <li><AppIcon name="check" :size="14" />识别结果需人工确认后保存</li>
+        </ul>
+      </aside>
+    </div>
+
+    <section class="models-section">
       <div class="section-head">
-        <h2>对话风格</h2>
+        <div>
+          <p class="micro">SYSTEM / MODELS</p>
+          <h2>模型与安全边界</h2>
+        </div>
         <span class="pill" :class="seriousMode ? 'pill--warn' : 'pill--ok'">
-          {{ seriousMode ? '关怀模式优先' : '可随时切换' }}
+          {{ seriousMode ? '关怀模式优先' : '高危状态优先于任何玩梗设置' }}
         </span>
       </div>
-      <p class="hint">
-        幽默宿舍搭子会接梗、偶尔吐槽；严谨校医会收起玩笑、先给可执行建议。
-        检测到高危状态时，玩梗风格会自动禁用并让位给安全支持。
-      </p>
-      <PersonaCard :serious="seriousMode" />
-    </section>
+      <div class="models-grid">
+        <section class="card v21-panel model-card">
+          <div class="section-head">
+            <h2>聊天 / 分析模型</h2>
+            <span class="pill" :class="chatSaved ? 'pill--ok' : 'pill--warn'">{{ chatSaved ? '已配置' : '默认' }}</span>
+          </div>
+          <p class="hint">用于 AI 对话、健康分析、快速评估。请选择文本对话模型（如 GLM-4.5 / GPT-4o / Doubao）。</p>
+          <AiModelForm :providers="providers" :form="chatForm" :saved="chatSaved"
+            :testing="chatTesting" :saving="chatSaving" :result="chatResult" uid="chat"
+            @update:form="chatForm = $event" @test="testChat" @save="saveChat" @reset="resetChat" />
+        </section>
 
-    <!-- 舌诊视觉模型 -->
-    <section class="card v21-panel">
-      <div class="section-head">
-        <h2>舌诊视觉模型</h2>
-        <span class="pill" :class="visionSaved ? 'pill--ok' : 'pill--warn'">{{ visionSaved ? '已配置' : '默认 ARK' }}</span>
-      </div>
-      <p class="hint">用于舌诊、拍照识餐与体检 OCR。<strong>必须选择支持图像输入的视觉模型</strong>（如 glm-4v-plus / GPT-4o / Doubao-Vision）；GLM-4.7、GLM-5-Turbo 等纯文本模型会拒绝图片请求。</p>
-      <AiModelForm :providers="visionProviders" :form="visionForm" :saved="visionSaved"
-        :testing="visionTesting" :saving="visionSaving" :result="visionResult" uid="vision"
-        @update:form="visionForm = $event" @test="testVision" @save="saveVision" @reset="resetVision" />
-    </section>
-
-    <!-- 偏好与提醒（视觉占位，暂无后端） -->
-    <section class="card v21-panel pref-panel">
-      <div class="section-head">
-        <h2>偏好与提醒</h2>
-        <span class="pill pill--warn">即将上线</span>
-      </div>
-      <p class="hint">这里会放每日提醒和数据管理。当前仅展示样式，开关与按钮暂不可用。</p>
-      <div class="pref-grid">
-        <div class="pref-card">
-          <div>
-            <p class="pref-label">每日打卡提醒</p>
-            <p class="pref-value">20:00 <span>· 未开启</span></p>
+        <section class="card v21-panel model-card">
+          <div class="section-head">
+            <h2>舌诊视觉模型</h2>
+            <span class="pill" :class="visionSaved ? 'pill--ok' : 'pill--warn'">{{ visionSaved ? '已配置' : '默认 ARK' }}</span>
           </div>
-          <button class="pref-switch" type="button" role="switch" aria-checked="false" aria-disabled="true" disabled>
-            <span></span>
-          </button>
-          <p class="pref-note">上线后会在固定时间提醒你记录情绪与饮食。</p>
-        </div>
-        <div class="pref-card">
-          <div>
-            <p class="pref-label">数据与隐私</p>
-            <p class="pref-value">仅自己可见 <span>· 本地账号隔离</span></p>
-          </div>
-          <div class="pref-actions">
-            <button class="pref-btn" type="button" disabled>导出数据</button>
-            <button class="pref-btn" type="button" disabled>删除数据</button>
-          </div>
-          <p class="pref-note">健康数据存放在你的账号下；导出与删除功能规划中。</p>
-        </div>
+          <p class="hint">用于舌诊、拍照识餐与体检 OCR。<strong>必须选择支持图像输入的视觉模型</strong>（如 glm-4v-plus / GPT-4o / Doubao-Vision）；纯文本模型会拒绝图片请求。</p>
+          <AiModelForm :providers="visionProviders" :form="visionForm" :saved="visionSaved"
+            :testing="visionTesting" :saving="visionSaving" :result="visionResult" uid="vision"
+            @update:form="visionForm = $event" @test="testVision" @save="saveVision" @reset="resetVision" />
+        </section>
       </div>
     </section>
   </div>
@@ -90,9 +136,12 @@
 <script>
 import api from '../api'
 import AiModelForm from '../components/AiModelForm.vue'
+import AppIcon from '../components/AppIcon.vue'
+import MediaSettings from '../components/MediaSettings.vue'
 import PageHead from '../components/PageHead.vue'
 import PersonaCard from '../components/mental/PersonaCard.vue'
 import { useWellnessStore } from '../stores/wellness'
+import { usePreferences } from '../composables/usePreferences'
 import { readApiError } from '../utils/apiError'
 
 const CHAT_PROVIDERS = [
@@ -108,7 +157,11 @@ const VISION_PROVIDERS = [
 
 export default {
   name: 'AISettings',
-  components: { AiModelForm, PageHead, PersonaCard },
+  components: { AiModelForm, AppIcon, MediaSettings, PageHead, PersonaCard },
+  setup() {
+    const { goals, reminders, saveGoals, saveReminders } = usePreferences()
+    return { goals, reminders, saveGoals, saveReminders }
+  },
   data() {
     return {
       providers: CHAT_PROVIDERS,
@@ -135,6 +188,9 @@ export default {
     await Promise.allSettled([this.loadConfig(), this.loadSeriousMode(), this.wellness?.load()])
   },
   methods: {
+    setReminder(key, value) {
+      this.saveReminders({ ...this.reminders, [key]: value })
+    },
     async loadSeriousMode() {
       try {
         const { data } = await api.getMentalSummary()
@@ -239,30 +295,141 @@ export default {
 </script>
 
 <style scoped>
-.ai-settings { max-width: 640px; }
-.hint { font-size: 13px; color: var(--muted); line-height: 1.7; }
-.style-section { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-.style-section .section-head { margin-bottom: 0; }
-.style-section .hint { margin: 0 0 2px; }
-.pref-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
-.pref-card {
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 16px; border: 1px solid var(--line); border-radius: 10px;
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+.ai-settings { display: flex; flex-direction: column; gap: 18px; }
+
+.hint { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
 }
-.pref-label { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; color: var(--muted); }
-.pref-value { margin: 0; font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--ink); }
-.pref-value span { font-family: var(--font-body, inherit); font-size: 12px; font-weight: 400; color: var(--muted-2); }
-.pref-switch {
-  width: 40px; height: 22px; padding: 2px; border-radius: 999px; border: 1px solid var(--line);
-  background: var(--surface-3); display: flex; align-items: center; cursor: not-allowed; opacity: .7;
+
+.persona-settings,
+.reminder-settings,
+.goal-settings,
+.privacy-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 22px;
 }
-.pref-switch span { width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.16); }
-.pref-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.pref-btn {
-  padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line);
-  background: var(--surface); color: var(--muted); font-size: 12px; cursor: not-allowed; opacity: .6;
+
+.persona-settings h2,
+.reminder-settings h2,
+.goal-settings h2,
+.privacy-panel h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: -0.02em;
 }
-.pref-note { margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted-2); }
-@media (max-width: 640px) { .pref-grid { grid-template-columns: 1fr; } }
+
+.persona-settings :deep(.persona-head) {
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.persona-settings :deep(.persona-head > div),
+.persona-settings :deep(.persona-intro) {
+  display: none;
+}
+
+.persona-settings :deep(.persona-card) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.switch-row:first-of-type { border-top: 0; }
+.switch-row > span { display: flex; flex-direction: column; gap: 2px; }
+.switch-row strong { font-size: 12.5px; }
+.switch-row small { color: var(--muted); font-size: 10.5px; line-height: 1.55; }
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+
+.switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px oklch(20% 0.02 250 / 0.18);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.switch-row input:checked + .switch { border-color: var(--accent); background: var(--accent); }
+.switch-row input:checked + .switch::after { transform: translateX(16px); }
+.switch-row input:disabled + .switch { opacity: 0.55; }
+
+.goal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field > span { color: var(--muted); font-size: 10px; }
+.field em { color: var(--muted-2); font-style: normal; }
+.field input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.privacy-panel { background: var(--surface-2); }
+.privacy-panel > p { margin: 0 0 10px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.check-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.check-list li { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11.5px; }
+.check-list :deep(svg) { color: var(--success); }
+
+.fineprint { margin: 8px 0 0; color: var(--muted-2); font-size: 10px; line-height: 1.6; }
+
+.models-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.models-section .section-head { align-items: flex-end; }
+.models-section .section-head h2 { margin: 2px 0 0; font-family: var(--font-display); font-size: 20px; }
+.models-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.model-card { display: flex; flex-direction: column; gap: 8px; }
+.model-card .section-head { margin-bottom: 0; }
+.model-card .hint { margin: 0; }
+.model-card :deep(.ai-model-form) { margin-top: 4px; }
+
+@media (max-width: 980px) {
+  .settings-grid,
+  .models-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .persona-settings,
+  .reminder-settings,
+  .goal-settings,
+  .privacy-panel { padding: 18px; }
+  .goal-grid { grid-template-columns: 1fr; }
+}
 </style>

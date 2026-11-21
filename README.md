@@ -1,6 +1,6 @@
 # 大学生健康管理系统
 
-FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮食运动、AI 分析 / 对话、舌诊、心理空间与健康预警。
+FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮食运动、AI 分析 / 对话、舌诊、心理空间、健康周报、今日一件小事与健康预警。
 
 ## 功能
 
@@ -8,6 +8,8 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 - **健康记录**：问卷录入、BMI / 血压 / 心率 / 体温预警、综合评级；体检单拍照识别后先进入核对面板，逐项确认再填入表单（OCR 只出草稿，不直接提交）。
 - **饮食 / 运动**：食物与运动库、记录统计、近 7 天摄入 / 消耗图、拍照识餐（草稿，人工确认后入库）。
 - **AI**：每用户自定义聊天 / 视觉模型、SSE 流式对话（含安全首帧）、中医舌诊；健康分析页支持深度解读、快速分析、规则 + AI 综合评价与后台异步分析，可查看 / 删除历史，并区分缺 Key、无数据、限流与超时；身体问诊可一键引用最近舌诊。首页评分支持今日 / 近 7 天 / 近 30 天真实切换。
+- **健康周报 `/weekly-report`**：按周聚合睡眠、饮食、运动、心情与评分，输出记录天数、睡眠债、可执行建议与可复制小结；AI 解读只读取真实周数据，缺项不补造；出现危机信号时优先展示求助资源。
+- **今日一件小事（Dashboard）**：每天按危机、记录、睡眠、运动、饮食、心情规则生成 1 条微行动，完成后统计近 7 天完成天数；危机状态优先展示求助，不显示打卡按钮。
 - **心理空间 `/mental`**：情绪打卡、睡眠趋势、PHQ-9 / GAD-7 初筛、危机资源、呼吸环 / 木鱼 / 人设卡；高压时自动进入关怀模式并隐藏玩梗工具。
 - **设置 `/ai-settings`**：每用户 AI 模型与聊天人设；「偏好与提醒 / 数据隐私」目前为视觉占位（标注即将上线，控件禁用）。
 - **预警 `/warnings`**：保存健康记录或提交量表后自动检查（也可手动重新检查）；分级列表、未读徽标、标记已读 / 全部已读 / 删除，覆盖血压 / BMI / 心率异常、量表危机、睡眠债、情绪低落。总览页与顶栏同步未读入口。
@@ -31,7 +33,7 @@ FastAPI + Vue 3 的大学生身心健康管理 Web 应用：健康记录、饮�
 | 后端 | FastAPI、SQLAlchemy 2.0、SQLite、Alembic、JWT、bcrypt |
 | 前端 | Vue 3、Vite 5、Vue Router 4、Pinia、Axios |
 | AI | 默认智谱 GLM-4.5-Air；舌诊默认火山 ARK 豆包视觉模型，支持用户覆盖 |
-| 测试 | pytest（292 个用例）、pytest-asyncio、pytest-cov；前端 node:test（31 个） |
+| 测试 | pytest（324 个用例）、pytest-asyncio、pytest-cov；前端 node:test（31 个） |
 
 前端采用「临床编辑部」视觉：冷白纸面、墨黑大字、单一电光蓝强调色、细分隔线与等宽数据标签（`v21.css` 设计令牌）。断点覆盖 1024 / 768 / 560：桌面为编号侧栏，≤1024px 收为图标轨，≤768px 改用底部 Tab + 「更多」抽屉，≤560px 进一步压缩排版；舌诊在 ≥1181px 为控制 / 预览 / 结果三栏同屏。
 
@@ -120,7 +122,7 @@ cd frontend
 npm run dev
 ```
 
-启动后终端会打印本次的随机四位数端口（4000–7999），访问 `http://localhost:<端口>`。Vite 会把 `/api` 代理到 8420。需要固定端口时用 `npm run dev -- --port 5173`（后端 CORS 已放行本机任意端口）。
+首次启动时随机取一个四位数端口（4000–7999）并写入 `frontend/.dev-port`，之后每次都复用这个固定端口，访问 `http://localhost:<端口>` 即可（打印在终端里）。Vite 会把 `/api` 代理到 8420。想换端口时删除 `frontend/.dev-port` 后重启，或临时用 `npm run dev -- --port 5173` 覆盖（后端 CORS 已放行本机任意端口）。
 
 ### 5. 验证
 
@@ -139,7 +141,7 @@ Invoke-RestMethod http://localhost:8420/api/health
 
 ## API
 
-完整参数与响应见 `/docs`（Swagger UI）或 `/redoc`。71 个业务端点的前后端覆盖矩阵与缺口见 [docs/feature-coverage.md](docs/feature-coverage.md)。
+完整参数与响应见 `/docs`（Swagger UI）或 `/redoc`。75 个业务端点（76 条路由含探活）的前后端覆盖矩阵与缺口见 [docs/feature-coverage.md](docs/feature-coverage.md)。
 
 | 前缀 | 功能 |
 |---|---|
@@ -152,6 +154,8 @@ Invoke-RestMethod http://localhost:8420/api/health
 | `/api/chat` | 会话、消息、SSE 流式对话 |
 | `/api/mental` | 情绪打卡、趋势、量表、心理摘要 |
 | `/api/warning` | 预警检查、列表、已读、统计 |
+| `/api/reports` | 健康周报聚合、AI 周报解读 |
+| `/api/daily-action` | 今日一件小事生成、完成打卡 |
 
 ## 项目结构
 
@@ -163,7 +167,7 @@ routers/                  HTTP 路由
 services/                 业务逻辑（健康、心理、AI、安全等）
 alembic/                  数据库迁移
 scripts/                  初始化数据 / 测试用户
-tests/                    pytest 测试（292 个）
+tests/                    pytest 测试（324 个）
 frontend/src/             Vue 页面、组件、路由、API、样式
 static/                   前端构建产物
 uploads/                  用户上传文件

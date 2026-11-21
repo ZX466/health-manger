@@ -36,7 +36,7 @@
             class="mood-option"
             :class="{ active: form.mood_score === option.level }"
             :aria-pressed="form.mood_score === option.level"
-            @click="form.mood_score = option.level"
+            @click="selectMood(option)"
           >
             <span class="mood-num">{{ String(option.level).padStart(2, '0') }}</span>
             <MoodFace :face="option.face" :size="30" />
@@ -131,6 +131,8 @@
         </button>
       </div>
     </form>
+
+    <ReactionStrip v-if="!serious && moodReaction" :reaction="moodReaction" surface />
   </section>
 </template>
 
@@ -140,6 +142,10 @@ import api from '../../api'
 import { localDateKey } from '../../utils/date'
 import { MOOD_LEVELS, STRESS_TAGS, moodTitle } from '../../constants/copywriting'
 import { useWellnessStore, timeToHour, hourToTime } from '../../stores/wellness'
+import ReactionStrip from '../ReactionStrip.vue'
+import { buildMoodReaction } from '../../constants/media'
+import { usePreferences } from '../../composables/usePreferences'
+import { playClip } from '../../composables/useHealthU'
 
 const props = defineProps({
   /** 后端 GET /mental/mood?days=1 中今天的记录 */
@@ -150,6 +156,7 @@ const props = defineProps({
 
 const emit = defineEmits(['saved'])
 const wellness = useWellnessStore()
+const { companion } = usePreferences()
 
 const SERIOUS_TITLES = { 5: '状态稳定', 4: '状态尚可', 3: '一般', 2: '有些低落', 1: '很难受' }
 const moodOptions = computed(() => props.serious
@@ -185,6 +192,19 @@ const savedTitle = computed(() => props.serious
 const savedFace = computed(() =>
   moodOptions.value.find(option => option.level === props.today?.mood_score)?.face || 'neutral'
 )
+const moodReaction = computed(() => {
+  const level = form.mood_score || props.today?.mood_score
+  if (!level) return null
+  return buildMoodReaction({ level, companion: companion.value })
+})
+
+function selectMood (option) {
+  form.mood_score = option.level
+  if (props.serious) return
+  const reaction = buildMoodReaction({ level: option.level, companion: companion.value })
+  if (reaction.audio) playClip(reaction.audio)
+}
+
 const bedtimeText = computed(() => {
   const recordDate = props.today?.record_date
   if (!recordDate) return ''
@@ -569,6 +589,10 @@ textarea {
   margin: 0;
   color: var(--danger-fg);
   font-size: 12px;
+}
+
+.mood-checkin :deep(.reaction-strip) {
+  margin-top: 12px;
 }
 
 .sr-only {

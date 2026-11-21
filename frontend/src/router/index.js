@@ -11,6 +11,7 @@ const SportManagement = () => import('../views/SportManagement.vue')
 const TongueDiagnosis = () => import('../views/TongueDiagnosis.vue')
 const WarningView = () => import('../views/WarningView.vue')
 const MentalView = () => import('../views/MentalView.vue')
+const WeeklyReport = () => import('../views/WeeklyReport.vue')
 const ChatView = () => import('../views/ChatView.vue')
 const AISettings = () => import('../views/AISettings.vue')
 
@@ -78,6 +79,12 @@ const routes = [
     name: 'MentalView',
     component: MentalView,
     meta: { requiresAuth: true, title: '心理空间' }
+  },
+  {
+    path: '/weekly-report',
+    name: 'WeeklyReport',
+    component: WeeklyReport,
+    meta: { requiresAuth: true, title: '健康周报' }
   },
   {
     path: '/chat',

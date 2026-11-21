@@ -10,7 +10,19 @@ from fastapi.staticfiles import StaticFiles
 
 from async_tasks import start_task_queue, stop_task_queue
 from database import Base, engine
-from routers import ai_analysis, auth, chat, food, health, mental, sport, tongue, warning
+from routers import (
+    ai_analysis,
+    auth,
+    chat,
+    daily_action,
+    food,
+    health,
+    mental,
+    reports,
+    sport,
+    tongue,
+    warning,
+)
 from services.llm_service import close_http_client
 
 logger = logging.getLogger(__name__)
@@ -78,6 +90,8 @@ app.include_router(warning.router)
 app.include_router(tongue.router)
 app.include_router(chat.router)
 app.include_router(mental.router)
+app.include_router(reports.router)
+app.include_router(daily_action.router)
 
 
 @app.exception_handler(Exception)

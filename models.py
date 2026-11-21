@@ -316,3 +316,29 @@ class ScaleAssessment(Base):
     created_at = Column(DateTime, default=_utcnow)
 
     user = relationship("User", backref="scale_assessments")
+
+
+class DailyAction(Base):
+    """今日一件小事：每人每天一条规则生成的微行动。"""
+
+    __tablename__ = "daily_actions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "action_date", name="uq_daily_action_user_date"),
+        Index("ix_daily_action_user_date", "user_id", "action_date"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    action_date = Column(Date, nullable=False)
+    action_key = Column(String(32), nullable=False)
+    kind = Column(String(16), default="action")
+    title = Column(String(80), nullable=False)
+    description = Column(String(240), nullable=False)
+    reason = Column(String(240), nullable=False)
+    cta_label = Column(String(40), nullable=False)
+    cta_path = Column(String(120), nullable=False)
+    can_complete = Column(Boolean, default=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+
+    user = relationship("User", backref="daily_actions")

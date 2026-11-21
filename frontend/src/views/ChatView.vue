@@ -1,10 +1,10 @@
 <template>
   <div class="chat-view">
     <PageHead
-      folio="09"
-      eyebrow="DIALOGUE / CARE"
-      title="对话"
-      deck="身体问诊与心理树洞共用一套安全边界。先把问题接住，再给可执行的建议。"
+      folio="07"
+      eyebrow="CHAT / COMPANION"
+      title="AI 对话"
+      deck="身体哪儿不对劲尽管问，心里堵得慌也能直接倒苦水。这里不爹味、不画大饼，先接住你再说。"
     >
       <template #actions>
         <span class="status-chip" :class="seriousMode ? 'status-chip--warn' : 'status-chip--accent'">
@@ -15,10 +15,32 @@
     </PageHead>
 
     <div class="chat-layout">
-      <!-- 会话列表 -->
-      <aside class="chat-side card" aria-label="会话列表">
-        <div class="section-head">
-          <h2>会话</h2>
+      <!-- 对话设置 + 会话列表 -->
+      <aside class="chat-side card" aria-label="对话设置与会话列表">
+        <div class="chat-aside-head">
+          <span class="micro">MODE</span>
+          <span class="micro">随时切换</span>
+        </div>
+        <h2 class="chat-aside-title">今天想聊哪边</h2>
+        <div class="mode-switch mode-switch--aside" role="group" aria-label="对话模式">
+          <button
+            v-for="item in modeOptions"
+            :key="item.key"
+            class="mode-btn"
+            :class="{ active: mode === item.key }"
+            type="button"
+            :aria-pressed="mode === item.key"
+            @click="setMode(item.key)"
+          >
+            <strong>{{ item.label }}</strong>
+            <span>{{ item.key === 'body' ? '症状 · 作息 · 饮食' : '情绪 · 压力 · 陪伴' }}</span>
+          </button>
+        </div>
+        <p class="mode-hint">{{ modeMeta.hint }}</p>
+        <PersonaCard compact :serious="personaSerious" />
+
+        <div class="section-head session-head">
+          <h2>历史会话</h2>
           <button class="btn btn--primary btn-sm" type="button" :disabled="creating" @click="createSession">＋ 新建</button>
         </div>
         <ul class="session-list">
@@ -67,12 +89,24 @@
       <section class="chat-main card">
         <div class="chat-top">
           <div class="chat-title">
-            <span class="chat-dot" aria-hidden="true"></span>
-            <span>{{ modeMeta.label }}</span>
+            <span class="chat-avatar" aria-hidden="true">
+              <img :src="chatAvatar" :alt="`${companionMeta.label}对话搭子`" width="36" height="36" />
+            </span>
+            <div class="chat-id">
+              <strong>{{ mode === 'mental' ? '树洞搭子' : 'AI 校医' }}</strong>
+              <span class="chat-sub">{{ seriousMode ? '关怀模式 · 先照顾自己' : '正在听你说' }}</span>
+            </div>
             <span v-if="safetyBadge" class="serious-pill">{{ safetyBadge }}</span>
-            <span class="chat-sub">{{ modeMeta.sub }}</span>
           </div>
           <div class="chat-actions">
+            <button
+              class="mini-chip chat-companion-switch fun-only"
+              type="button"
+              title="切换对话搭子头像"
+              @click="switchCompanion"
+            >
+              当前：{{ companionMeta.label }} · 切换
+            </button>
             <button
               class="btn btn--primary btn-sm chat-new-mobile"
               type="button"
@@ -93,22 +127,6 @@
           </div>
         </div>
 
-        <div class="mode-switch" role="group" aria-label="对话模式">
-          <button
-            v-for="item in modeOptions"
-            :key="item.key"
-            class="mode-btn"
-            :class="{ active: mode === item.key }"
-            type="button"
-            :aria-pressed="mode === item.key"
-            @click="setMode(item.key)"
-          >
-            <AppIcon :name="item.icon" :size="15" />
-            {{ item.label }}
-          </button>
-        </div>
-        <p class="mode-hint">{{ modeMeta.hint }}</p>
-
         <div v-if="mode === 'body'" class="tongue-bar">
           <button
             class="tongue-btn"
@@ -120,10 +138,6 @@
             {{ tongueLoading ? '读取舌诊…' : '引用最近舌诊' }}
           </button>
           <span>把最近一次舌象结果带进对话，让建议更贴近你的体质。</span>
-        </div>
-
-        <div class="chat-persona">
-          <PersonaCard compact :serious="personaSerious" />
         </div>
 
         <select
@@ -257,8 +271,16 @@ import PersonaCard from '../components/mental/PersonaCard.vue'
 import SafetyNotice from '../components/mental/SafetyNotice.vue'
 import { parseServerDate } from '../utils/date'
 import { useWellnessStore } from '../stores/wellness'
+import { companionImage } from '../constants/media'
+import { usePreferences } from '../composables/usePreferences'
 
 const wellness = useWellnessStore()
+const { companion, companionMeta, setCompanion } = usePreferences()
+const chatAvatar = computed(() => companionImage(companion.value, 0))
+
+function switchCompanion () {
+  setCompanion(companion.value === 'hajimi' ? 'nailong' : 'hajimi')
+}
 const sessions = ref([])
 const activeId = ref(null)
 const messages = ref([])
@@ -658,6 +680,65 @@ onUnmounted(() => {
 .chat-view { min-height: 60vh; }
 .chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
 .chat-side { padding: 16px; }
+.chat-aside-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.chat-aside-title { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; letter-spacing: -0.02em; }
+.session-head { margin-top: 16px; }
+.session-head h2 { font-size: 15px; }
+
+.mode-switch--aside {
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.mode-switch--aside .mode-btn {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 48px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: left;
+}
+
+.mode-switch--aside .mode-btn strong { font-size: 13px; }
+.mode-switch--aside .mode-btn span { color: var(--muted); font-size: 10px; font-weight: 400; }
+.mode-switch--aside .mode-btn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.chat-side .mode-hint { margin: 7px 0 10px; }
+
+.chat-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.chat-id { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.chat-id strong { font-size: 13px; }
+.chat-id .chat-sub { margin: 0; font-size: 10px; }
+
+.chat-companion-switch {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 9px;
+  cursor: pointer;
+}
+.chat-companion-switch:hover { border-color: var(--accent); color: var(--accent-strong); }
 .chat-main { display: flex; flex-direction: column; min-height: 60vh; padding: 0; overflow: hidden; }
 
 .chat-top {
@@ -1000,9 +1081,12 @@ onUnmounted(() => {
 .session-title { max-width: 100%; overflow: hidden; font-size: 14px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
 .session-meta { color: var(--muted); font-size: 11px; }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .chat-layout { grid-template-columns: 1fr; }
-  .chat-side { display: none; }
+  .chat-side { display: block; }
+  .chat-side .session-head,
+  .chat-side .session-list,
+  .chat-side :deep(.persona-compact) { display: none; }
   .session-select { display: block; }
   .session-delete-mobile {
     display: inline-flex;

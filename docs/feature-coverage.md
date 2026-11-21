@@ -1,7 +1,7 @@
 # 功能覆盖矩阵（feature-coverage）
 
-> 基线：main `c577392`（AI P1 端点收口后），2026-11-19 DOC-2 文档校准 + FE-2 前端闭环。
-> 端点数为 FastAPI 路由表实测 **72**（含 `GET /api/health` 探活；业务端点 **71**）。
+> 基线：工作区（基于 main `4ad7305`），2026-11-21 健康周报 `/weekly-report` 与今日一件小事上线。
+> 端点数为 FastAPI 路由表实测 **76**（含 `GET /api/health` 探活；业务端点 **75**）。
 > 状态口径：**已接入** = 前端有 UI 调用链（证据到视图/组件/store）；**仅封装** = `frontend/src/api` 已封装但无 UI 调用；**未封装** = 前端无对应方法。
 > 上一轮 P0（W-1 / A-1 / K-1）与 P1（K-2 / DASH-1 / CHAT-1）均已合并；FE-2 已把 P2 的 10 个端点接入 UI，仅剩聊天 v1 非流式消息为遗留封装。
 
@@ -18,10 +18,12 @@
 | 舌诊 | [routers/tongue.py](../routers/tongue.py) | 7 | 7 | 0 | 0 | `/tongue-diagnosis`（统计卡 / 删除） |
 | 聊天 | [routers/chat.py](../routers/chat.py) | 7 | 6 | 1 | 0 | `/chat`（身体问诊引用舌诊、会话删除） |
 | 心理 | [routers/mental.py](../routers/mental.py) | 7 | 7 | 0 | 0 | `/mental` |
+| 健康周报 | [routers/reports.py](../routers/reports.py) | 2 | 2 | 0 | 0 | `/weekly-report`（周切换 / 复制小结 / AI 解读） |
+| 今日一件小事 | [routers/daily_action.py](../routers/daily_action.py) | 2 | 2 | 0 | 0 | Dashboard 行动卡（规则生成 / 完成打卡） |
 | 探活 | [main.py](../main.py) | 1 | — | — | — | 运维 `GET /api/health` |
-| **合计** | 9 个路由文件 + main.py | **72**（业务 71） | **70** | **1** | **0** | 12 个视图 |
+| **合计** | 11 个路由文件 + main.py | **76**（业务 75） | **74** | **1** | **0** | 13 个视图 |
 
-前端视图 12 个（[frontend/src/router/index.js](../frontend/src/router/index.js)）：Login、Register、Dashboard、HealthRecord、HealthAnalysis、DietManagement、SportManagement、TongueDiagnosis、MentalView、ChatView、AISettings、WarningView。`/warnings` 已注册。
+前端视图 13 个（[frontend/src/router/index.js](../frontend/src/router/index.js)）：Login、Register、Dashboard、HealthRecord、HealthAnalysis、DietManagement、SportManagement、TongueDiagnosis、MentalView、ChatView、AISettings、WarningView、WeeklyReport。`/warnings`、`/weekly-report` 均已注册。
 
 ## 2. 本轮缺口收口与剩余
 
@@ -37,6 +39,7 @@
 | 异步分析后台队列持久化 | `/api/ai/async-analysis`、`/api/ai/task/{id}` | `async_tasks` 表 + 原子领取/启动恢复；worker 单事务写 `ai_analyses` 与任务终态，终态写入校验领取令牌 | ASYNC-1 | ✅ `6ac3dbb`+`0fdf884` |
 | 无引用表清理 | — | 迁移 `b2c3d4e5f6a7` 删除 `health_articles`/`user_health_goals`；模型、schema、清理/种子脚本同步 | DB-2b | ✅ `625f957` |
 | E2E 冒烟 | 登录 + 流式聊天冒烟 | `tests/test_e2e_smoke.py`；CI backend 用 uv + ruff，frontend 单测 + 构建 | E2E-1 | ✅ 本轮 |
+| 日常微行动闭环 | `/api/daily-action/*` 2 个 | `Dashboard.vue` → `DailyActionCard.vue`；规则生成、完成打卡、近 7 天完成天数 | DAILY-1 | ✅ 本轮 |
 
 ## 3. 逐端点矩阵
 
@@ -162,7 +165,21 @@
 | POST /api/mental/scales/{type}/submit | [mental.py:93](../routers/mental.py) | mental.js `createMentalAssessment`（别名 `submitMentalScale`） | ScaleRunner.vue | 已接入；K-1 补自动预警 |
 | GET /api/mental/summary | [mental.py:123](../routers/mental.py) | mental.js `getMentalSummary` | wellness.js / MentalView / ChatView / Dashboard / AISettings | 已接入 |
 
-### 3.10 探活
+### 3.10 健康周报（2/2 已接入）
+
+| 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
+|---|---|---|---|---|
+| GET /api/reports/weekly | [reports.py:37](../routers/reports.py) | reports.js `getWeeklyReport` | WeeklyReport.vue（上一周 / 下一周 / 汇总卡 / 洞察 / 建议） | 已接入；只聚合既有表，不新增存储 |
+| POST /api/reports/weekly/ai | [reports.py:47](../routers/reports.py) | reports.js `generateWeeklyReportAI`（60s 超时） | WeeklyReport.vue「生成 AI 解读」 | 已接入；危机周前端隐藏入口、服务端也拒绝生成 |
+
+### 3.11 今日一件小事（2/2 已接入）
+
+| 端点 | 路由证据 | 前端封装 | UI 调用 | 状态 |
+|---|---|---|---|---|
+| GET /api/daily-action/today | [daily_action.py:24](../routers/daily_action.py) | dailyAction.js `getTodayAction` | Dashboard.vue → DailyActionCard.vue（首次生成、同日幂等） | 已接入；规则驱动，不调用 AI |
+| POST /api/daily-action/{action_id}/complete | [daily_action.py:32](../routers/daily_action.py) | dailyAction.js `completeDailyAction` | DailyActionCard.vue「标记完成」 | 已接入；越权/不存在 404、安全行动 400、重复完成幂等 |
+
+### 3.12 探活
 
 | 端点 | 证据 | 用途 |
 |---|---|---|
@@ -170,7 +187,7 @@
 
 ## 4. 复核方法（可复现）
 
-1. 后端路由表：`uv run python -c "from main import app; ..."` 枚举 `app.routes`（需设 `SECRET_KEY`），共 72 个 `/api` 路由（71 业务 + 1 探活）。
+1. 后端路由表：`uv run python -c "from main import app; ..."` 枚举 `app.routes`（需设 `SECRET_KEY`），共 76 个 `/api` 路由（75 业务 + 1 探活）。
 2. 前端封装：`frontend/src/api/*.js` 中 `http.get/post/put/delete` 调用逐一对照。
 3. UI 调用链：在 `frontend/src`（排除 `api/`）grep `api.<方法名>` 与别名（mental.js 尾部有 v1 别名导出）。
 4. 本文档只描述已实现功能；「待补」均对应已派单任务（当前为 FE-2）或明确标注未派单。
@@ -186,3 +203,5 @@
 | 2026-11-19 | main `c3923b5` | ASYNC-1 / DB-2b / E2E-1 收口：异步任务持久化（`async_tasks` + 原子领取 + 启动恢复 + 单事务落库，迁移 `a1b2c3d4e5f6`）；DB-2b 删除 `health_articles`/`user_health_goals`（迁移 `b2c3d4e5f6a7`，模型/schema/脚本同步）；E2E 冒烟 + CI（uv/ruff）。实测后端 288 passed、前端 27 passed |
 | 2026-11-19 | main `2b0de16` | AI 配置局部更新：`AIConfigUpdate` 的 provider/model 改为可选，舌诊视觉配置可单独保存并保留聊天模型；前端 `readApiError` 拍平 422 detail 数组。实测后端 289 passed、前端 31 passed |
 | 2026-11-19 | main `3aa9862` | 视觉模型失败提示细分：智谱 1210（仅 text）提示模型不支持图片并建议 glm-4v-plus；401/403 鉴权、404 接口、400 模型能力分别提示；新增 3 例视觉错误测试。实测后端 292 passed、前端 31 passed |
+| 2026-11-21 | 工作区（基于 `4ad7305`） | 健康周报：新增 `GET /api/reports/weekly` 与 `POST /api/reports/weekly/ai`，聚合睡眠 / 饮食 / 运动 / 心情 / 评分，规则洞察 + 可选 AI 解读；危机周安全置顶并禁止 AI 解读。新增 `/weekly-report` 视图与侧栏 / 更多 / Dashboard 入口。实测后端 299 passed、前端 31 passed、前端构建通过 |
+| 2026-11-21 | 工作区（基于 `4ad7305`） | 今日一件小事：新增 `DailyAction` 表 / 迁移 `c3d4e5f6a7b8`、`GET /api/daily-action/today`、`POST /api/daily-action/{id}/complete`；Dashboard 行动卡按危机 > 记录 > 睡眠 > 运动 > 饮食 > 心情规则生成每日微行动，完成态幂等并统计近 7 天完成天数；record_date 按 UTC 存储、按本地自然日换算，安全行动在非严肃模式展示关怀卡。实测后端 324 passed、前端 31 passed、前端构建通过 |

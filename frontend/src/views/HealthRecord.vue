@@ -60,53 +60,69 @@
     </div>
 
     <div class="record-layout">
+      <section class="ocr-panel">
+      <div class="ocr-panel-head">
+        <div>
+          <p class="micro">RECORD / OCR</p>
+          <h2>把纸面天书搬进手机</h2>
+          <p class="ocr-panel-deck">上传体检单照片，自动提取血压、心率、视力、身高体重等指标。你点头确认后才会入库保存。</p>
+        </div>
+        <span class="micro">支持图片</span>
+      </div>
+      <div class="ocr-panel-body">
+        <input
+          ref="ocrInput"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          class="sr-only"
+          @change="onOcrFile"
+        />
+        <button class="ocr-drop" type="button" :disabled="ocrLoading" @click="pickOcrFile">
+          <span class="ocr-drop-icon"><AppIcon name="camera" :size="26" /></span>
+          <strong>{{ ocrLoading ? '正在识别体检单…' : '点击上传体检单' }}</strong>
+          <small>JPG / PNG，建议光线充足、四角完整</small>
+        </button>
+        <div class="ocr-copy">
+          <p v-if="ocrMessage" :class="['ocr-message', `ocr-message--${ocrType}`]">
+            {{ ocrMessage }}
+            <span v-if="ocrConfidence != null"> · 置信度 {{ Math.round(ocrConfidence * 100) }}%</span>
+          </p>
+          <p v-else class="ocr-hint">拍一张体检单或化验单，只会回填能认出的数字，确认前不会提交。</p>
+          <div v-if="ocrAbnormal.length" class="ocr-abnormal">
+            <span v-for="item in ocrAbnormal" :key="item">{{ item }}</span>
+          </div>
+          <div v-if="ocrDraft" class="ocr-review" role="group" aria-label="体检单识别结果核对">
+            <div class="ocr-review-head">
+              <span class="micro">OCR / REVIEW</span>
+              <span>识别到 {{ ocrDraft.values.length }} 项，核对或修改后才会填入表单</span>
+            </div>
+            <div class="ocr-review-grid">
+              <label v-for="item in ocrDraft.values" :key="item.key" class="ocr-review-item">
+                <span>{{ item.label }}</span>
+                <input v-model.number="item.value" type="number" step="0.1" />
+                <em v-if="item.unit">{{ item.unit }}</em>
+              </label>
+            </div>
+            <div class="ocr-review-actions">
+              <button type="button" class="btn btn-primary" @click="applyOcrDraft">确认填入表单</button>
+              <button type="button" class="btn btn-ghost" @click="ocrDraft = null">放弃识别结果</button>
+            </div>
+          </div>
+          <p v-else class="ocr-note">识别结果需要你逐项核对；任何一项不确认，都不会写入本次记录。</p>
+          <ul class="ocr-tips">
+            <li>拍照时四角完整，尽量避开反光与阴影</li>
+            <li>识别到的项目会先列出来，确认后才填入表单</li>
+            <li>支持体检单、化验单等常见纸质报告</li>
+          </ul>
+        </div>
+      </div>
+      </section>
+
       <div class="form-section">
         <div class="form-header">
           <h2> 填写健康问卷</h2>
           <p class="form-hint">填写越多，评级越准确</p>
-        </div>
-
-        <div class="ocr-bar">
-          <input
-            ref="ocrInput"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            class="sr-only"
-            @change="onOcrFile"
-          />
-          <button class="ocr-btn" type="button" :disabled="ocrLoading" @click="pickOcrFile">
-            <AppIcon name="camera" :size="16" />
-            {{ ocrLoading ? '正在识别体检单…' : '拍体检单自动填' }}
-          </button>
-          <div class="ocr-copy">
-            <p v-if="ocrMessage" :class="['ocr-message', `ocr-message--${ocrType}`]">
-              {{ ocrMessage }}
-              <span v-if="ocrConfidence != null"> · 置信度 {{ Math.round(ocrConfidence * 100) }}%</span>
-            </p>
-            <p v-else class="ocr-hint">拍一张体检单或化验单，只会回填能认出的数字，确认前不会提交。</p>
-            <div v-if="ocrAbnormal.length" class="ocr-abnormal">
-              <span v-for="item in ocrAbnormal" :key="item">{{ item }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="ocrDraft" class="ocr-review" role="group" aria-label="体检单识别结果核对">
-          <div class="ocr-review-head">
-            <span class="micro">OCR / REVIEW</span>
-            <span>识别到 {{ ocrDraft.values.length }} 项，核对或修改后才会填入表单</span>
-          </div>
-          <div class="ocr-review-grid">
-            <label v-for="item in ocrDraft.values" :key="item.key" class="ocr-review-item">
-              <span>{{ item.label }}</span>
-              <input v-model.number="item.value" type="number" step="0.1" />
-              <em v-if="item.unit">{{ item.unit }}</em>
-            </label>
-          </div>
-          <div class="ocr-review-actions">
-            <button type="button" class="btn btn-primary" @click="applyOcrDraft">确认填入表单</button>
-            <button type="button" class="btn btn-ghost" @click="ocrDraft = null">放弃识别结果</button>
-          </div>
         </div>
 
         <form @submit.prevent="handleSubmit" class="record-form">
@@ -1085,33 +1101,92 @@ export default {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.ocr-bar {
+.ocr-panel {
+  grid-column: 1 / -1;
+  padding: 28px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.ocr-panel-head {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 18px;
-  padding: 12px 14px;
-  border: var(--border-hairline);
-  border-radius: var(--radius);
-  background: var(--accent-soft);
 }
-.ocr-btn {
-  display: inline-flex;
+.ocr-panel-head h2 {
+  margin: 4px 0 6px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 720;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+}
+.ocr-panel-deck { margin: 0; max-width: 62ch; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+.ocr-panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 20px;
+  align-items: stretch;
+}
+.ocr-drop {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid color-mix(in oklch, var(--accent) 22%, var(--border));
-  border-radius: var(--radius-sm);
+  justify-content: center;
+  gap: 8px;
+  min-height: 190px;
+  padding: 24px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+.ocr-drop:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.ocr-drop:disabled { opacity: 0.65; cursor: progress; }
+.ocr-drop-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
   background: var(--surface);
   color: var(--accent-strong);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
 }
-.ocr-btn:disabled { opacity: 0.65; cursor: progress; }
-.ocr-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ocr-drop strong { color: var(--fg); font-size: 14px; }
+.ocr-drop small { font-size: 11px; }
+.ocr-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 4px 0; }
+.ocr-note { margin: 0; color: var(--muted-2); font-size: 11px; line-height: 1.6; }
+.ocr-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: auto 0 0;
+  padding: 16px 0 0;
+  border-top: var(--border-hairline);
+  list-style: none;
+}
+.ocr-tips li {
+  position: relative;
+  padding-left: 14px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.ocr-tips li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
 .ocr-hint,
 .ocr-message { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
 .ocr-message--success { color: var(--success); }
@@ -1285,14 +1360,15 @@ export default {
   }
 }
 
+@media (max-width: 860px) {
+  .ocr-panel-body {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
-  .ocr-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .ocr-btn {
-    justify-content: center;
-  }
+  .ocr-panel { padding: 20px; }
+  .ocr-drop { min-height: 150px; }
 }
 
 .form-section, .records-section {

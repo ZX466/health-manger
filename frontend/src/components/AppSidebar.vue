@@ -130,13 +130,14 @@ export default {
       ],
       archiveLinks: [
         { path: '/health-record', label: '体检', num: '05', icon: 'record' },
-        { path: '/health-analysis', label: '健康分析', num: '06', icon: 'chart' },
-        { path: '/tongue-diagnosis', label: '舌诊', num: '07', icon: 'tongue' },
-        { path: '/warnings', label: '预警', num: '08', icon: 'alert' }
+        { path: '/weekly-report', label: '周报', num: '06', icon: 'calendar' },
+        { path: '/health-analysis', label: '健康分析', num: '07', icon: 'chart' },
+        { path: '/tongue-diagnosis', label: '舌诊', num: '08', icon: 'tongue' },
+        { path: '/warnings', label: '预警', num: '09', icon: 'alert' }
       ],
       assistantLinks: [
-        { path: '/chat', label: '对话', num: '09', icon: 'ai' },
-        { path: '/ai-settings', label: '设置', num: '10', icon: 'sliders' }
+        { path: '/chat', label: '对话', num: '10', icon: 'ai' },
+        { path: '/ai-settings', label: '设置', num: '11', icon: 'sliders' }
       ]
     }
   },

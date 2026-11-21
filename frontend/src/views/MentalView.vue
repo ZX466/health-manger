@@ -66,31 +66,6 @@
         <MoodTrend class="span-5" :trend="trend" :summary="summary" :serious="seriousMode" />
       </div>
 
-      <section class="toolbox-section v21-panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">TOOLBOX</p>
-            <h2>随身减压</h2>
-          </div>
-          <span class="section-hint">4-7-8 呼吸 · 电子木鱼 · 烦恼粉碎机</span>
-        </div>
-
-        <div class="toolbox-grid" :class="{ 'toolbox-grid--single': seriousMode }">
-          <div class="card breathing-card">
-            <div class="tool-card-head">
-              <div>
-                <h3>4-7-8 减压呼吸</h3>
-                <p>吸气 4 秒 · 屏息 7 秒 · 呼气 8 秒</p>
-              </div>
-              <AppIcon name="breathe" :size="18" />
-            </div>
-            <RingGauge mode="breathe" :size="188" />
-          </div>
-
-          <StressShredder v-if="!seriousMode" class="toolbox-shredder" />
-        </div>
-      </section>
-
       <section ref="scaleSection" class="scales-section v21-panel">
         <div class="section-head">
           <div>
@@ -165,6 +140,33 @@
         </div>
       </section>
 
+      <section class="toolbox-section v21-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">TOOLBOX</p>
+            <h2>随身减压</h2>
+          </div>
+          <span class="section-hint">4-7-8 呼吸 · 电子木鱼 · 烦恼粉碎机</span>
+        </div>
+
+        <div class="toolbox-grid" :class="{ 'toolbox-grid--single': seriousMode }">
+          <div class="card breathing-card">
+            <div class="tool-card-head">
+              <div>
+                <h3>4-7-8 减压呼吸</h3>
+                <p>吸气 4 秒 · 屏息 7 秒 · 呼气 8 秒</p>
+              </div>
+              <AppIcon name="breathe" :size="18" />
+            </div>
+            <RingGauge mode="breathe" :size="188" />
+          </div>
+
+          <StressShredder v-if="!seriousMode" class="toolbox-shredder" />
+        </div>
+      </section>
+
+      <BlindboxGallery v-if="!seriousMode" @toast="showToast" />
+
       <section class="card help-card">
         <div class="section-head">
           <div>
@@ -185,6 +187,7 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
+import BlindboxGallery from '../components/BlindboxGallery.vue'
 import PageHead from '../components/PageHead.vue'
 import RingGauge from '../components/RingGauge.vue'
 import StressShredder from '../components/StressShredder.vue'

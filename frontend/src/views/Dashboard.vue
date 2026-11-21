@@ -12,6 +12,7 @@
           <span class="status-dot" :class="statusDotClass"></span>
           {{ statusLabel }}
         </span>
+        <router-link class="btn btn-ghost" to="/weekly-report">本周小结</router-link>
         <router-link class="btn btn-primary" to="/chat">找搭子聊聊</router-link>
       </div>
     </header>
@@ -49,6 +50,8 @@
       </span>
       <AppIcon name="arrow" :size="16" />
     </router-link>
+
+    <DailyActionCard v-if="!mentalSerious" />
 
     <div class="dashboard-grid">
       <section class="score-panel" aria-labelledby="score-title">
@@ -114,15 +117,11 @@
             <span class="brief-state" :class="{ 'brief-state--warn': item.warn }">{{ item.state }}</span>
           </li>
         </ol>
-        <div class="companion">
-          <div class="mascot" aria-hidden="true">
-            <MiniNailong :animation="reduced ? 'none' : 'float'" />
-          </div>
-          <div>
-            <p class="micro">{{ avatarBubbleTitle }}</p>
-            <p class="companion-text">{{ avatarBubble }}</p>
-          </div>
-        </div>
+        <CompanionCard
+          :state="companionState"
+          :tag="avatarBubbleTitle"
+          :bubble="avatarBubble"
+        />
       </aside>
     </div>
 
@@ -181,6 +180,17 @@
           <span class="micro">{{ personaDate }}</span>
         </div>
         <p class="persona-kicker">今日人设</p>
+        <div class="persona-sticker">
+          <img :src="stickerImage" :alt="`${companionMeta.label}贴纸`" width="96" height="96" loading="lazy" />
+          <div class="persona-sticker-tools">
+            <button class="mini-icon-btn" type="button" title="换一张贴纸" aria-label="换一张贴纸" @click="shuffleSticker">
+              <AppIcon name="shuffle" :size="14" />
+            </button>
+            <button class="mini-icon-btn" type="button" title="听一句搭子音效" aria-label="听一句搭子音效" @click="playStickerSound">
+              <AppIcon name="volume" :size="14" />
+            </button>
+          </div>
+        </div>
         <h2 id="persona-title">{{ persona.title }}</h2>
         <p class="persona-short">{{ persona.short }}</p>
         <div class="persona-tags"><span v-for="tag in persona.tags" :key="tag">{{ tag }}</span></div>
@@ -233,11 +243,13 @@
 
 <script>
 import api from '../api'
-import MemeGallery from '../components/MemeGallery.vue'
-import AudioPlayer from '../components/AudioPlayer.vue'
 import AppIcon from '../components/AppIcon.vue'
-import MiniNailong from '../components/mascots/MiniNailong.vue'
+import CompanionCard from '../components/CompanionCard.vue'
+import DailyActionCard from '../components/DailyActionCard.vue'
 import { buildPersonaCard, getHealthTier, moodTitle } from '../constants/copywriting'
+import { companionImage } from '../constants/media'
+import { playClip } from '../composables/useHealthU'
+import { usePreferences } from '../composables/usePreferences'
 import { formatShortDate, localDateKey } from '../utils/date'
 import { summarizeRatingHistory } from '../utils/ratingHistory'
 import { useWellnessStore } from '../stores/wellness'
@@ -245,9 +257,10 @@ import { useWarningStore } from '../stores/warnings'
 
 export default {
   name: 'Dashboard',
-  components: { MemeGallery, AudioPlayer, AppIcon, MiniNailong },
+  components: { AppIcon, CompanionCard, DailyActionCard },
   setup() {
-    return { warningStore: useWarningStore() }
+    const { companion, companionMeta } = usePreferences()
+    return { warningStore: useWarningStore(), companion, companionMeta }
   },
   data() {
     return {
@@ -309,6 +322,7 @@ export default {
       personaGenerated: false,
       copied: false,
       copyTimer: null,
+      stickerIndex: 0,
 
       // fun
       funOpen: false,
@@ -464,6 +478,13 @@ export default {
     moodTags() {
       const tags = this.wellness?.stressTags
       return Array.isArray(tags) ? tags.filter(tag => typeof tag === 'string' && tag).slice(0, 3) : []
+    },
+    companionState() {
+      if (this.mentalSerious) return 'crisis'
+      return this.wellness?.avatarState || 'default'
+    },
+    stickerImage() {
+      return companionImage(this.companion, this.stickerIndex + 1)
     },
     avatarBubble() {
       if (this.mentalSerious) {
@@ -779,6 +800,12 @@ export default {
       clearTimeout(this.copyTimer)
       this.copyTimer = setTimeout(() => { this.copied = false }, 2000)
       this.showToast('文案已复制，去发朋友圈吧')
+    },
+    shuffleSticker() {
+      this.stickerIndex += 1
+    },
+    playStickerSound() {
+      playClip(this.companionState === 'energetic' ? 'belly' : 'giggle')
     },
     async loadStats() {
       try {

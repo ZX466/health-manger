@@ -3,6 +3,8 @@ import foodApi from './food'
 import healthApi from './health'
 import chatApi from './chat'
 import mentalApi from './mental'
+import reportsApi from './reports'
+import dailyActionApi from './dailyAction'
 
 export default {
   // 认证
@@ -26,6 +28,8 @@ export default {
   ...healthApi,
   ...chatApi,
   ...mentalApi,
+  ...reportsApi,
+  ...dailyActionApi,
 
   // 运动管理
   getSports(params) {

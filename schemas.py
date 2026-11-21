@@ -565,3 +565,74 @@ class ReportOcrResponse(BaseModel):
     abnormal: list[str] = Field(default_factory=list, max_length=10)
     confidence: float = Field(0, ge=0, le=1)
     needs_confirm: bool = True
+
+
+# ── 健康周报 ──
+
+
+class WeeklyReportDay(BaseModel):
+    date: str
+    score: int | None = None
+    sleep_hours: float | None = None
+    mood_score: int | None = None
+    calories_in: float = 0
+    calories_burned: float = 0
+    sport_minutes: int = 0
+    has_data: bool = False
+
+
+class WeeklyReportInsight(BaseModel):
+    kind: Literal["positive", "attention", "info", "safety"]
+    title: str
+    text: str
+
+
+class WeeklyReportResponse(BaseModel):
+    start_date: str
+    end_date: str
+    days: int = 7
+    has_data: bool = False
+    recorded_days: int = 0
+    score_avg: float | None = None
+    score_change: int | None = None
+    sleep_avg: float | None = None
+    sleep_debt: float | None = None
+    sleep_days: int = 0
+    mood_avg: float | None = None
+    mood_days: int = 0
+    food_days: int = 0
+    calories_in_avg: float | None = None
+    calories_burned_total: float = 0
+    sport_days: int = 0
+    sport_minutes_total: int = 0
+    warnings_total: int = 0
+    warnings_danger: int = 0
+    crisis_flag: bool = False
+    top_stress_tags: list[str] = Field(default_factory=list)
+    daily: list[WeeklyReportDay] = Field(default_factory=list)
+    insights: list[WeeklyReportInsight] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    summary_text: str = ""
+
+
+class WeeklyReportAIResponse(BaseModel):
+    content: str
+    generated_at: datetime
+
+
+class DailyActionResponse(BaseModel):
+    """今日一件小事的 API 返回契约。"""
+
+    id: int
+    action_date: date
+    action_key: str
+    kind: str = "action"
+    title: str
+    description: str
+    reason: str
+    cta_label: str
+    cta_path: str
+    can_complete: bool = True
+    completed: bool = False
+    completed_at: datetime | None = None
+    week_completed: int = 0

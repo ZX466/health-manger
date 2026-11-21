@@ -28,7 +28,7 @@
         <div class="diet-intake">
           <div>
             <p class="diet-big">{{ foodStats.total_calories || 0 }}<span>kcal</span></p>
-            <p class="diet-unit">已摄入 · 目标 2,000 kcal</p>
+            <p class="diet-unit">已摄入 · 目标 {{ calorieGoal.toLocaleString('zh-CN') }} kcal</p>
           </div>
           <div class="diet-left">
             <span class="micro">还能吃</span>
@@ -44,6 +44,14 @@
           aria-valuemax="100"
         >
           <span :style="{ width: intakePercent + '%' }"></span>
+        </div>
+        <div class="diet-macros" aria-label="三大营养素">
+          <div v-for="macro in macroRows" :key="macro.label" class="diet-macro-row">
+            <span>{{ macro.label }}</span>
+            <div class="diet-macro-bar"><i :style="{ width: macro.percent + '%' }"></i></div>
+            <strong>{{ macro.value }}</strong>
+          </div>
+          <p class="diet-macro-note">蛋白质 / 脂肪 / 碳水明细待食物库补齐，当前只核对热量。</p>
         </div>
         <div class="diet-meal-chips">
           <span v-for="(calories, type) in foodStats.meal_type_stats" :key="type" class="meal-chip">
@@ -125,6 +133,7 @@
           </div>
           <h2>今天不用吃得完美</h2>
           <p>捕获“热量刺客”也没关系，快乐是真快乐。晚饭后下楼绕操场走两圈，比在宿舍里自责有用。</p>
+          <ReactionStrip v-if="dietReaction" :reaction="dietReaction" surface />
           <RouterLink class="text-link" to="/sport-management">
             去记一次散步
             <AppIcon name="arrow" :size="15" />
@@ -420,13 +429,22 @@
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import PageHead from '../components/PageHead.vue'
+import ReactionStrip from '../components/ReactionStrip.vue'
+import { buildDietReaction } from '../constants/media'
+import { usePreferences } from '../composables/usePreferences'
+import { playClip } from '../composables/useHealthU'
 import { localDateKey, parseServerDate } from '../utils/date'
 
 export default {
   name: 'DietManagement',
   components: {
     AppIcon,
-    PageHead
+    PageHead,
+    ReactionStrip
+  },
+  setup() {
+    const { companion, goals } = usePreferences()
+    return { companion, goals }
   },
   data() {
     return {
@@ -467,17 +485,36 @@ export default {
     isToday() {
       return this.filterDate === localDateKey()
     },
+    calorieGoal() {
+      return Math.max(800, Number(this.goals?.calories) || 2000)
+    },
     remainingCalories() {
-      return Math.max(0, 2000 - (Number(this.foodStats.total_calories) || 0))
+      return Math.max(0, this.calorieGoal - (Number(this.foodStats.total_calories) || 0))
     },
     intakePercent() {
-      return Math.min(100, Math.round(((Number(this.foodStats.total_calories) || 0) / 2000) * 100))
+      return Math.min(100, Math.round(((Number(this.foodStats.total_calories) || 0) / this.calorieGoal) * 100))
     },
     intakeHint() {
       const total = Number(this.foodStats.total_calories) || 0
       if (!total) return '先记一笔，今天才有账可算。'
-      if (total >= 2000) return '已经到了默认目标，按体感决定要不要再加。'
-      return '按 2,000 kcal 估算，留一点空间给下一餐。'
+      if (total >= this.calorieGoal) return '已经到目标了，按体感决定要不要再加。'
+      return `按 ${this.calorieGoal.toLocaleString('zh-CN')} kcal 估算，留一点空间给下一餐。`
+    },
+    macroRows() {
+      return [
+        { label: '蛋白质', value: '— / 100g', percent: 0 },
+        { label: '脂肪', value: '— / 65g', percent: 0 },
+        { label: '碳水', value: '— / 250g', percent: 0 }
+      ]
+    },
+    dietReaction() {
+      const total = Number(this.foodStats.total_calories) || 0
+      if (!total) return null
+      return buildDietReaction({
+        intake: total,
+        goal: this.calorieGoal,
+        companion: this.companion
+      })
     }
   },
   async mounted() {
@@ -557,7 +594,17 @@ export default {
       }
     },
     weekBarHeight(calories) {
-      return Math.min(100, Math.round(((Number(calories) || 0) / 2000) * 100))
+      return Math.min(100, Math.round(((Number(calories) || 0) / this.calorieGoal) * 100))
+    },
+    playDietFeedback() {
+      const total = Number(this.foodStats.total_calories) || 0
+      if (!total) return
+      const reaction = buildDietReaction({
+        intake: total,
+        goal: this.calorieGoal,
+        companion: this.companion
+      })
+      if (reaction.audio) playClip(reaction.audio)
     },
     async searchFoods() {
       await this.loadFoods()
@@ -575,6 +622,7 @@ export default {
         this.newRecord = { food_id: '', quantity_grams: '', meal_type: 'lunch' }
         await this.loadFoodRecords()
         await this.loadFoodStats()
+        this.playDietFeedback()
         alert('添加成功')
       } catch (err) {
         alert('添加失败：' + this.errMsg(err))
@@ -773,6 +821,7 @@ export default {
         this.showScan = false
         this.resetScan()
         await Promise.all([this.loadFoodRecords(), this.loadFoodStats()])
+        this.playDietFeedback()
         this.scanNotice = `已记下这餐（${items.length} 样），数字可以随时再改`
         setTimeout(() => { this.scanNotice = '' }, 3600)
       } catch (err) {
